@@ -61,12 +61,13 @@ export function getCurrentUploadId(){
   return localStorage.getItem(CURRENT_UPLOAD_KEY)||''
 }
 
-export async function uploadContractSource(contractId,file){
+export async function uploadContractSource(contractId,file,contractName=''){
   validateContractFile(file)
   if(!contractId)throw new Error('Bitte zuerst einen Vertrag auswählen.')
 
   const prep=await invoke('vn2-contract-upload',{
     contract_id:contractId,
+    contract_name:contractName||null,
     filename:file.name,
     bytes:file.size,
     mime_type:file.type||'application/octet-stream',
@@ -81,8 +82,9 @@ export async function uploadContractSource(contractId,file){
     })
   if(uploadError)throw new Error(friendlyError(uploadError,'Datei konnte nicht hochgeladen werden.'))
 
+  const resolvedContractId=prep?.contract_id||contractId
   const completed=await invoke('vn2-contract-upload-complete',{
-    contract_id:contractId,
+    contract_id:resolvedContractId,
     path:prep.path,
     filename:file.name,
     parser_version:'vn2-ui-2.2',
