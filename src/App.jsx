@@ -130,9 +130,32 @@ export default function App(){
   async function login(e){
     e.preventDefault();setAuthError('')
     const login=username.trim()
-    const email=login.includes('@')?login:`${login.toLowerCase()}@vertragsnavigator.test`
-    const {error}=await supabase.auth.signInWithPassword({email,password})
-    if(error)setAuthError(error.message)
+    if(!login||!password){setAuthError('Benutzername und Passwort erforderlich.');return}
+
+    const {data,error}=await supabase.functions.invoke('vn2-auth-login',{
+      body:{username:login,password},
+    })
+
+    if(error){
+      let message=error.message||'Anmeldung fehlgeschlagen.'
+      try{
+        const payload=await error.context?.json?.()
+        if(payload?.error)message=payload.error
+      }catch{}
+      setAuthError(message)
+      return
+    }
+    if(data?.error){setAuthError(data.error);return}
+    if(!data?.session?.access_token||!data?.session?.refresh_token){
+      setAuthError('Neue Sitzung konnte nicht erstellt werden.')
+      return
+    }
+
+    const {error:setError}=await supabase.auth.setSession({
+      access_token:data.session.access_token,
+      refresh_token:data.session.refresh_token,
+    })
+    if(setError)setAuthError(setError.message)
   }
 
   async function loadData(){
