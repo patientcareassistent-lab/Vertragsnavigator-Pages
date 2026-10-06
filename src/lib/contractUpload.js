@@ -1,8 +1,15 @@
+import { createClient } from '@supabase/supabase-js'
 import { supabase } from './supabase.js'
 
 const CURRENT_UPLOAD_KEY='vn2.currentContractUpload'
 const ALLOWED_EXTENSIONS=new Set(['pdf','zip','csv','txt','doc','docx','xls','xlsx','msg'])
 const MAX_BYTES=50*1024*1024
+const CORE_URL=import.meta.env.VITE_VN2_CORE_URL||'https://orydywvgzghresinulpo.supabase.co'
+const CORE_KEY=import.meta.env.VITE_VN2_CORE_PUBLISHABLE_KEY||'sb_publishable_81eMBcOeHrOZ5tHd0k60mw_cx50EAQ0'
+
+const coreClient=createClient(CORE_URL,CORE_KEY,{
+  auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},
+})
 
 function ensureClient(){
   if(!supabase)throw new Error('Supabase ist nicht konfiguriert.')
@@ -15,9 +22,24 @@ function friendlyError(error,fallback='Vorgang fehlgeschlagen.'){
 
 async function invoke(name,body){
   ensureClient()
-  const {data,error}=await supabase.functions.invoke(name,{body})
-  if(error)throw new Error(friendlyError(error))
-  if(data?.error)throw new Error(friendlyError(data))
+  const {data:{session},error:sessionError}=await supabase.auth.getSession()
+  if(sessionError||!session?.access_token)throw new Error('Anmeldung ist nicht mehr gültig.')
+
+  const response=await fetch(CORE_URL+'/functions/v1/'+name,{
+    method:'POST',
+    headers:{
+      Authorization:'Bearer '+session.access_token,
+      apikey:CORE_KEY,
+      'Content-Type':'application/json',
+    },
+    body:JSON.stringify(body||{}),
+  })
+
+  let data=null
+  try{data=await response.json()}catch{}
+  if(!response.ok||data?.error){
+    throw new Error(friendlyError(data,'VN2-Backend HTTP '+response.status))
+  }
   return data
 }
 
@@ -52,7 +74,7 @@ export async function uploadContractSource(contractId,file){
   const token=prep?.upload?.token
   if(!prep?.path||!prep?.bucket||!token)throw new Error('Signierter Upload konnte nicht vorbereitet werden.')
 
-  const {error:uploadError}=await supabase.storage
+  const {error:uploadError}=await coreClient.storage
     .from(prep.bucket)
     .uploadToSignedUrl(prep.path,token,file,{
       contentType:file.type||undefined,
