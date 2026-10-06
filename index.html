@@ -76,7 +76,19 @@ input:focus,select:focus,textarea:focus{border-color:var(--pink);box-shadow:0 0 
 .quick-rail button:hover::after{opacity:1}
 .content{padding-left:82px}
 @media(max-width:760px){.quick-rail{display:none}.content{padding-left:16px}}
-</style>
+
+/* VN2 Upload / Änderungsworkflow */
+.workflow-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:12px}.workflow-steps span{border:1px solid #dce3e7;border-radius:999px;padding:7px 9px;text-align:center;color:#7b8794;font-size:10px;font-weight:800;background:#fff}.workflow-steps span.active{color:var(--blue);border-color:#edb4c6;background:#fff5f8}
+.upload-main{display:grid;gap:14px}.upload-grid{display:grid;grid-template-columns:minmax(260px,.9fr) 1.1fr;gap:14px}.upload-contract-hint{border:1px solid #e1e7ec;border-radius:11px;background:#fafbfc;padding:12px 14px;display:grid;align-content:center;gap:4px}.upload-contract-hint small{font-size:9px;color:var(--muted);text-transform:uppercase}.upload-contract-hint b{font-size:13px;color:var(--blue)}.upload-contract-hint span{font-size:10px;color:var(--muted)}
+.dropzone{min-height:175px;border:2px dashed #c9d4dc;border-radius:15px;background:#fafcfd;display:flex!important;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;cursor:pointer;margin:0!important}.dropzone:hover{border-color:var(--pink);background:#fff7fa}.drop-icon{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:#eef4f8;color:var(--blue);font-size:26px;margin-bottom:9px}.dropzone strong{color:var(--blue);font-size:15px}.dropzone small{color:var(--muted);font-size:10px;margin-top:5px}.upload-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--muted);font-size:10px}
+.detected-sheets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.detected-sheets div,.pdf-findings div{border:1px solid #e1e7ec;border-radius:10px;background:#fafbfc;padding:10px}.detected-sheets b,.detected-sheets small{display:block}.detected-sheets b{font-size:11px;color:var(--blue)}.detected-sheets small{font-size:9px;color:var(--muted);margin-top:3px}.pdf-findings{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.pdf-findings small{display:block;font-size:8px;color:var(--muted);text-transform:uppercase}.pdf-findings b{display:block;font-size:11px;color:var(--blue);margin-top:3px;word-break:break-word}
+.type-options{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.type-options label{display:flex!important;align-items:flex-start;gap:8px;border:1px solid #dce3e7;border-radius:10px;padding:10px;margin:0!important;background:#fff}.type-options input{width:auto;margin:2px 0 0}.type-options b,.type-options small{display:block}.type-options b{font-size:11px}.type-options small{font-size:9px;color:var(--muted);margin-top:2px}
+.upload-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 13px}.upload-kpis div{border:1px solid #e2e7ea;border-radius:10px;background:#fafbfc;padding:10px}.upload-kpis small{display:block;font-size:8px;color:var(--muted);text-transform:uppercase}.upload-kpis strong{display:block;color:var(--blue);font-size:20px;margin-top:3px}.review-callout{display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid #f2c87c;border-radius:11px;background:var(--warn-bg);padding:12px;margin:10px 0}.review-callout b{color:var(--warn);font-size:12px}.review-callout p{margin:3px 0 0;font-size:10px;color:#7b5d2d}
+.change-list{display:grid;gap:8px}.change-card{border:1px solid #e2e7ea;border-left:4px solid #84adf1;border-radius:10px;background:#fff;overflow:hidden}.change-card.insert{border-left-color:#75c79f}.change-card.delete{border-left-color:#e6ae63}.change-head{display:flex;align-items:center;gap:8px;padding:10px;background:#fbfcfd}.change-head b{flex:1;font-size:11px;color:#344054}.change-head small{font-size:9px;color:var(--muted)}.change-fields{display:grid;gap:1px;background:#edf1f4}.change-field{display:grid;grid-template-columns:150px 1fr 24px 1fr;gap:8px;background:#fff;padding:9px 10px;align-items:center;font-size:10px}.change-field>strong{color:#475467}.oldvalue{color:#8b98a4}.newvalue{color:#344054;font-weight:700}.change-snapshot{padding:9px 10px;font-size:9px;color:#667085;line-height:1.5}
+.changes-workspace{display:grid;grid-template-columns:minmax(320px,.8fr) minmax(0,1.4fr);gap:16px}.upload-history-list{display:grid;gap:6px;max-height:68vh;overflow:auto}.history-row{border:1px solid #e2e7ea;border-radius:10px;padding:10px;background:#fff;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:8px}.history-row:hover,.history-row.selected{background:#fff7fa;border-color:#edb4c6}.history-row b,.history-row small{display:block}.history-row b{font-size:11px;color:var(--blue)}.history-row small{font-size:9px;color:var(--muted);margin-top:3px}.history-meta{display:flex;gap:6px;align-items:center}.upload-history{position:sticky;top:14px}
+@media(max-width:900px){.upload-grid,.changes-workspace{grid-template-columns:1fr}.upload-history{position:static}.pdf-findings{grid-template-columns:repeat(2,1fr)}.detected-sheets,.type-options,.upload-kpis{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.workflow-steps{grid-template-columns:1fr}.upload-actions,.review-callout{flex-direction:column;align-items:stretch}.detected-sheets,.pdf-findings,.type-options,.upload-kpis{grid-template-columns:1fr}.change-field{grid-template-columns:1fr}.change-field .arrow{display:none}}
+\n</style>
 </head>
 <body>
 
@@ -233,18 +245,48 @@ input:focus,select:focus,textarea:focus{border-color:var(--pink);box-shadow:0 0 
     </section>
 
     <section id="uploadView" class="hidden">
-      <div class="page-head"><div><h1>Vertrag hochladen</h1><p>Neue Vertragsversionen ohne Überschreiben des bisherigen Standes.</p></div><span class="badge warn">Freigabestrecke</span></div>
-      <div class="grid">
-        <section class="panel span2"><div class="uploadbox"><strong>Neuen Vertrag oder neue Vertragsversion ablegen</strong><p>Originalquelle → Version → Extraktion/Normalisierung → Diff → Review → Freigabe. Die Upload-Logik wird an die VN-2.1-Versionierung angebunden.</p><button class="primary" disabled>Datei auswählen</button></div></section>
-        <section class="panel"><h2>Grundregel</h2><p>Neue Dokumente erzeugen immer eine neue Vertragsversion. Bestehende Originalquellen werden nicht überschrieben.</p></section>
-        <section class="panel"><h2>Vertragswissen</h2><p>Betroffenes freigegebenes Wissen wird bei Vertragsänderungen auf Revalidierung gesetzt und erst nach erneuter Freigabe wieder verwendet.</p></section>
-      </div>
+      <div class="page-head"><div><h1>Vertrag hochladen</h1><p>Vertragsquelle sicher ablegen, automatisch erkennen und kontrolliert veröffentlichen.</p></div><span class="badge warn">Versioniert · kein Überschreiben</span></div>
+      <div class="workflow-steps"><span class="active">1 · Vertrag</span><span>2 · Datei</span><span>3 · Erkennen</span><span>4 · Prüfen</span><span>5 · Freigeben</span></div>
+      <section class="panel upload-main">
+        <div class="sectionbar"><div><h2>Vertrag aktualisieren</h2><p>Originaldatei bleibt unverändert gespeichert. Erst eine geprüfte Freigabe aktualisiert den Livebestand.</p></div><button id="uploadReset" class="secondary hidden">Neuer Upload</button></div>
+        <div class="upload-grid">
+          <label>Welcher Vertrag wird aktualisiert?<select id="uploadContract"><option value="">Vertrag auswählen …</option></select></label>
+          <div class="upload-contract-hint"><small>Vergleichsbasis</small><b id="uploadContractHint">Noch kein Vertrag ausgewählt</b><span>Der bestehende Vertragsstand dient als Vergleichsbasis.</span></div>
+        </div>
+        <label id="uploadDropzone" class="dropzone">
+          <input id="uploadFile" type="file" accept=".pdf,.xlsx,.xls,.csv,.txt,.doc,.docx,.zip,.msg" hidden>
+          <span class="drop-icon">⇧</span><strong id="uploadFileName">Vertragsdatei hier ablegen oder auswählen</strong><small id="uploadFileMeta">PDF, Excel, CSV, Word, ZIP · maximal 50 MB</small>
+        </label>
+        <div class="upload-actions"><span>🔒 Privater Storage · serverseitiger SHA-256 · Dublettenprüfung</span><button id="uploadStart" class="primary" disabled>Hochladen & erkennen</button></div>
+        <div id="uploadMessage" class="alert hidden"></div>
+      </section>
+      <section id="uploadParsePanel" class="panel hidden" style="margin-top:16px">
+        <div class="sectionbar"><div><h2>Erkannter Inhalt</h2><p>Nur vollständig gelieferte Bereiche werden als Ersatzbestand verglichen.</p></div><span id="uploadParserBadge" class="badge info"></span></div>
+        <div id="uploadParserSummary"></div>
+        <div id="uploadCompleteBlock" class="hidden">
+          <h3 style="font-size:14px;color:var(--blue);margin:14px 0 5px">Welche Bereiche sind vollständig?</h3>
+          <p>Die Vorauswahl stammt aus dem Parser. Nur bestätigte Bereiche werden gegen den aktuellen Vertragsstand gedifft.</p>
+          <div id="uploadCompleteTypes" class="type-options"></div>
+          <div style="display:flex;justify-content:flex-end;margin-top:12px"><button id="uploadCompare" class="primary">Bestätigen & Änderungen ermitteln</button></div>
+        </div>
+        <div id="uploadPartialNotice" class="alert hidden"></div>
+      </section>
+      <section id="uploadResultPanel" class="panel hidden" style="margin-top:16px">
+        <div class="sectionbar"><div><h2>Ergebnis</h2><p id="uploadResultTitle"></p></div><span id="uploadResultBadge" class="badge"></span></div>
+        <div id="uploadKpis" class="upload-kpis"></div>
+        <div id="uploadReviewAction"></div>
+        <div id="uploadChangeList" class="change-list"></div>
+      </section>
     </section>
 
     <section id="changesView" class="hidden">
-      <div class="page-head"><div><h1>Änderungen</h1><p>Änderungsprotokoll für Vertragsversionen und fachliche Entscheidungen.</p></div></div>
-      <div class="grid">
-        <section class="panel span2"><h2>Änderungsprotokoll</h2><div class="empty-panel">Die Change-Event-Ansicht wird hier an die vorhandenen VN-Versionen angebunden. Bis dahin bleiben Vertragsversionen und Reviewdaten im Backend unverändert erhalten.</div></section>
+      <div class="page-head"><div><h1>Änderungen</h1><p>Uploadverlauf, Alt/Neu-Vergleich und fachliche Freigabe.</p></div><span class="badge info">Änderungsprotokoll</span></div>
+      <div class="changes-workspace">
+        <section class="panel upload-history">
+          <div class="sectionbar"><div><h2>Uploadverlauf</h2><p id="uploadHistoryLabel">Eigene Vertragsuploads</p></div><button id="refreshUploads" class="secondary">Aktualisieren</button></div>
+          <div id="uploadHistoryList" class="upload-history-list"></div>
+        </section>
+        <section class="panel change-detail"><div id="changeDetail" class="empty-panel">Links einen Upload auswählen, um das Änderungsprotokoll zu öffnen.</div></section>
       </div>
     </section>
 
@@ -309,6 +351,7 @@ function setView(view){
   document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view))
   document.querySelectorAll('.quick-rail [data-jump]').forEach(b=>b.classList.toggle('active',b.dataset.jump===view))
   views.forEach(v=>$(v+'View').classList.toggle('hidden',v!==view))
+  if(view==='changes') loadUploadHistory()
   window.scrollTo({top:0,behavior:'smooth'})
 }
 function uniq(values){return [...new Set(values.filter(Boolean).map(v=>String(v).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'de'))}
@@ -542,7 +585,139 @@ async function searchAssistant(e){
   if(error){showError('appError',error.message);return}
   renderPositionResults(data||[])
 }
-async function loadData(){
+
+const UPLOAD_KEY='vn2.currentContractUpload'
+let uploadFile=null,uploadId=localStorage.getItem(UPLOAD_KEY)||'',uploadParser=null,uploadDetail=null,uploadHistory=[]
+const statusLabels={RECEIVED:'Datei hochgeladen',DUPLICATE:'Bereits vorhanden',PARSING:'Inhalt erkannt',READY:'Bereit zum Vergleich',REVIEW:'Änderungen prüfen',ACCEPTED:'Veröffentlicht',REJECTED:'Abgelehnt',ERROR:'Fehler'}
+const typeLabels={CONTRACT:'Vertragskopf',VERSION:'Vertragsversionen',POSITION:'Preis-/Versorgungspositionen'}
+const fieldLabels={contract_name:'Vertragsname',payer_families:'Kostenträger',product_groups:'Produktgruppen',legs:'LEGS',status:'Status',valid_from:'Gültig ab',valid_to:'Gültig bis',preis:'Preis',rabatt:'Rabatt',genehmigung:'Genehmigung',freigrenze:'Freigrenze',gueltig_ab:'Gültig ab',gueltig_bis:'Gültig bis',versorgungsform:'Versorgungsform',verordnung:'Verordnung',code:'HMV-Code',pos:'Position',lkz:'LKZ',leistung:'Leistung'}
+function setUploadMessage(message,tone='success'){const e=$('uploadMessage');e.textContent=message||'';e.className=message?'alert '+tone:'alert hidden'}
+function fmtUploadDate(v){if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString('de-DE',{dateStyle:'medium',timeStyle:'short'})}
+function fmtUploadValue(v){if(v===null||v===undefined||v==='')return '—';if(Array.isArray(v))return v.join(', ');if(typeof v==='object')return JSON.stringify(v);return String(v)}
+async function invokeUpload(name,body){const {data,error}=await supabase.functions.invoke(name,{body});if(error)throw new Error(error.message||'Vorgang fehlgeschlagen.');if(data?.error)throw new Error(data.error);return data}
+function validateUploadFile(file){if(!file)throw new Error('Bitte eine Datei auswählen.');if(file.size>50*1024*1024)throw new Error('Die Datei ist größer als 50 MB.');const ext=(file.name.split('.').pop()||'').toLowerCase();if(!['pdf','zip','csv','txt','doc','docx','xls','xlsx','msg'].includes(ext))throw new Error('Dieser Dateityp wird nicht unterstützt.')}
+function fillUploadContracts(){
+  const current=$('uploadContract').value
+  $('uploadContract').innerHTML='<option value="">Vertrag auswählen …</option>'+contracts.map(r=>'<option value="'+esc(r.contract_id)+'">'+esc(r.contract_name||r.contract_id)+'</option>').join('')
+  if(contracts.some(r=>r.contract_id===current))$('uploadContract').value=current
+}
+function updateUploadContractHint(){
+  const r=contracts.find(x=>x.contract_id===$('uploadContract').value)
+  $('uploadContractHint').textContent=r?.contract_name||'Noch kein Vertrag ausgewählt'
+  $('uploadStart').disabled=!r||!uploadFile
+}
+function resetUpload(){
+  uploadFile=null;uploadId='';uploadParser=null;uploadDetail=null;localStorage.removeItem(UPLOAD_KEY)
+  $('uploadContract').disabled=false;$('uploadContract').value='';$('uploadFile').value='';$('uploadFileName').textContent='Vertragsdatei hier ablegen oder auswählen';$('uploadFileMeta').textContent='PDF, Excel, CSV, Word, ZIP · maximal 50 MB';$('uploadReset').classList.add('hidden');$('uploadParsePanel').classList.add('hidden');$('uploadResultPanel').classList.add('hidden');setUploadMessage('');updateUploadContractHint()
+}
+function renderUploadChanges(changes,target='uploadChangeList'){
+  const root=$(target);if(!root)return
+  if(!changes?.length){root.innerHTML='<div class="empty-panel">Keine fachlichen Änderungen erkannt.</div>';return}
+  root.innerHTML=changes.map(ch=>{
+    const label=ch.change_kind==='INSERT'?'Hinzugefügt':ch.change_kind==='DELETE'?'Entfernt':'Geändert'
+    let body=''
+    if(ch.change_kind==='UPDATE'){
+      body='<div class="change-fields">'+Object.entries(ch.changes||{}).map(([k,v])=>'<div class="change-field"><strong>'+esc(fieldLabels[k]||k)+'</strong><span class="oldvalue">'+esc(fmtUploadValue(v?.old))+'</span><span class="arrow">→</span><span class="newvalue">'+esc(fmtUploadValue(v?.new))+'</span></div>').join('')+'</div>'
+    }else{
+      const snap=ch.change_kind==='INSERT'?ch.changes?.new:ch.changes?.old
+      body='<div class="change-snapshot">'+Object.entries(snap||{}).filter(([,v])=>v!==null&&v!==''&&v!==undefined).slice(0,8).map(([k,v])=>'<b>'+esc(fieldLabels[k]||k)+':</b> '+esc(fmtUploadValue(v))).join(' · ')+'</div>'
+    }
+    return '<article class="change-card '+String(ch.change_kind||'').toLowerCase()+'"><div class="change-head"><small>'+esc(ch.entity_type||'')+'</small><b>'+esc(ch.note||ch.entity_id)+'</b><span class="badge">'+label+'</span></div>'+body+'</article>'
+  }).join('')
+}
+function renderUploadParser(parsed){
+  uploadParser=parsed
+  const r=parsed?.result||{}
+  $('uploadParsePanel').classList.remove('hidden')
+  const pdf=String(parsed?.parser||'').includes('pdf')
+  $('uploadParserBadge').textContent=pdf?'PDF · sichere Teilquelle':'Tabellenparser'
+  if(pdf){
+    $('uploadParserSummary').innerHTML='<div class="pdf-findings"><div><small>Dokumenttyp</small><b>'+esc(r.component_type||'Dokument')+'</b></div><div><small>Seiten</small><b>'+esc(r.pages??'—')+'</b></div><div><small>Produktgruppen</small><b>'+esc(r.product_groups?.join(', ')||'—')+'</b></div><div><small>LEGS</small><b>'+esc(r.legs?.join(', ')||'—')+'</b></div><div><small>Positionshinweise</small><b>'+esc(r.position_hints??0)+'</b></div></div>'
+  }else{
+    $('uploadParserSummary').innerHTML='<div class="detected-sheets">'+(r.detected||[]).map(d=>'<div><b>'+esc(d.sheet||'Tabelle')+'</b><small>'+esc(d.type||'UNKNOWN')+' · '+nf.format(Number(d.rows||0))+' Zeilen</small></div>').join('')+'</div>'
+  }
+  const types=r.suggested_complete_entity_types||[]
+  $('uploadCompleteBlock').classList.toggle('hidden',!types.length)
+  $('uploadPartialNotice').classList.toggle('hidden',!!types.length)
+  if(types.length){
+    $('uploadCompleteTypes').innerHTML=types.map(t=>'<label><input type="checkbox" value="'+esc(t)+'" checked><span><b>'+esc(typeLabels[t]||t)+'</b><small>als vollständigen Lieferstand vergleichen</small></span></label>').join('')
+  }else{
+    $('uploadPartialNotice').className='alert'
+    $('uploadPartialNotice').textContent='Quelle gespeichert und analysiert. Ein einzelnes PDF oder eine unklare Tabelle wird nicht als vollständiger Ersatzvertrag behandelt und kann daher nichts aus dem Livebestand entfernen.'
+  }
+}
+async function loadUploadStatus(id=uploadId){
+  if(!id)return null
+  const d=await invokeUpload('vn2-contract-upload-status',{upload_id:id});uploadDetail=d;renderUploadDetail(d);return d
+}
+function renderUploadDetail(d){
+  if(!d?.upload)return
+  const u=d.upload;uploadId=u.upload_id;localStorage.setItem(UPLOAD_KEY,uploadId);$('uploadReset').classList.remove('hidden');$('uploadContract').disabled=true;$('uploadResultPanel').classList.remove('hidden')
+  $('uploadResultTitle').textContent=(u.contract_name||u.contract_id)+' · '+u.filename
+  $('uploadResultBadge').textContent=statusLabels[u.upload_status]||u.upload_status
+  $('uploadKpis').innerHTML='<div><small>Elemente</small><strong>'+nf.format(Number(u.item_count||0))+'</strong></div><div><small>Änderungen</small><strong>'+nf.format(Number(u.change_count||0))+'</strong></div><div><small>Prüfvorgänge</small><strong>'+nf.format(Number(u.review_count||0))+'</strong></div><div><small>Verglichen</small><strong style="font-size:11px">'+esc(fmtUploadDate(u.compared_at))+'</strong></div>'
+  if(u.upload_status==='REVIEW'){
+    $('uploadReviewAction').innerHTML='<div class="review-callout"><div><b>Fachliche Freigabe erforderlich</b><p>Erst die Freigabe verändert den Live-Vertragsbestand.</p></div>'+(isFach()?'<button id="uploadAccept" class="primary">Änderungen freigeben</button>':'<span class="badge warn">Fachprüfung erforderlich</span>')+'</div>'
+    if(isFach())setTimeout(()=>$('uploadAccept')?.addEventListener('click',()=>acceptUpload(uploadId,u.change_count)),0)
+  }else if(u.upload_status==='ACCEPTED'){
+    $('uploadReviewAction').innerHTML='<div class="alert success">Änderungen veröffentlicht. Der vorherige Stand bleibt historisch nachvollziehbar.</div>'
+  }else if(u.upload_status==='DUPLICATE'){
+    $('uploadReviewAction').innerHTML='<div class="alert success">Diese Datei war bereits vorhanden. Es wurde keine zweite Vertragsquelle angelegt.</div>'
+  }else $('uploadReviewAction').innerHTML=''
+  renderUploadChanges(d.changes||[])
+}
+async function acceptUpload(id,count){
+  if(!isFach())return
+  if(!confirm(String(count)+' Änderung'+(Number(count)===1?'':'en')+' jetzt freigeben und veröffentlichen?'))return
+  try{setUploadMessage('Änderungen werden veröffentlicht …','');await invokeUpload('vn2-contract-upload-accept',{upload_id:id,expected_change_count:Number(count),resolution_note:'Freigabe über Vertragsnavigator 2.1'});await loadUploadStatus(id);setUploadMessage('Änderungen wurden atomar veröffentlicht.')}catch(e){setUploadMessage(e.message,'error')}
+}
+async function startUpload(){
+  const contractId=$('uploadContract').value
+  try{
+    validateUploadFile(uploadFile);if(!contractId)throw new Error('Bitte zuerst einen Vertrag auswählen.')
+    $('uploadStart').disabled=true;setUploadMessage('Originaldatei wird sicher abgelegt …','')
+    const prep=await invokeUpload('vn2-contract-upload',{contract_id:contractId,filename:uploadFile.name,bytes:uploadFile.size,mime_type:uploadFile.type||'application/octet-stream'})
+    const token=prep?.upload?.token;if(!prep?.bucket||!prep?.path||!token)throw new Error('Signierter Upload konnte nicht vorbereitet werden.')
+    const {error}=await supabase.storage.from(prep.bucket).uploadToSignedUrl(prep.path,token,uploadFile,{contentType:uploadFile.type||undefined});if(error)throw error
+    const completed=await invokeUpload('vn2-contract-upload-complete',{contract_id:contractId,path:prep.path,filename:uploadFile.name,parser_version:'vn2-pages-2.1'})
+    uploadId=completed.upload_id;localStorage.setItem(UPLOAD_KEY,uploadId);$('uploadReset').classList.remove('hidden');$('uploadContract').disabled=true
+    if(completed.upload_status==='DUPLICATE'){await loadUploadStatus(uploadId);setUploadMessage('Datei bereits vorhanden.');return}
+    setUploadMessage('Vertragsinhalt wird erkannt …','')
+    const parsed=await invokeUpload('vn2-contract-parse',{upload_id:uploadId,mark_ready:false});renderUploadParser(parsed);await loadUploadStatus(uploadId);setUploadMessage('Inhalt erkannt. Vollständigkeit prüfen.')
+  }catch(e){setUploadMessage(e.message,'error');$('uploadStart').disabled=false}
+}
+async function compareUpload(){
+  try{
+    const types=[...document.querySelectorAll('#uploadCompleteTypes input:checked')].map(x=>x.value);if(!types.length)throw new Error('Bitte mindestens einen vollständigen Bereich bestätigen.')
+    setUploadMessage('Änderungen werden verglichen …','')
+    await invokeUpload('vn2-contract-upload-ready',{upload_id:uploadId,complete_entity_types:types})
+    await invokeUpload('vn2-contract-upload-compare',{upload_id:uploadId})
+    await loadUploadStatus(uploadId);setUploadMessage('Änderungsprotokoll erstellt.')
+  }catch(e){setUploadMessage(e.message,'error')}
+}
+async function loadUploadHistory(){
+  if(!session)return
+  try{
+    $('uploadHistoryLabel').textContent=isFach()?'Alle aktuellen Vertragsuploads':'Eigene Vertragsuploads'
+    const d=await invokeUpload('vn2-contract-upload-list',{});uploadHistory=d.uploads||[]
+    $('uploadHistoryList').innerHTML=uploadHistory.length?uploadHistory.map(u=>'<div class="history-row" data-upload="'+esc(u.upload_id)+'"><div><b>'+esc(u.contract_name||u.contract_id)+'</b><small>'+esc(u.filename||'')+' · '+esc(fmtUploadDate(u.received_at))+'</small></div><div class="history-meta"><span class="badge">'+nf.format(Number(u.change_count||0))+' Änderungen</span><span class="badge">'+esc(statusLabels[u.upload_status]||u.upload_status)+'</span></div></div>').join(''):'<div class="empty-panel">Noch keine Vertragsuploads vorhanden.</div>'
+    document.querySelectorAll('.history-row[data-upload]').forEach(row=>row.addEventListener('click',()=>openHistoryUpload(row.dataset.upload)))
+  }catch(e){$('uploadHistoryList').innerHTML='<div class="alert error">'+esc(e.message)+'</div>'}
+}
+async function openHistoryUpload(id){
+  try{
+    uploadId=id;localStorage.setItem(UPLOAD_KEY,id);document.querySelectorAll('.history-row').forEach(x=>x.classList.toggle('selected',x.dataset.upload===id))
+    const d=await invokeUpload('vn2-contract-upload-status',{upload_id:id});const u=d.upload
+    let action=''
+    if(u.upload_status==='REVIEW')action='<div class="review-callout"><div><b>'+nf.format(Number(u.change_count||0))+' fachliche Änderungen</b><p>Alt/Neu prüfen. Veröffentlichung erst nach ausdrücklicher Freigabe.</p></div>'+(isFach()?'<button id="historyAccept" class="primary">Änderungen freigeben</button>':'<span class="badge warn">Fachprüfung erforderlich</span>')+'</div>'
+    if(u.upload_status==='ACCEPTED')action='<div class="alert success">Veröffentlicht am '+esc(fmtUploadDate(u.accepted_at))+'.</div>'
+    $('changeDetail').className=''
+    $('changeDetail').innerHTML='<div class="sectionbar"><div><h2>'+esc(u.contract_name||u.contract_id)+'</h2><p>'+esc(u.filename||'')+' · '+esc(fmtUploadDate(u.received_at))+'</p></div><span class="badge">'+esc(statusLabels[u.upload_status]||u.upload_status)+'</span></div><div class="upload-kpis"><div><small>Elemente</small><strong>'+nf.format(Number(u.item_count||0))+'</strong></div><div><small>Änderungen</small><strong>'+nf.format(Number(u.change_count||0))+'</strong></div><div><small>Bereiche</small><strong style="font-size:10px">'+esc((u.complete_entity_types||[]).map(t=>typeLabels[t]||t).join(' · ')||'—')+'</strong></div><div><small>Status</small><strong style="font-size:11px">'+esc(statusLabels[u.upload_status]||u.upload_status)+'</strong></div></div>'+action+'<div id="historyChangeList" class="change-list"></div>'
+    renderUploadChanges(d.changes||[],'historyChangeList')
+    if(isFach()&&u.upload_status==='REVIEW')$('historyAccept')?.addEventListener('click',async()=>{await acceptUpload(id,u.change_count);await loadUploadHistory();await openHistoryUpload(id)})
+  }catch(e){$('changeDetail').innerHTML='<div class="alert error">'+esc(e.message)+'</div>'}
+}
+\nasync function loadData(){
   showError('appError','')
   if(!contracts.length) setFilterLoading()
   const [cc,pc,kc,qr,kr,cr,sr]=await Promise.all([
@@ -588,7 +763,8 @@ async function loadData(){
   $('mKnowledge').textContent=nf.format(kc.count||knowledge.length)
   $('mQuestions').textContent=nf.format(questions.length)
   $('qContract').innerHTML='<option value="">Nicht zugeordnet</option>'+contracts.map(r=>'<option value="'+esc(r.contract_id)+'">'+esc(r.contract_name||r.contract_id)+'</option>').join('')
-  fillAssistantFilters();renderContracts();renderKnowledge();renderQuestions();resetAssistant()
+  fillAssistantFilters();fillUploadContracts();renderContracts();renderKnowledge();renderQuestions();resetAssistant()
+  if(uploadId){loadUploadStatus(uploadId).catch(()=>{})}
 }
 async function openApp(nextSession){
   session=nextSession
@@ -630,7 +806,13 @@ $('assistantSearchForm').addEventListener('submit',searchAssistant)
 $('assistantSite').addEventListener('change',()=>{if(selectedPosition)selectPosition(selectedPosition,currentResults.indexOf(selectedPosition))})
 $('contractSearch').addEventListener('input',e=>renderContracts(e.target.value))
 $('knowledgeSearch').addEventListener('input',e=>renderKnowledge(e.target.value))
-$('questionForm').addEventListener('submit',async e=>{
+$('uploadContract').addEventListener('change',updateUploadContractHint)
+$('uploadFile').addEventListener('change',e=>{uploadFile=e.target.files?.[0]||null;if(uploadFile){try{validateUploadFile(uploadFile);$('uploadFileName').textContent=uploadFile.name;$('uploadFileMeta').textContent=(uploadFile.size/1024/1024).toFixed(2)+' MB';setUploadMessage('')}catch(err){uploadFile=null;setUploadMessage(err.message,'error')}}updateUploadContractHint()})
+$('uploadStart').addEventListener('click',startUpload)
+$('uploadReset').addEventListener('click',resetUpload)
+$('uploadCompare').addEventListener('click',compareUpload)
+$('refreshUploads').addEventListener('click',loadUploadHistory)
+\n$('questionForm').addEventListener('submit',async e=>{
   e.preventDefault()
   const msg=$('questionMessage');msg.className='alert hidden';msg.textContent=''
   const text=$('qText').value.trim()
