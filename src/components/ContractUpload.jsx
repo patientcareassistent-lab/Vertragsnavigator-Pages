@@ -103,7 +103,7 @@ export default function ContractUpload({contracts=[],canFach=false,onOpenChanges
     setError('');setMessage('')
     try{
       setBusy('upload')
-      const completed=await uploadContractSource(contractId,file)
+      const completed=await uploadContractSource(contractId,file,selectedContract?.contract_name||'')
       setUploadId(completed.upload_id)
       if(completed.upload_status==='DUPLICATE'){
         setDetail(await getContractUploadStatus(completed.upload_id))
