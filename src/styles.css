@@ -227,3 +227,26 @@
 .decision.ok small,.decision.ok strong{color:var(--ok)}
 .decision.bad{border-color:#efb2b2;background:var(--bad-bg)}
 .decision.bad small,.decision.bad strong{color:var(--bad)}
+
+
+/* IK-specific contract validity */
+.ik-validity-panel{margin:14px 0 16px;border:1px solid #dbe4ea;border-radius:12px;background:#fbfcfd;overflow:hidden}
+.ik-validity-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid #e8edf0}
+.ik-validity-head h3{margin:0;color:var(--blue);font-size:13px}
+.ik-validity-head p{margin:3px 0 0;color:#7b8794;font-size:9px}
+.ik-validity-table{display:grid}
+.ik-validity-row{display:grid;grid-template-columns:56px minmax(220px,1fr) 150px 150px;gap:10px;align-items:center;padding:8px 12px;border-top:1px solid #eef1f3;background:#fff}
+.ik-validity-row:first-child{border-top:0}
+.ik-validity-header{background:#f5f7f9;color:#667085;font-size:8px;font-weight:800;text-transform:uppercase}
+.ik-validity-row.inactive{opacity:.62}
+.ik-check{display:flex;align-items:center;justify-content:center}
+.ik-site b,.ik-site small{display:block}
+.ik-site b{font-size:10px;color:#344054}
+.ik-site small{font-size:8px;color:#8a96a3;margin-top:2px}
+.ik-validity-row input[type="date"]{min-height:34px;padding:6px 8px}
+.ik-validity-note{padding:8px 12px;border-top:1px solid #e8edf0;color:#7b8794;font-size:8px;background:#f8fafc}
+@media(max-width:780px){
+  .ik-validity-row{grid-template-columns:42px 1fr}
+  .ik-validity-header{display:none}
+  .ik-validity-row input[type="date"]{grid-column:2}
+}
