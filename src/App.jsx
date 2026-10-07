@@ -4,7 +4,7 @@ import { supabase, supabaseConfigured } from './lib/supabase.js'
 import ContractUpload from './components/ContractUpload.jsx'
 import ContractChanges from './components/ContractChanges.jsx'
 import PositionDetail from './components/PositionDetail.jsx'
-import MissingSources from './components/MissingSources.jsx'
+import MissingSources from './components/MissingSources.jsx'\nimport ContractTrafficLightPanel from './components/ContractTrafficLightPanel.jsx'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
@@ -506,8 +506,8 @@ export default function App(){
 
       {active==='contracts'&&<>
         <div className="page-head"><div><h1>Verträge</h1><p>Vertragskatalog und zugehörige Positionen durchsuchen.</p></div><Badge>{filteredContracts.length} Verträge</Badge></div>
-        <section className="panel"><div className="sectionbar"><div><h2>Vertragskatalog</h2><p>Kasse, Produktgruppe oder Vertragsname.</p></div><input className="compact" value={contractQuery} onChange={e=>setContractQuery(e.target.value)} placeholder="Vertrag durchsuchen …"/></div>
-          <div className="tablewrap"><table><thead><tr><th>Vertrag</th><th>Kostenträger</th><th>PG</th><th>gültig ab</th><th>gültig bis</th><th className="detail-only">Qualität</th></tr></thead><tbody>{filteredContracts.map(r=><tr key={r.contract_id}><td><b>{r.contract_name||r.contract_id}</b><span className="detail-only tiny">{r.contract_id}</span></td><td>{escArray(r.payer_families).join(', ')||'—'}</td><td>{escArray(r.product_groups).join(', ')||'—'}</td><td>{r.latest_valid_from||'—'}</td><td>{r.validity_mode==='SINGLE_SCOPE'?(r.catalog_valid_to||r.latest_valid_to||'—'):'PG-/Anlagen-spezifisch'}</td><td className="detail-only">{r.quality||'—'}</td></tr>)}</tbody></table></div>
+        <section className="panel"><div className="sectionbar"><div><h2>Vertragskatalog mit Beitrittsampel</h2><p>Beitritt, Gültigkeit und Voraussetzungen je Vertrag auf einen Blick.</p></div><input className="compact" value={contractQuery} onChange={e=>setContractQuery(e.target.value)} placeholder="Vertrag durchsuchen …"/></div>
+          <ContractTrafficLightPanel contracts={filteredContracts}/>
         </section>
       </>}
 
