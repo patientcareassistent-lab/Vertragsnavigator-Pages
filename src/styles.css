@@ -279,3 +279,25 @@
 .search-actions .primary{display:inline-flex;align-items:center;justify-content:center;gap:7px}
 .search-running{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:8px;min-height:34px;margin-top:2px;border:1px solid #d8e3ec;border-radius:9px;background:#f8fbfd;color:#506579;font-size:10px;font-weight:700}
 .search-running svg{color:var(--blue)}
+
+
+/* Admin: missing contract sources */
+.source-gap-metrics{margin-bottom:14px}
+.missing-source-toolbar{align-items:flex-end}
+.missing-source-filters{display:flex;align-items:end;gap:8px;flex-wrap:wrap}
+.missing-source-filters input{min-width:260px}
+.missing-source-filters select{min-width:210px}
+.source-gap-loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:28px;color:#5e7182;font-size:10px;font-weight:700}
+.missing-source-table td{vertical-align:top}
+.missing-source-table td b,.missing-source-table td small{display:block}
+.missing-source-table td small{margin-top:3px;color:#7b8794;font-size:8px;line-height:1.35}
+.gap-items{display:flex;flex-direction:column;gap:5px}
+.gap-items span{display:flex;align-items:flex-start;gap:5px;color:#8a3c1d;font-size:9px;font-weight:700}
+.content-count{display:block;font-size:9px;color:#667085;margin-bottom:4px}
+.content-count b{display:inline!important;color:#344054}
+.small-action{display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;padding:8px 10px;font-size:9px}
+.source-gap-note{display:flex;align-items:flex-start;gap:8px;margin-top:12px}
+@media(max-width:900px){
+  .missing-source-filters{width:100%}
+  .missing-source-filters input,.missing-source-filters select{min-width:0;flex:1}
+}
