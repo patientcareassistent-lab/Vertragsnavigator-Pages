@@ -42,7 +42,15 @@ function Step({n,label,done,active}){
   </div>
 }
 
-function UploadStatusCard({detail,canFach,onAccept,busy}){
+function contractOptionLabel(contract){
+  const partner=contract?.partner_display_name||String(contract?.contract_name||contract?.contract_id||'').split(':')[0].trim()
+  const raw=String(contract?.contract_name||'')
+  const i=raw.indexOf(':')
+  const suffix=i>=0?raw.slice(i+1).trim():''
+  return suffix?partner+' — '+suffix:partner
+}
+
+function UploadStatusCard({detail,canFach,onAccept,busy,precheckMode=false}){
   if(!detail?.upload)return null
   const u=detail.upload
   return <section className="panel upload-result">
@@ -57,18 +65,19 @@ function UploadStatusCard({detail,canFach,onAccept,busy}){
       <div><small>Verglichen</small><strong className="date-value">{formatUploadDate(u.compared_at)}</strong></div>
     </div>
     {u.upload_status==='DUPLICATE'&&<div className="alert success">Die Datei ist bereits vorhanden. Es wurde keine zweite Vertragsquelle angelegt.</div>}
-    {u.upload_status==='ACCEPTED'&&<div className="alert success inline-alert"><CheckCircle2 size={17}/> Die Änderungen sind veröffentlicht. Der vorherige Stand bleibt historisch nachvollziehbar.</div>}
+    {u.upload_status==='ACCEPTED'&&!precheckMode&&<div className="alert success inline-alert"><CheckCircle2 size={17}/> Die Änderungen sind veröffentlicht. Der vorherige Stand bleibt historisch nachvollziehbar.</div>}
     {u.upload_status==='REVIEW'&&<div className="review-callout">
-      <div><AlertTriangle size={19}/><div><b>Fachliche Freigabe erforderlich</b><p>Das Änderungsprotokoll ist erzeugt. Erst die Freigabe verändert den Live-Vertragsbestand.</p></div></div>
-      {canFach
+      <div><AlertTriangle size={19}/><div><b>{precheckMode?'Für Vertragsvorprüfung bereit':'Fachliche Freigabe erforderlich'}</b><p>{precheckMode?'Der Upload bleibt bis zur dokumentierten Unterschrift für die Veröffentlichung gesperrt.':'Das Änderungsprotokoll ist erzeugt. Erst die Freigabe verändert den Live-Vertragsbestand.'}</p></div></div>
+      {!precheckMode&&(canFach
         ? <button className="primary inline-button" disabled={busy} onClick={onAccept}><ShieldCheck size={16}/> Änderungen freigeben</button>
-        : <Badge tone="warn">Fachprüfung erforderlich</Badge>}
+        : <Badge tone="warn">Fachprüfung erforderlich</Badge>)}
+      {precheckMode&&<Badge tone="warn">Publication Hold</Badge>}
     </div>}
     <ContractChangeList changes={detail.changes||[]}/>
   </section>
 }
 
-export default function ContractUpload({contracts=[],sites=[],canFach=false,onOpenChanges,initialContractId=''}){
+export default function ContractUpload({contracts=[],sites=[],canFach=false,onOpenChanges,initialContractId='',precheckMode=false,onPrecheckReady}){
   const inputRef=useRef(null)
   const [contractId,setContractId]=useState(initialContractId||'')
   const [file,setFile]=useState(null)
@@ -76,7 +85,7 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
   const [busy,setBusy]=useState('')
   const [error,setError]=useState('')
   const [message,setMessage]=useState('')
-  const [uploadId,setUploadId]=useState(()=>getCurrentUploadId())
+  const [uploadId,setUploadId]=useState(()=>precheckMode?'':getCurrentUploadId())
   const [parser,setParser]=useState(null)
   const [completeTypes,setCompleteTypes]=useState([])
   const [detail,setDetail]=useState(null)
@@ -88,7 +97,7 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
   useEffect(()=>{if(initialContractId&&!uploadId)setContractId(initialContractId)},[initialContractId,uploadId])
 
   const selectedContract=contracts.find(c=>c.contract_id===contractId)
-  const sortedContracts=useMemo(()=>[...contracts].sort((a,b)=>String(a.contract_name||'').localeCompare(String(b.contract_name||''),'de')),[contracts])
+  const sortedContracts=useMemo(()=>[...contracts].sort((a,b)=>contractOptionLabel(a).localeCompare(contractOptionLabel(b),'de')),[contracts])
   const sortedSites=useMemo(()=>[...sites].sort((a,b)=>{
     if(Boolean(a.active)!==Boolean(b.active))return a.active?-1:1
     return String(a.branch||a.ik||'').localeCompare(String(b.branch||b.ik||''),'de')
@@ -234,6 +243,11 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
       const completed=await uploadContractSource(contractId,file,selectedContract?.contract_name||'')
       setUploadId(completed.upload_id)
 
+      if(precheckMode){
+        const {error:holdError}=await supabase.rpc('vn_admin_hold_contract_upload',{p_upload_id:completed.upload_id})
+        if(holdError)throw holdError
+      }
+
       const scopeRows=buildIkScopePayload()
       if(scopeRows.length)await saveContractIkScopes(completed.upload_id,scopeRows)
       const erpPayload=erpMappingPayload()
@@ -250,6 +264,7 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
           setDetail(await getContractUploadStatus(completed.upload_id))
           setMessage('Diese Datei ist bereits im Vertragsbestand vorhanden. Keine IK-/ERP-Zuordnungsänderung erkannt.')
         }
+        if(precheckMode&&onPrecheckReady)await onPrecheckReady(completed.upload_id)
         return
       }
 
@@ -261,7 +276,10 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
       setDetail(await getContractUploadStatus(completed.upload_id))
       setMessage(nextTypes.length
         ? 'Inhalt erkannt. Bitte prüfen, welche Bereiche vollständig geliefert wurden.'
-        : 'Quelle wurde sicher abgelegt. Für diesen Dateityp ist keine automatische Vollständigkeitsannahme zulässig.')
+        : (precheckMode
+          ? 'Quelle wurde sicher analysiert. Die Vertragsvorprüfung wird jetzt angelegt.'
+          : 'Quelle wurde sicher abgelegt. Für diesen Dateityp ist keine automatische Vollständigkeitsannahme zulässig.'))
+      if(precheckMode&&!nextTypes.length&&onPrecheckReady)await onPrecheckReady(completed.upload_id)
     }catch(e){setError(e.message)}
     finally{setBusy('')}
   }
@@ -279,14 +297,18 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
       await compareContractUpload(uploadId)
       const current=await getContractUploadStatus(uploadId)
       setDetail(current)
-      setMessage(current.upload?.upload_status==='ACCEPTED'
-        ? 'Keine fachliche Änderung erkannt. Der Upload wurde automatisch abgeschlossen.'
-        : 'Änderungsprotokoll erstellt. Änderungen bitte fachlich prüfen.')
+      setMessage(precheckMode
+        ? 'Analyse abgeschlossen. Der Upload bleibt gesperrt und wird in die Vertragsvorprüfung übernommen.'
+        : (current.upload?.upload_status==='ACCEPTED'
+          ? 'Keine fachliche Änderung erkannt. Der Upload wurde automatisch abgeschlossen.'
+          : 'Änderungsprotokoll erstellt. Änderungen bitte fachlich prüfen.'))
+      if(precheckMode&&onPrecheckReady)await onPrecheckReady(uploadId)
     }catch(e){setError(e.message)}
     finally{setBusy('')}
   }
 
   async function acceptNow(){
+    if(precheckMode)return
     const count=Number(detail?.upload?.change_count||0)
     if(!count)return
     const prompt=count+' Änderung'+(count===1?'':'en')+' jetzt in den Live-Vertragsbestand übernehmen?'
@@ -312,13 +334,13 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
       <Step n="1" label="Vertrag" done={step>1} active={step===1}/>
       <Step n="2" label="Datei" done={step>2} active={step===2}/>
       <Step n="3" label="Erkennen" done={step>3} active={step===3}/>
-      <Step n="4" label="Prüfen" done={step>4} active={step===4}/>
-      <Step n="5" label="Freigeben" done={step>=5} active={step===5}/>
+      <Step n="4" label={precheckMode?'Vergleichen':'Prüfen'} done={step>4} active={step===4}/>
+      <Step n="5" label={precheckMode?'Vorprüfung':'Freigeben'} done={step>=5} active={step===5}/>
     </div>
 
     <section className="panel upload-main">
       <div className="sectionbar">
-        <div><h2>Vertrag aktualisieren</h2><p>Originaldatei bleibt unverändert gespeichert. Erst eine geprüfte Freigabe aktualisiert den Livebestand.</p></div>
+        <div><h2>{precheckMode?'Vertrag für Vorprüfung hochladen':'Vertrag aktualisieren'}</h2><p>{precheckMode?'Originaldatei analysieren und gegen den Bestand vergleichen. Veröffentlichung bleibt bis nach der Unterschrift gesperrt.':'Originaldatei bleibt unverändert gespeichert. Erst eine geprüfte Freigabe aktualisiert den Livebestand.'}</p></div>
         {uploadId&&<button className="secondary compact-action" onClick={reset}>Neuer Upload</button>}
       </div>
 
@@ -326,12 +348,12 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
         <label>Welcher Vertrag wird aktualisiert?
           <select value={contractId} onChange={e=>setContractId(e.target.value)} disabled={Boolean(uploadId)}>
             <option value="">Vertrag auswählen …</option>
-            {sortedContracts.map(c=><option key={c.contract_id} value={c.contract_id}>{c.contract_name||c.contract_id}</option>)}
+            {sortedContracts.map(c=><option key={c.contract_id} value={c.contract_id}>{contractOptionLabel(c)}</option>)}
           </select>
         </label>
         <div className="upload-contract-hint">
           <small>Ausgewählter Vertragsstamm</small>
-          <b>{selectedContract?.contract_name||detail?.upload?.contract_name||'Noch kein Vertrag ausgewählt'}</b>
+          <b>{selectedContract?contractOptionLabel(selectedContract):(detail?.upload?.contract_name||'Noch kein Vertrag ausgewählt')}</b>
           <span>{selectedContract?.product_groups?.length?'PG '+selectedContract.product_groups.join(', '):'Der bestehende Vertragsstand dient als Vergleichsbasis.'}</span>
         </div>
       </div>
@@ -459,7 +481,7 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
       </div>}
     </section>}
 
-    <UploadStatusCard detail={detail} canFach={canFach} onAccept={acceptNow} busy={Boolean(busy)}/>
+    <UploadStatusCard detail={detail} canFach={canFach} onAccept={acceptNow} busy={Boolean(busy)} precheckMode={precheckMode}/>
 
     {uploadId&&<div className="workflow-footer">
       <span>Upload-ID <code>{uploadId}</code></span>
