@@ -8,7 +8,7 @@ import {
 import {
   acceptContractUpload,getContractUploadStatus,getCurrentUploadId,
   markContractUploadReady,parseContractUpload,saveCurrentUploadId,
-  uploadContractSource,validateContractFile,compareContractUpload,saveContractIkScopes,
+  uploadContractSource,validateContractFile,compareContractUpload,saveContractIkScopes,saveContractErpMapping,
 } from '../lib/contractUpload.js'
 import { ContractChangeList,formatUploadDate } from './ContractChangeList.jsx'
 import { supabase } from '../lib/supabase.js'
@@ -82,6 +82,8 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
   const [detail,setDetail]=useState(null)
   const [ikScopes,setIkScopes]=useState({})
   const [existingIkScopes,setExistingIkScopes]=useState({})
+  const [erpContractGroup,setErpContractGroup]=useState('')
+  const [existingErpContractGroup,setExistingErpContractGroup]=useState('')
 
   const selectedContract=contracts.find(c=>c.contract_id===contractId)
   const sortedContracts=useMemo(()=>[...contracts].sort((a,b)=>String(a.contract_name||'').localeCompare(String(b.contract_name||''),'de')),[contracts])
@@ -113,6 +115,9 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
           return next
         })
       }
+      if(current?.erp_mapping){
+        setErpContractGroup(current.erp_mapping.mapping_action==='REMOVE'?'':(current.erp_mapping.contract_group||''))
+      }
     }).catch(()=>{})
   },[])
 
@@ -138,6 +143,24 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
       setIkScopes(current=>Object.keys(current).length&&uploadId?current:initial)
     }
     loadIkValidity()
+    return()=>{cancelled=true}
+  },[contractId])
+
+  useEffect(()=>{
+    let cancelled=false
+    async function loadErpMapping(){
+      if(!contractId){setErpContractGroup('');setExistingErpContractGroup('');return}
+      const {data,error}=await supabase.from('vn_contract_erp_mapping')
+        .select('contract_group')
+        .eq('contract_id',contractId)
+        .eq('erp_system','SaniVision')
+        .maybeSingle()
+      if(cancelled||error)return
+      const existing=String(data?.contract_group||'')
+      setExistingErpContractGroup(existing)
+      setErpContractGroup(current=>uploadId&&current?current:existing)
+    }
+    loadErpMapping()
     return()=>{cancelled=true}
   },[contractId])
 
@@ -185,6 +208,17 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
     return false
   }
 
+  function erpMappingChanged(){
+    return String(erpContractGroup||'').trim()!==String(existingErpContractGroup||'').trim()
+  }
+
+  function erpMappingPayload(){
+    const value=String(erpContractGroup||'').trim()
+    if(value)return {value,action:'UPSERT'}
+    if(existingErpContractGroup)return {value:'',action:'REMOVE'}
+    return null
+  }
+
   function selectFile(next){
     setError('');setMessage('')
     try{validateContractFile(next);setFile(next);setParser(null);setCompleteTypes([])}
@@ -200,17 +234,19 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
 
       const scopeRows=buildIkScopePayload()
       if(scopeRows.length)await saveContractIkScopes(completed.upload_id,scopeRows)
+      const erpPayload=erpMappingPayload()
+      if(erpPayload)await saveContractErpMapping(completed.upload_id,erpPayload.value,erpPayload.action)
 
       if(completed.upload_status==='DUPLICATE'){
-        if(ikScopeChanged()){
+        if(ikScopeChanged()||erpMappingChanged()){
           setBusy('compare')
           await compareContractUpload(completed.upload_id)
           const current=await getContractUploadStatus(completed.upload_id)
           setDetail(current)
-          setMessage('Vertragsdatei unverändert. IK-Gültigkeitsänderungen wurden zur Prüfung gestellt.')
+          setMessage('Vertragsdatei unverändert. IK-/ERP-Zuordnungsänderungen wurden zur Prüfung gestellt.')
         }else{
           setDetail(await getContractUploadStatus(completed.upload_id))
-          setMessage('Diese Datei ist bereits im Vertragsbestand vorhanden. Keine IK-Gültigkeitsänderung erkannt.')
+          setMessage('Diese Datei ist bereits im Vertragsbestand vorhanden. Keine IK-/ERP-Zuordnungsänderung erkannt.')
         }
         return
       }
@@ -265,6 +301,7 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
   function reset(){
     setContractId('');setFile(null);setParser(null);setCompleteTypes([]);setDetail(null)
     setIkScopes({});setExistingIkScopes({})
+    setErpContractGroup('');setExistingErpContractGroup('')
     setUploadId('');setError('');setMessage('');saveCurrentUploadId('')
   }
 
@@ -297,32 +334,54 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
         </div>
       </div>
 
-      {contractId&&<div className="ik-validity-panel">
-        <div className="ik-validity-head">
-          <div><h3>IK-Zugehörigkeit / Gültigkeit</h3><p>Für welche IK gilt dieser Vertragsstand – und in welchem Zeitraum?</p></div>
-          <Badge tone="info">{Object.values(ikScopes).filter(x=>x?.selected).length} IK ausgewählt</Badge>
+      <div className={'contract-context-panel '+(!contractId?'disabled-context':'')}>
+        <div className="contract-context-head">
+          <div><h3>Vertragszuordnung</h3><p>ERP-Preispflege und IK-Gültigkeit gehören zum Vertragsstand und werden mitgeprüft.</p></div>
+          {!contractId&&<Badge tone="info">Zuerst Vertragsstamm wählen</Badge>}
         </div>
-        <div className="ik-validity-table">
-          <div className="ik-validity-row ik-validity-header">
-            <span>Gilt</span><span>Standort / IK</span><span>Gültig ab</span><span>Gültig bis</span>
+
+        <div className="erp-mapping-row">
+          <label>Vertragsgruppe SaniVision <span className="field-hint">(ERP · Preispflege)</span>
+            <input
+              value={erpContractGroup}
+              onChange={e=>setErpContractGroup(e.target.value)}
+              placeholder="z. B. XY"
+              disabled={!contractId||Boolean(uploadId)}
+            />
+          </label>
+          <div className="erp-mapping-hint">
+            <small>ERP-System</small><b>SaniVision</b>
+            <span>Manuelle Zuordnung für die Preispflege im ERP.</span>
           </div>
-          {sortedSites.map(site=>{
-            const row=ikScopes[site.ik]||{selected:false,validFrom:'',validTo:''}
-            return <div className={'ik-validity-row '+(!site.active?'inactive':'')} key={site.site_id||site.ik}>
-              <label className="ik-check">
-                <input type="checkbox" checked={Boolean(row.selected)} disabled={Boolean(uploadId)}
-                  onChange={e=>setIkScope(site.ik,{selected:e.target.checked})}/>
-              </label>
-              <div className="ik-site"><b>{site.branch||'Standort'}</b><small>IK {site.ik}{!site.active?' · inaktiv':''}</small></div>
-              <input type="date" value={row.validFrom||''} disabled={!row.selected||Boolean(uploadId)}
-                onChange={e=>setIkScope(site.ik,{validFrom:e.target.value})}/>
-              <input type="date" value={row.validTo||''} disabled={!row.selected||Boolean(uploadId)}
-                onChange={e=>setIkScope(site.ik,{validTo:e.target.value})}/>
-            </div>
-          })}
         </div>
-        <div className="ik-validity-note">IK-Gültigkeit wird separat von PQ und Vertragsbeitritt geführt. Erst die fachliche Freigabe veröffentlicht Änderungen.</div>
-      </div>}
+
+        <div className="ik-validity-panel embedded">
+          <div className="ik-validity-head">
+            <div><h3>IK-Zugehörigkeit / Gültigkeit</h3><p>Für welche IK gilt dieser Vertragsstand – und in welchem Zeitraum?</p></div>
+            <Badge tone="info">{Object.values(ikScopes).filter(x=>x?.selected).length} IK ausgewählt</Badge>
+          </div>
+          {contractId?<div className="ik-validity-table">
+            <div className="ik-validity-row ik-validity-header">
+              <span>Gilt</span><span>Standort / IK</span><span>Gültig ab</span><span>Gültig bis</span>
+            </div>
+            {sortedSites.map(site=>{
+              const row=ikScopes[site.ik]||{selected:false,validFrom:'',validTo:''}
+              return <div className={'ik-validity-row '+(!site.active?'inactive':'')} key={site.site_id||site.ik}>
+                <label className="ik-check">
+                  <input type="checkbox" checked={Boolean(row.selected)} disabled={Boolean(uploadId)}
+                    onChange={e=>setIkScope(site.ik,{selected:e.target.checked})}/>
+                </label>
+                <div className="ik-site"><b>{site.branch||'Standort'}</b><small>IK {site.ik}{!site.active?' · inaktiv':''}</small></div>
+                <input type="date" value={row.validFrom||''} disabled={!row.selected||Boolean(uploadId)}
+                  onChange={e=>setIkScope(site.ik,{validFrom:e.target.value})}/>
+                <input type="date" value={row.validTo||''} disabled={!row.selected||Boolean(uploadId)}
+                  onChange={e=>setIkScope(site.ik,{validTo:e.target.value})}/>
+              </div>
+            })}
+          </div>:<div className="context-placeholder">Nach Auswahl des Vertragsstamms werden die bekannten Standorte/IKs und bestehende Zuordnungen geladen.</div>}
+          <div className="ik-validity-note">IK-Gültigkeit wird separat von PQ und Vertragsbeitritt geführt. Erst die fachliche Freigabe veröffentlicht Änderungen.</div>
+        </div>
+      </div>
 
       {!uploadId&&<div
         className={'dropzone '+(dragging?'dragging ':'')+(file?'has-file':'')}
