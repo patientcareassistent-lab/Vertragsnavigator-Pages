@@ -520,3 +520,18 @@
   .admin-action-row{grid-template-columns:auto minmax(0,1fr)}
   .admin-action-meta{grid-column:2}
 }
+
+
+/* VN2 P2 contract pagination + lazy details */
+.traffic-pagination{display:flex;align-items:center;justify-content:center;gap:9px;color:var(--muted);font-size:11px}
+.traffic-detail-row>td{background:#f8fafc!important;padding:12px}
+.traffic-site-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.traffic-site-detail-grid article{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 10px;border:1px solid #dfe6eb;border-radius:10px;background:#fff;padding:10px}
+.traffic-site-detail-grid article>div b,.traffic-site-detail-grid article>div small{display:block}
+.traffic-site-detail-grid article>div b{font-size:11px;color:#344054}
+.traffic-site-detail-grid article>div small{font-size:9px;color:var(--muted);margin-top:2px}
+.traffic-site-detail-grid article p{grid-column:1/-1;margin:2px 0 0;font-size:10px;color:#475467}
+.traffic-site-detail-grid article>small{grid-column:1/-1;color:#7b8794;font-size:9px}
+.traffic-badge.compact{font-size:9px}.traffic-badge.compact .traffic-dot{font-size:16px}
+@media(max-width:1100px){.traffic-site-detail-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){.traffic-site-detail-grid{grid-template-columns:1fr}}
