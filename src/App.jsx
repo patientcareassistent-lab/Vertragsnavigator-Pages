@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { BookOpenCheck, History, LoaderCircle, MessageSquareText, ShieldCheck, Upload } from 'lucide-react'
+import { BookOpenCheck, History, LayoutDashboard, LoaderCircle, MessageSquareText, ShieldCheck, Upload } from 'lucide-react'
 import { supabase, supabaseConfigured } from './lib/supabase.js'
 import ContractUpload from './components/ContractUpload.jsx'
 import ContractChanges from './components/ContractChanges.jsx'
@@ -7,6 +7,7 @@ import PositionDetail from './components/PositionDetail.jsx'
 import MissingSources from './components/MissingSources.jsx'
 import ContractTrafficLightPanel from './components/ContractTrafficLightPanel.jsx'
 import ContractPrecheck from './components/ContractPrecheck.jsx'
+import AdminDashboard from './components/AdminDashboard.jsx'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
@@ -148,7 +149,13 @@ export default function App(){
   const [error,setError]=useState('')
   const [contracts,setContracts]=useState([])
   const [knowledge,setKnowledge]=useState([])
+  const [knowledgeLoaded,setKnowledgeLoaded]=useState(false)
   const [questions,setQuestions]=useState([])
+  const [questionsLoaded,setQuestionsLoaded]=useState(false)
+  const [questionCount,setQuestionCount]=useState(0)
+  const [relatedKnowledge,setRelatedKnowledge]=useState([])
+  const [relatedKnowledgeBusy,setRelatedKnowledgeBusy]=useState(false)
+  const [selectedSiteEligibilities,setSelectedSiteEligibilities]=useState([])
   const [sites,setSites]=useState([])
   const [stats,setStats]=useState({contracts:0,positions:0,knowledge:0,questions:0})
   const [payer,setPayer]=useState('')
@@ -171,7 +178,7 @@ export default function App(){
   const role=session?.user?.app_metadata?.vn_role||'versorger'
   const canFach=['fach','admin'].includes(role)
   const isAdmin=role==='admin'
-  const navItems=isAdmin?[...NAV,['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:NAV
+  const navItems=isAdmin?[...NAV,['admin','Admin-Cockpit'],['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:NAV
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
     const base=contracts
@@ -201,7 +208,16 @@ export default function App(){
     return ()=>listener.subscription.unsubscribe()
   },[])
 
-  useEffect(()=>{if(session) loadData()},[session])
+  useEffect(()=>{
+    if(session){
+      if(session.user?.app_metadata?.vn_role==='admin')setActive('admin')
+      loadData()
+      return
+    }
+    setKnowledge([]);setKnowledgeLoaded(false)
+    setQuestions([]);setQuestionsLoaded(false);setQuestionCount(0)
+    setRelatedKnowledge([]);setSelectedSiteEligibilities([])
+  },[session])
   useEffect(()=>{
     let cancelled=false
     async function evaluateSelected(){
@@ -263,16 +279,15 @@ export default function App(){
 
   async function loadData(){
     setError('')
-    const [cc,pc,kc,qr,kr,cr,sr]=await Promise.all([
-      supabase.from('vn_contract_catalog').select('*',{count:'exact',head:true}),
-      supabase.from('vn_position_catalog').select('*',{count:'exact',head:true}),
-      supabase.from('vn_contract_knowledge_approved').select('*',{count:'exact',head:true}),
-      supabase.from('vn_contract_questions').select('*').order('created_at',{ascending:false}).limit(100),
-      supabase.from('vn_contract_knowledge_approved').select('*').order('updated_at',{ascending:false}).limit(500),
-      supabase.from('vn_contract_catalog').select('*').order('contract_name').limit(700),
-      supabase.from('vn_site_eligibility').select('*').limit(5000),
+    const [cc,pc,kc,qr,cr,sr]=await Promise.all([
+      supabase.from('vn_contract_read_model_p2').select('contract_id',{count:'planned',head:true}),
+      supabase.from('vn_position_catalog').select('position_row_id',{count:'planned',head:true}),
+      supabase.from('vn_contract_knowledge_approved').select('knowledge_id',{count:'planned',head:true}),
+      supabase.from('vn_contract_questions_open_p2').select('question_id',{count:'exact',head:true}),
+      supabase.from('vn_contract_read_model_p2').select('*').order('contract_name').limit(700),
+      supabase.from('vn_site_directory').select('*').order('branch').limit(100),
     ])
-    const first=[cc,pc,kc,qr,kr,cr,sr].find(r=>r.error)?.error
+    const first=[cc,pc,kc,qr,cr,sr].find(r=>r.error)?.error
     if(first){
       const raw=String(first.message||'')
       const recovering=/not accepting connections|starting up|hot standby|timeout/i.test(raw)
@@ -281,17 +296,96 @@ export default function App(){
         : raw)
       return
     }
-    const siteMap=new Map()
-    for(const e of sr.data||[]){
-      if(!siteMap.has(e.site_id))siteMap.set(e.site_id,{site_id:e.site_id,ik:e.ik,branch:e.branch,eligibilities:[]})
-      siteMap.get(e.site_id).eligibilities.push(e)
-    }
     setContracts(cr.data||[])
-    setKnowledge(kr.data||[])
-    setQuestions(qr.data||[])
-    setSites([...siteMap.values()].sort((a,b)=>String(a.branch||'').localeCompare(String(b.branch||''),'de')))
-    setStats({contracts:cc.count||0,positions:pc.count||0,knowledge:kc.count||0,questions:qr.data?.length||0})
+    setSites((sr.data||[]).map(s=>({...s,eligibilities:[]})))
+    setQuestionCount(qr.count||0)
+    setStats({contracts:cc.count||0,positions:pc.count||0,knowledge:kc.count||0,questions:qr.count||0})
   }
+
+  async function loadKnowledge(){
+    if(knowledgeLoaded)return
+    const {data,error:e}=await supabase.from('vn_contract_knowledge_approved')
+      .select('*')
+      .order('updated_at',{ascending:false})
+      .limit(500)
+    if(e){setError(e.message||String(e));return}
+    setKnowledge(data||[])
+    setKnowledgeLoaded(true)
+  }
+
+  async function loadQuestions(){
+    if(questionsLoaded)return
+    const {data,error:e}=await supabase.from('vn_contract_questions')
+      .select('*')
+      .order('created_at',{ascending:false})
+      .limit(100)
+    if(e){setError(e.message||String(e));return}
+    setQuestions(data||[])
+    setQuestionsLoaded(true)
+    setQuestionCount((data||[]).filter(q=>!['CLOSED','RESOLVED','ANSWERED'].includes(String(q.status||'').toUpperCase())).length)
+  }
+
+  useEffect(()=>{
+    if(session&&active==='knowledge')loadKnowledge()
+  },[active,session,knowledgeLoaded])
+
+  useEffect(()=>{
+    if(session&&active==='questions')loadQuestions()
+  },[active,session,questionsLoaded])
+
+  useEffect(()=>{
+    let cancelled=false
+    async function loadRelatedKnowledge(){
+      if(!selected){setRelatedKnowledge([]);setRelatedKnowledgeBusy(false);return}
+      setRelatedKnowledgeBusy(true)
+      try{
+        let request=supabase.from('vn_contract_knowledge_approved')
+          .select('*')
+          .order('updated_at',{ascending:false})
+          .limit(100)
+        if(selected.contract_id)request=request.or('contract_id.is.null,contract_id.eq.'+selected.contract_id)
+        const {data,error:e}=await request
+        if(e)throw e
+        if(cancelled)return
+        const contract=contracts.find(c=>String(c.contract_id)===String(selected.contract_id))
+        const rows=(data||[]).filter(k=>{
+          if(k.contract_id&&String(k.contract_id)!==String(selected.contract_id||''))return false
+          if(k.pg&&String(k.pg)!==String(selected.pg||''))return false
+          if(k.hmv_code&&String(k.hmv_code)!==String(selected.code||''))return false
+          if(k.position_code&&String(k.position_code)!==String(selected.pos||''))return false
+          if(k.payer){
+            const hay=normalizeSearch([selected.family,selected.contract,contract?.contract_name,escArray(contract?.payer_families).join(' ')].filter(Boolean).join(' '))
+            if(!hay.includes(normalizeSearch(k.payer)))return false
+          }
+          return true
+        })
+        setRelatedKnowledge(rows)
+      }catch(e){
+        if(!cancelled){setRelatedKnowledge([]);setError(e.message||String(e))}
+      }finally{
+        if(!cancelled)setRelatedKnowledgeBusy(false)
+      }
+    }
+    loadRelatedKnowledge()
+    return()=>{cancelled=true}
+  },[selected?.position_row_id,selected?.contract_id,selected?.pg,selected?.code,selected?.pos,contracts])
+
+  useEffect(()=>{
+    let cancelled=false
+    async function loadSelectedSiteEligibility(){
+      if(!selected||!siteId||!selected.contract_id){setSelectedSiteEligibilities([]);return}
+      const {data,error:e}=await supabase.from('vn_site_eligibility')
+        .select('site_id,contract_id,contract,status,prerequisites_met,vtv_status,valid_from,valid_to,active,review_required,contract_match_status')
+        .eq('site_id',siteId)
+        .eq('contract_id',selected.contract_id)
+        .limit(20)
+      if(cancelled)return
+      if(e){setSelectedSiteEligibilities([]);return}
+      setSelectedSiteEligibilities(data||[])
+    }
+    loadSelectedSiteEligibility()
+    return()=>{cancelled=true}
+  },[selected?.position_row_id,selected?.contract_id,siteId])
 
   async function runAssistant(e){
     e.preventDefault();setSelected(null);setSupplyEval(null);setError('')
@@ -379,7 +473,9 @@ export default function App(){
     const payload={created_by:session.user.id,question_text:questionForm.question_text.trim(),status:'OPEN',payer:questionForm.payer.trim()||null,contract_id:questionForm.contract_id||null,pg:questionForm.pg.trim()||null,hmv_code:questionForm.hmv_code.trim()||null,position_code:questionForm.position_code.trim()||null}
     const {data,error}=await supabase.from('vn_contract_questions').insert(payload).select('*').single()
     if(error){setQuestionMessage(error.message);return}
-    setQuestions(q=>[data,...q]);setStats(s=>({...s,questions:s.questions+1}))
+    if(questionsLoaded)setQuestions(q=>[data,...q])
+    setQuestionCount(count=>count+1)
+    setStats(s=>({...s,questions:s.questions+1}))
     setQuestionForm({question_text:'',payer:'',contract_id:'',pg:'',hmv_code:'',position_code:''})
     setQuestionMessage('Vertragsfrage wurde in die Prüfqueue übernommen.')
   }
@@ -390,22 +486,8 @@ export default function App(){
   }
 
   const selectedSite=sites.find(s=>String(s.site_id)===String(siteId))
-  const siteMatch=selected&&selectedSite?.eligibilities?.find(e=>e.active&&(
-    (selected.contract_id&&e.contract_id&&String(e.contract_id)===String(selected.contract_id))
-    || String(e.contract||'').toLowerCase()===String(selected.contract||'').toLowerCase()
-  ))
+  const siteMatch=selectedSiteEligibilities.find(e=>e.active)||selectedSiteEligibilities[0]||null
   const selectedContract=selected?contracts.find(c=>String(c.contract_id)===String(selected.contract_id)):null
-  const relatedKnowledge=selected?knowledge.filter(k=>{
-    if(k.contract_id&&String(k.contract_id)!==String(selected.contract_id||''))return false
-    if(k.pg&&String(k.pg)!==String(selected.pg||''))return false
-    if(k.hmv_code&&String(k.hmv_code)!==String(selected.code||''))return false
-    if(k.position_code&&String(k.position_code)!==String(selected.pos||''))return false
-    if(k.payer){
-      const hay=normalizeSearch([selected.family,selected.contract,selectedContract?.contract_name,escArray(selectedContract?.payer_families).join(' ')].filter(Boolean).join(' '))
-      if(!hay.includes(normalizeSearch(k.payer)))return false
-    }
-    return true
-  }):[]
   const resultContractCount=new Set(results.map(r=>r.contract_id||r.contract||r.family).filter(Boolean)).size
   const supplyDecision=supplyEval?.decision||''
   const decisionLabel=supplyDecision==='GRUEN'?'GRÜN':supplyDecision==='ROT'?'ROT':'PRÜFEN'
@@ -441,7 +523,8 @@ export default function App(){
 
     <aside className="quick-rail" aria-label="Schnellzugriff">
       <button className={active==='knowledge'?'active':''} onClick={()=>jump('knowledge','knowledgeSearch')} title="Vertragswissen" aria-label="Vertragswissen"><BookOpenCheck size={19}/></button>
-      {isAdmin&&<button className={active==='precheck'?'active':''} onClick={()=>jump('precheck')} title="Vertragsvorprüfung" aria-label="Vertragsvorprüfung"><ShieldCheck size={19}/></button>}
+      {isAdmin&&<button className={active==='admin'?'active':''} onClick={()=>jump('admin')} title="Admin-Cockpit" aria-label="Admin-Cockpit"><LayoutDashboard size={19}/></button>}
+      {isAdmin&&<button className={active==='precheck'?'active':''} onClick={()=>jump('precheck')} title="Vertragsvorprüfung" aria-label="Vertragsvorprüfung"><ShieldCheck size={19}/></button>
       <button className={active==='upload'?'active':''} onClick={()=>jump('upload')} title="Vertrag hochladen" aria-label="Vertrag hochladen"><Upload size={19}/></button>
       <button className={active==='changes'?'active':''} onClick={()=>jump('changes')} title="Änderungen" aria-label="Änderungen"><History size={19}/></button>
       <button className={active==='questions'?'active':''} onClick={()=>jump('questions','qText')} title="Vertragsfrage" aria-label="Vertragsfrage"><MessageSquareText size={19}/></button>
@@ -511,7 +594,7 @@ export default function App(){
                 ok={supplyPathOk}/>
               <Check n="3" title="Genehmigung" status={selected?.genehmigung?'Vertragsangabe':'noch offen'} value={selected?.genehmigung||selected?.freigrenze||'Vertragsangabe fehlt'} ok={!!selected?.genehmigung}/>
               <Check n="4" title="Verordnung" status={selected?.verordnung?'Vertragsangabe':'noch offen'} value={selected?.verordnung||'Vertragsangabe fehlt'} ok={!!selected?.verordnung}/>
-              <Check n="5" title="Dokumentation" status={relatedKnowledge.length?'Wissen vorhanden':'prüfen'} value={relatedKnowledge.length?`${relatedKnowledge.length} freigegebene Wissenseinträge`:'Vertragswissen/Formularregeln'} ok={relatedKnowledge.length>0}/>
+              <Check n="5" title="Dokumentation" status={relatedKnowledgeBusy?'wird geladen':relatedKnowledge.length?'Wissen vorhanden':'prüfen'} value={relatedKnowledgeBusy?'Vertragswissen wird nachgeladen …':relatedKnowledge.length?`${relatedKnowledge.length} freigegebene Wissenseinträge`:'Vertragswissen/Formularregeln'} ok={relatedKnowledge.length>0}/>
               <Check n="6" title="Abrechnung" status={selected?.preis!=null?'Preis vorhanden':'noch offen'} value={selected?.preis!=null?String(selected.preis):'Preis/Versorgungsform'} ok={selected?.preis!=null}/>
             </div>
             {selected&&<PositionDetail
@@ -546,6 +629,11 @@ export default function App(){
         </section>
       </>}
 
+      {isAdmin&&active==='admin'&&<>
+        <div className="page-head"><div><h1>Admin-Cockpit</h1><p>Arbeitsvorrat, Blocker und nächste Schritte im Vertragsmanagement.</p></div><Badge tone="info">P2 · Steuerungsansicht</Badge></div>
+        <AdminDashboard onNavigate={route=>setActive(route)}/>
+      </>}
+
       {isAdmin&&active==='precheck'&&<>
         <div className="page-head"><div><h1>Vertragsvorprüfung</h1><p>Neue und geänderte Verträge vor der Unterschrift strukturiert prüfen, Risiken dokumentieren und fachlich freigeben.</p></div><Badge tone="warn">Admin · vor Unterschrift</Badge></div>
         <ContractPrecheck userId={session.user.id} contracts={contracts} sites={sites} onOpenChanges={()=>setActive('changes')}/>
@@ -562,18 +650,18 @@ export default function App(){
       </>}
 
       {active==='knowledge'&&<>
-        <div className="page-head"><div><h1>Vertragswissen</h1><p>Freigegebenes Vertragswissen gezielt durchsuchen und prüfen.</p></div><Badge tone="ok">{knowledge.length} freigegeben</Badge></div>
+        <div className="page-head"><div><h1>Vertragswissen</h1><p>Freigegebenes Vertragswissen gezielt durchsuchen und prüfen.</p></div><Badge tone="ok">{knowledgeLoaded?knowledge.length:'…'} freigegeben</Badge></div>
         <div className="grid">
           <section className="panel span2 knowledge-gate"><div className="sectionbar"><div><h2>Vertragswissen</h2><p>Nur APPROVED, aktuell gültig und ohne Revalidierungsbedarf.</p></div><input id="knowledgeSearch" className="compact" value={knowledgeQuery} onChange={e=>setKnowledgeQuery(e.target.value)} placeholder="Wissen durchsuchen …"/></div><div className="chain"><span>Vertragswissen</span><i>→</i><span>Gültigkeit / Geltungsbereich</span><i>→</i><span>Originalvertrag</span><i>→</i><span>Frage klären</span><i>→</i><span>Freigeben</span><i>→</i><span>Wissen zurückführen</span></div></section>
-          <section className="panel span2"><div className="knowledge-list">{filteredKnowledge.map(r=><div className="knowledge-item" key={r.knowledge_id}><div className="knowledge-type">Info</div><article className="knowledge-card"><div className="knowledge-head"><div><b>{r.title}</b><small>{[r.payer,r.pg&&`PG ${r.pg}`,r.hmv_code,r.position_code].filter(Boolean).join(' · ')||'Allgemeiner Geltungsbereich'}</small></div><Badge tone="ok">APPROVED</Badge></div>{r.question_text&&<p><i>{r.question_text}</i></p>}<p>{r.decision_text}</p><footer className="detail-only">Vertrag: {r.contract_id||'—'} · Version: {r.contract_version_id||'—'} · Quelle: {r.source_id||'—'}</footer></article></div>)}{!filteredKnowledge.length&&<div className="empty-panel">Noch kein freigegebenes Vertragswissen vorhanden.</div>}</div></section>
+          <section className="panel span2">{!knowledgeLoaded?<div className="precheck-loading"><LoaderCircle className="spin" size={17}/> Vertragswissen wird geladen …</div>:<div className="knowledge-list">{filteredKnowledge.map(r=><div className="knowledge-item" key={r.knowledge_id}><div className="knowledge-type">Info</div><article className="knowledge-card"><div className="knowledge-head"><div><b>{r.title}</b><small>{[r.payer,r.pg&&`PG ${r.pg}`,r.hmv_code,r.position_code].filter(Boolean).join(' · ')||'Allgemeiner Geltungsbereich'}</small></div><Badge tone="ok">APPROVED</Badge></div>{r.question_text&&<p><i>{r.question_text}</i></p>}<p>{r.decision_text}</p><footer className="detail-only">Vertrag: {r.contract_id||'—'} · Version: {r.contract_version_id||'—'} · Quelle: {r.source_id||'—'}</footer></article></div>)}{!filteredKnowledge.length&&<div className="empty-panel">Noch kein freigegebenes Vertragswissen vorhanden.</div>}</div>}</section>
         </div>
       </>}
 
       {active==='questions'&&<>
-        <div className="page-head"><div><h1>Vertragsfragen</h1><p>Nur ungeklärte Vertragsfälle als neue Frage anlegen und in der Prüfqueue verfolgen.</p></div><Badge>{questions.length} sichtbar</Badge></div>
+        <div className="page-head"><div><h1>Vertragsfragen</h1><p>Nur ungeklärte Vertragsfälle als neue Frage anlegen und in der Prüfqueue verfolgen.</p></div><Badge>{questionsLoaded?questions.length:questionCount} sichtbar</Badge></div>
         <div className="grid">
           <section className="panel"><h2>Neue Vertragsfrage</h2><form className="formstack" onSubmit={submitQuestion}><label>Vertragsfrage<textarea id="qText" rows="5" value={questionForm.question_text} onChange={e=>setQ('question_text',e.target.value)} required/></label><div className="formgrid"><label>Kostenträger<input value={questionForm.payer} onChange={e=>setQ('payer',e.target.value)}/></label><label>PG<input value={questionForm.pg} onChange={e=>setQ('pg',e.target.value)}/></label></div><label>Vertrag<select value={questionForm.contract_id} onChange={e=>setQ('contract_id',e.target.value)}><option value="">Nicht zugeordnet</option>{contracts.map(r=><option key={r.contract_id} value={r.contract_id}>{r.contract_name||r.contract_id}</option>)}</select></label><div className="formgrid"><label>HMV / Produktart<input value={questionForm.hmv_code} onChange={e=>setQ('hmv_code',e.target.value)}/></label><label>Position / GPOS<input value={questionForm.position_code} onChange={e=>setQ('position_code',e.target.value)}/></label></div>{questionMessage&&<div className={'alert '+(questionMessage.startsWith('Vertragsfrage wurde')?'success':'error')}>{questionMessage}</div>}<button className="primary" type="submit">Vertragsfrage anlegen</button></form></section>
-          <section className="panel"><div className="sectionbar"><div><h2>Prüfqueue</h2><p>{canFach?'Fachlich sichtbare Fragen':'Eigene Vertragsfragen'}</p></div><Badge>{questions.length}</Badge></div><div className="question-list">{questions.map(r=><article className="question-row" key={r.question_id}><div><b>{r.question_text}</b><small>{[r.payer,r.pg&&`PG ${r.pg}`,r.hmv_code,r.position_code].filter(Boolean).join(' · ')||'ohne Zuordnung'}</small></div><Badge>{r.status}</Badge></article>)}{!questions.length&&<div className="empty-panel">Noch keine Vertragsfragen vorhanden.</div>}</div></section>
+          <section className="panel"><div className="sectionbar"><div><h2>Prüfqueue</h2><p>{canFach?'Fachlich sichtbare Fragen':'Eigene Vertragsfragen'}</p></div><Badge>{questionsLoaded?questions.length:'…'}</Badge></div>{!questionsLoaded?<div className="precheck-loading"><LoaderCircle className="spin" size={17}/> Vertragsfragen werden geladen …</div>:<div className="question-list">{questions.map(r=><article className="question-row" key={r.question_id}><div><b>{r.question_text}</b><small>{[r.payer,r.pg&&`PG ${r.pg}`,r.hmv_code,r.position_code].filter(Boolean).join(' · ')||'ohne Zuordnung'}</small></div><Badge>{r.status}</Badge></article>)}{!questions.length&&<div className="empty-panel">Noch keine Vertragsfragen vorhanden.</div>}</div>}</section>
         </div>
       </>}
 
