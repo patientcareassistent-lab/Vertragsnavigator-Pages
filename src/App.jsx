@@ -493,7 +493,7 @@ export default function App(){
 
       {active==='upload'&&<>
         <div className="page-head"><div><h1>Vertrag hochladen</h1><p>Vertragsquelle sicher ablegen, automatisch erkennen und Änderungen kontrolliert veröffentlichen.</p></div><Badge tone="warn">Versioniert · kein Überschreiben</Badge></div>
-        <ContractUpload contracts={contracts} canFach={canFach} onOpenChanges={()=>setActive('changes')}/>
+        <ContractUpload contracts={contracts} sites={sites} canFach={canFach} onOpenChanges={()=>setActive('changes')}/>
       </>}
 
       {active==='changes'&&<>
