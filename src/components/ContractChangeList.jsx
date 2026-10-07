@@ -10,7 +10,7 @@ const FIELD_LABELS={
   preis:'Preis',rabatt:'Rabatt',genehmigung:'Genehmigung',freigrenze:'Freigrenze',
   gueltig_ab:'Gültig ab',gueltig_bis:'Gültig bis',versorgungsform:'Versorgungsform',
   verordnung:'Verordnung',code:'HMV-Code',pos:'Position',lkz:'LKZ',leistung:'Leistung',
-  bezeichnung:'Bezeichnung',produktart_bezeichnung:'Produktart',ik:'IK',site_id:'Standort',
+  bezeichnung:'Bezeichnung',produktart_bezeichnung:'Produktart',ik:'IK',site_id:'Standort',erp_system:'ERP-System',contract_group:'SaniVision Vertragsgruppe',
 }
 
 function Badge({children,tone=''}){return <span className={'badge '+tone}>{children}</span>}
