@@ -223,7 +223,7 @@ export default function AdminDashboard({onNavigate}){
         </div>
       </div>
       <div className="quality-list">
-        {sortedQuality.map(item=><button key={item.metric_key} type="button" className={'quality-row '+String(item.rating||'GREEN').toLowerCase()} onClick={()=>onNavigate?.(item.route)}>
+        {sortedQuality.map(item=><button key={item.metric_key} type="button" className={'quality-row '+String(item.rating||'GREEN').toLowerCase()} onClick={()=>onNavigate?.(item.metric_key==='CONTRACT_PAYER'?'payerReview':item.route)}>
           <span className="quality-state">
             {item.rating==='RED'?<XCircle size={19}/>:item.rating==='YELLOW'?<AlertTriangle size={19}/>:<CheckCircle2 size={19}/>}
           </span>
