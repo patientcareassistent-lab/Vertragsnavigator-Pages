@@ -78,6 +78,34 @@ function relevance(row,tokens){
   return score
 }
 
+
+function payerDetailLabel(contract,family){
+  const name=String(contract?.contract_name||'').trim()
+  if(!name)return ''
+  const prefix=name.split(':')[0].trim()
+  const n=normalizeSearch(prefix)
+  if(family==='AOK'){
+    const rules=[
+      [/^aok (bw|baden wurttemberg)/,'AOK Baden-Württemberg'],
+      [/^aok bayern/,'AOK Bayern'],
+      [/^aok bremen bremerhaven/,'AOK Bremen/Bremerhaven'],
+      [/^aok bundesverband/,'AOK Bundesverband'],
+      [/^aok hessen/,'AOK Hessen'],
+      [/^aok niedersachsen/,'AOK Niedersachsen'],
+      [/^aok nord ?ost/,'AOK Nordost'],
+      [/^aok nord ?west/,'AOK Nordwest'],
+      [/^aok plus/,'AOK Plus'],
+      [/^aok rheinland pfalz saarland/,'AOK Rheinland-Pfalz/Saarland'],
+      [/^aok rheinland hamburg/,'AOK Rheinland/Hamburg'],
+      [/^aok sachsen anhalt/,'AOK Sachsen-Anhalt'],
+    ]
+    const hit=rules.find(([re])=>re.test(n))
+    if(hit)return hit[1]
+  }
+  const cleaned=prefix.replace(/\s+[–-]\s+.*$/,'').trim()
+  return cleaned||family||prefix
+}
+
 function Badge({children,tone=''}){return <span className={'badge '+tone}>{children}</span>}
 
 export default function App(){
@@ -95,6 +123,7 @@ export default function App(){
   const [sites,setSites]=useState([])
   const [stats,setStats]=useState({contracts:0,positions:0,knowledge:0,questions:0})
   const [payer,setPayer]=useState('')
+  const [payerDetail,setPayerDetail]=useState('')
   const [pg,setPg]=useState('')
   const [term,setTerm]=useState('')
   const [siteId,setSiteId]=useState('')
@@ -109,6 +138,15 @@ export default function App(){
   const role=session?.user?.app_metadata?.vn_role||'versorger'
   const canFach=['fach','admin'].includes(role)
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
+  const payerDetailOptions=useMemo(()=>{
+    if(!payer)return []
+    return uniq(contracts
+      .filter(r=>escArray(r.payer_families).includes(payer))
+      .filter(r=>!pg||escArray(r.product_groups).includes(pg))
+      .map(r=>payerDetailLabel(r,payer))
+      .filter(v=>v&&normalizeSearch(v)!==normalizeSearch(payer))
+    )
+  },[contracts,payer,pg])
   const pgOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.product_groups))),[contracts])
   const filteredContracts=useMemo(()=>{
     const q=contractQuery.trim().toLowerCase()
@@ -127,6 +165,7 @@ export default function App(){
   },[])
 
   useEffect(()=>{if(session) loadData()},[session])
+  useEffect(()=>{if(payerDetail&&!payerDetailOptions.includes(payerDetail))setPayerDetail('')},[payerDetail,payerDetailOptions])
 
   async function login(e){
     e.preventDefault();setAuthError('')
@@ -217,8 +256,9 @@ export default function App(){
     const rawTerm=term.trim()
     const termIsHmv=/^\d{2}(?:\.\d{2}){1,3}(?:\.\d{1,4})?$/.test(rawTerm)
     const termIsPosition=/^\d{6,12}$/.test(rawTerm)
-    const {data,error}=await supabase.rpc('vn_search_positions',{
+    const {data,error}=await supabase.rpc('vn_search_positions_v2',{
       p_payer:payer||null,
+      p_payer_detail:payerDetail||null,
       p_pg:pg||null,
       p_query:(!termIsHmv&&!termIsPosition&&rawTerm)?rawTerm:null,
       p_hmv:advanced.hmv.trim()||(termIsHmv?rawTerm:null),
@@ -246,6 +286,7 @@ export default function App(){
 
   function resetAssistantSearch(){
     setPayer('')
+    setPayerDetail('')
     setPg('')
     setTerm('')
     setSiteId('')
@@ -322,7 +363,11 @@ export default function App(){
           <section className="panel assistant-hero span2">
             <div className="assistant-top"><div className="assistant-title"><small>Vertragsassistent</small><h2>Darf ich versorgen?</h2><p>Position auswählen, Standort festlegen und die Prüfpunkte nacheinander bewerten.</p></div><div className="decision"><small>Ergebnis</small><strong>PRÜFEN</strong></div></div>
             <form className="check-form" onSubmit={runAssistant}>
-              <label>Kostenträger<select value={payer} onChange={e=>setPayer(e.target.value)}><option value="">Alle Kassen</option>{payerOptions.map(v=><option key={v}>{v}</option>)}</select></label>
+              <label>Kostenträger<select value={payer} onChange={e=>{setPayer(e.target.value);setPayerDetail('')}}><option value="">Alle Kassen</option>{payerOptions.map(v=><option key={v}>{v}</option>)}</select></label>
+              <label>Kasse / Region<select value={payerDetail} onChange={e=>setPayerDetail(e.target.value)} disabled={!payer}>
+                <option value="">{payer?('Alle '+payer+'-Kassen / Regionen'):'Zuerst Kostenträger wählen'}</option>
+                {payerDetailOptions.map(v=><option key={v} value={v}>{v}</option>)}
+              </select></label>
               <label>Produktgruppe<select value={pg} onChange={e=>setPg(e.target.value)}><option value="">Alle PG</option>{pgOptions.map(v=><option key={v}>{v}</option>)}</select></label>
               <label>HMV / Position / Begriff<input id="assistantTerm" value={term} onChange={e=>setTerm(e.target.value)} placeholder="z. B. leichtgewichts, Rolli, 18.50, AOK Bayern …"/></label>
               <label>Standort<select value={siteId} onChange={e=>setSiteId(e.target.value)}><option value="">Standort wählen</option>{sites.map(s=><option key={s.site_id} value={s.site_id}>{s.branch||'Standort'}{s.ik?` · IK ${s.ik}`:''}</option>)}</select></label>
@@ -378,7 +423,7 @@ export default function App(){
             />}
           </section>
           <section className="panel span2"><div className="sectionbar"><div><h2>Treffer</h2><p>Eine Position anklicken, um sie zu übernehmen.</p></div><Badge>{results.length}</Badge></div>
-            {results.length>0&&!selected&&<div className="result-hint"><b>{results.length} passende Positionen · {resultContractCount} Vertragsvarianten</b><span>{payer==='AOK'&&!siteId?'AOK-Verträge sind regional. Bitte Standort wählen oder unten den passenden Vertrag auswählen.':'Bitte den passenden Vertrag bzw. die Position auswählen.'}</span></div>}
+            {results.length>0&&!selected&&<div className="result-hint"><b>{results.length} passende Positionen · {resultContractCount} Vertragsvarianten</b><span>{payer==='AOK'&&!payerDetail&&!siteId?'AOK-Verträge sind regional. Bitte konkrete AOK/Region, Standort oder unten den passenden Vertrag auswählen.':'Bitte den passenden Vertrag bzw. die Position auswählen.'}</span></div>}
             <div className="tablewrap"><table><thead><tr><th>PG</th><th>HMV/Code</th><th>Position</th><th>Bezeichnung</th><th>Vertrag</th><th>Preis</th><th>Genehmigung</th></tr></thead><tbody>
               {results.map(r=><tr key={r.position_row_id} className={'selectable '+(selected?.position_row_id===r.position_row_id?'selected':'')} onClick={()=>setSelected(r)}><td>{r.pg||'—'}</td><td>{r.code||'—'}</td><td>{r.pos||'—'}</td><td><b>{r.bezeichnung||r.produktart_bezeichnung||'—'}</b></td><td>{r.contract||r.family||'—'}</td><td>{r.preis??'—'}</td><td>{r.genehmigung||r.freigrenze||'—'}</td></tr>)}
               {!results.length&&<tr><td colSpan="7" className="empty">Kasse, PG, Suchbegriff oder erweiterte Kriterien wählen und auf „Prüfen“ klicken.</td></tr>}
