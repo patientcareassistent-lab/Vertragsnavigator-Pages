@@ -273,3 +273,9 @@
   .erp-mapping-row{grid-template-columns:1fr}
   .contract-context-head{align-items:flex-start;flex-direction:column}
 }
+
+
+/* Search progress */
+.search-actions .primary{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.search-running{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:8px;min-height:34px;margin-top:2px;border:1px solid #d8e3ec;border-radius:9px;background:#f8fbfd;color:#506579;font-size:10px;font-weight:700}
+.search-running svg{color:var(--blue)}
