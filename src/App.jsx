@@ -32,6 +32,27 @@ const normalizeSearch=value=>String(value||'')
 
 const searchTokens=value=>normalizeSearch(value).split(/\s+/).filter(Boolean)
 
+const COMPANY_ALIAS_TEXT='VALUNY GmbH spectrumK Spectrum K ITSC GmbH'
+const companyRelated=value=>{
+  const n=normalizeSearch(value)
+  return n.includes('valuny')||n.includes('spectrumk')||n.includes('spectrum k')||n.includes('itsc')
+}
+const companySearchText=value=>normalizeSearch(`${value||''} ${companyRelated(value)?COMPANY_ALIAS_TEXT:''}`)
+function displayCompanyName(value){
+  const name=String(value||'')
+  const n=normalizeSearch(name)
+  if((n.includes('spectrumk')||n.includes('spectrum k'))&&!n.includes('valuny')){
+    return name.replace(/^spectrum\s*k/i,'VALUNY GmbH (ehemals spectrumK)')
+  }
+  return name
+}
+function canonicalCompanyQuery(value){
+  const raw=String(value||'').trim()
+  const n=normalizeSearch(raw)
+  if(['valuny','valuny gmbh','spectrumk','spectrum k','spectrum k gmbh','itsc','itsc gmbh'].includes(n))return 'valuny'
+  return raw
+}
+
 function tokenVariants(token){
   const out=new Set([token])
   for(const suffix of ['ern','en','er','es','e','s','n']){
@@ -47,6 +68,10 @@ function tokenVariants(token){
     aktivrollstuhle:['aktiv','aktive nutzung','aktiven nutzung','spezialrollstuhl'],
     aktivrollstuehle:['aktiv','aktive nutzung','aktiven nutzung','spezialrollstuhl'],
     aktivstuhl:['aktiv','aktive nutzung','spezialrollstuhl'],
+    valuny:['spectrumk','spectrum','itsc'],
+    spectrumk:['valuny','spectrum','itsc'],
+    spectrum:['spectrumk','valuny','itsc'],
+    itsc:['valuny','spectrumk','spectrum'],
   }
   for(const alias of aliases[token]||[])out.add(normalizeSearch(alias))
   return [...out]
@@ -157,8 +182,8 @@ export default function App(){
   },[contracts,payer,pg])
   const pgOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.product_groups))),[contracts])
   const filteredContracts=useMemo(()=>{
-    const q=contractQuery.trim().toLowerCase()
-    return contracts.filter(r=>!q||JSON.stringify(r).toLowerCase().includes(q))
+    const q=normalizeSearch(contractQuery)
+    return contracts.filter(r=>!q||companySearchText(JSON.stringify(r)).includes(q))
   },[contracts,contractQuery])
   const filteredKnowledge=useMemo(()=>{
     const q=knowledgeQuery.trim().toLowerCase()
@@ -288,10 +313,12 @@ export default function App(){
     }
 
     const toNumber=value=>String(value).trim()===''?null:Number(value)
-    const rawTerm=term.trim()
+    const rawTerm=canonicalCompanyQuery(term)
     const termIsHmv=/^\d{2}(?:\.\d{2}){1,3}(?:\.\d{1,4})?$/.test(rawTerm)
     const termIsPosition=/^\d{6,12}$/.test(rawTerm)
-    const freeTextQuery=(!termIsHmv&&!termIsPosition&&rawTerm)?rawTerm:null
+    const companyContractQuery=canonicalCompanyQuery(advanced.contract)
+    const contractAliasQuery=companyContractQuery.toLowerCase()==='valuny'&&!term.trim()?companyContractQuery:null
+    const freeTextQuery=(!termIsHmv&&!termIsPosition&&rawTerm)?rawTerm:contractAliasQuery
     const rpcName=freeTextQuery?'vn_search_positions_text_v2':'vn_search_positions_v2'
     setSearchBusy(true)
     try{
@@ -303,7 +330,7 @@ export default function App(){
         p_hmv:advanced.hmv.trim()||(termIsHmv?rawTerm:null),
         p_position:advanced.position.trim()||(termIsPosition?rawTerm:null),
         p_product_type:advanced.productType.trim()||null,
-        p_contract:advanced.contract.trim()||null,
+        p_contract:canonicalCompanyQuery(advanced.contract).toLowerCase()==='valuny'?null:(advanced.contract.trim()||null),
         p_legs:advanced.legs.trim()||null,
         p_lkz:advanced.lkz.trim()||null,
         p_approval:advanced.approval,
@@ -498,7 +525,7 @@ export default function App(){
           <section className="panel span2"><div className="sectionbar"><div><h2>Treffer</h2><p>Eine Position anklicken, um sie zu übernehmen.</p></div><Badge>{results.length}</Badge></div>
             {results.length>0&&!selected&&<div className="result-hint"><b>{results.length} passende Positionen · {resultContractCount} Vertragsvarianten</b><span>{payer==='AOK'&&!payerDetail&&!siteId?'AOK-Verträge sind regional. Bitte konkrete AOK/Region, Standort oder unten den passenden Vertrag auswählen.':'Bitte den passenden Vertrag bzw. die Position auswählen.'}</span></div>}
             <div className="tablewrap"><table><thead><tr><th>PG</th><th>HMV/Code</th><th>Position</th><th>Bezeichnung</th><th>Vertrag</th><th>Preis</th><th>Genehmigung</th></tr></thead><tbody>
-              {results.map(r=><tr key={r.position_row_id} className={'selectable '+(selected?.position_row_id===r.position_row_id?'selected':'')} onClick={()=>setSelected(r)}><td>{r.pg||'—'}</td><td>{r.code||'—'}</td><td>{r.pos||'—'}</td><td><b>{r.bezeichnung||r.produktart_bezeichnung||'—'}</b></td><td>{r.contract||r.family||'—'}</td><td>{r.preis??'—'}</td><td>{r.genehmigung||r.freigrenze||'—'}</td></tr>)}
+              {results.map(r=><tr key={r.position_row_id} className={'selectable '+(selected?.position_row_id===r.position_row_id?'selected':'')} onClick={()=>setSelected(r)}><td>{r.pg||'—'}</td><td>{r.code||'—'}</td><td>{r.pos||'—'}</td><td><b>{r.bezeichnung||r.produktart_bezeichnung||'—'}</b></td><td>{displayCompanyName(r.contract||r.family||'—')}</td><td>{r.preis??'—'}</td><td>{r.genehmigung||r.freigrenze||'—'}</td></tr>)}
               {!results.length&&<tr><td colSpan="7" className="empty">Kasse, PG, Suchbegriff oder erweiterte Kriterien wählen und auf „Prüfen“ klicken.</td></tr>}
             </tbody></table></div>
           </section>
@@ -507,6 +534,12 @@ export default function App(){
 
       {active==='contracts'&&<>
         <div className="page-head"><div><h1>Verträge</h1><p>Vertragskatalog und zugehörige Positionen durchsuchen.</p></div><Badge>{filteredContracts.length} Verträge</Badge></div>
+        <section className="company-change-notice">
+          <div className="company-change-mark">i</div>
+          <div><div className="company-change-title"><strong>spectrumK / ITSC → VALUNY GmbH</strong><Badge tone="info">seit 01.09.2026</Badge></div>
+          <p><b>Neue Unternehmensbezeichnung: VALUNY GmbH.</b> Laut Mitteilung von spectrumK an rehaVital war der technische Go-live für den 01.09.2026 terminiert. VALUNY GmbH ist Rechtsnachfolgerin von spectrumK und ITSC; bestehende Verträge gelten ohne formale Änderungen weiter.</p>
+          <small>Bekannte Ansprechpartner:innen, IK und Status als Arbeitsgemeinschaft bleiben laut Mitteilung unverändert. Zusätzlich kann die E-Mail-Domain <b>@valuny.de</b> verwendet werden. Suche funktioniert mit VALUNY, spectrumK und ITSC.</small></div>
+        </section>
         <section className="panel"><div className="sectionbar"><div><h2>Vertragskatalog mit Beitrittsampel</h2><p>Beitritt, Gültigkeit und Voraussetzungen je Vertrag auf einen Blick.</p></div><input className="compact" value={contractQuery} onChange={e=>setContractQuery(e.target.value)} placeholder="Vertrag durchsuchen …"/></div>
           <ContractTrafficLightPanel contracts={filteredContracts}/>
         </section>
