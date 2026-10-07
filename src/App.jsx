@@ -33,6 +33,7 @@ const normalizeSearch=value=>String(value||'')
 const searchTokens=value=>normalizeSearch(value).split(/\s+/).filter(Boolean)
 
 const COMPANY_ALIAS_TEXT='VALUNY GmbH spectrumK Spectrum K ITSC GmbH'
+const COMPANY_NOTICE_VISIBLE_UNTIL='2026-10-21T23:59:59+02:00'
 const companyRelated=value=>{
   const n=normalizeSearch(value)
   return n.includes('valuny')||n.includes('spectrumk')||n.includes('spectrum k')||n.includes('itsc')
@@ -172,13 +173,15 @@ export default function App(){
   const navItems=isAdmin?[...NAV,['missingSources','Fehlende Quellen']]:NAV
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
-    if(!payer)return []
-    return uniq(contracts
-      .filter(r=>escArray(r.payer_families).includes(payer))
+    const base=contracts
+      .filter(r=>!payer||escArray(r.payer_families).includes(payer))
       .filter(r=>!pg||escArray(r.product_groups).includes(pg))
-      .map(r=>payerDetailLabel(r,payer))
-      .filter(v=>v&&normalizeSearch(v)!==normalizeSearch(payer))
-    )
+      .map(r=>payerDetailLabel(r,payer||escArray(r.payer_families)[0]||''))
+      .filter(v=>v&&(!payer||normalizeSearch(v)!==normalizeSearch(payer)))
+    const companyAliases=contracts.some(r=>companyRelated(r.contract_name))
+      ? ['VALUNY GmbH (ehemals spectrumK / ITSC)','spectrumK','ITSC']
+      : []
+    return uniq([...base,...companyAliases])
   },[contracts,payer,pg])
   const pgOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.product_groups))),[contracts])
   const filteredContracts=useMemo(()=>{
@@ -198,7 +201,6 @@ export default function App(){
   },[])
 
   useEffect(()=>{if(session) loadData()},[session])
-  useEffect(()=>{if(payerDetail&&!payerDetailOptions.includes(payerDetail))setPayerDetail('')},[payerDetail,payerDetailOptions])
   useEffect(()=>{
     let cancelled=false
     async function evaluateSelected(){
@@ -306,7 +308,7 @@ export default function App(){
       advanced.authoritative?'x':'',
     ].some(Boolean)
 
-    if(!term.trim()&&!pg&&!payer&&!hasAdvanced){setResults([]);return}
+    if(!term.trim()&&!pg&&!payer&&!payerDetail.trim()&&!hasAdvanced){setResults([]);return}
     if((advanced.pq!=='all'||advanced.accession!=='all')&&!siteId){
       setError('Für PQ oder Vertragsbeitritt bitte zuerst einen Standort auswählen.')
       return
@@ -324,7 +326,7 @@ export default function App(){
     try{
       const {data,error}=await supabase.rpc(rpcName,{
         p_payer:payer||null,
-        p_payer_detail:payerDetail||null,
+        p_payer_detail:payerDetail.trim()?(companyRelated(payerDetail)?'spectrumK':payerDetail.trim()):null,
         p_pg:pg||null,
         p_query:freeTextQuery,
         p_hmv:advanced.hmv.trim()||(termIsHmv?rawTerm:null),
@@ -453,10 +455,7 @@ export default function App(){
             <div className="assistant-top"><div className="assistant-title"><small>Vertragsassistent</small><h2>Darf ich versorgen?</h2><p>Position auswählen, Standort festlegen und die Prüfpunkte nacheinander bewerten.</p></div><div className={'decision '+decisionTone}><small>Ergebnis</small><strong>{decisionLabel}</strong></div></div>
             <form className="check-form" onSubmit={runAssistant} aria-busy={searchBusy}>
               <label>Kostenträger<select value={payer} onChange={e=>{setPayer(e.target.value);setPayerDetail('')}}><option value="">Alle Kassen</option>{payerOptions.map(v=><option key={v}>{v}</option>)}</select></label>
-              <label>Kasse / Region<select value={payerDetail} onChange={e=>setPayerDetail(e.target.value)} disabled={!payer}>
-                <option value="">{payer?('Alle '+payer+'-Kassen / Regionen'):'Zuerst Kostenträger wählen'}</option>
-                {payerDetailOptions.map(v=><option key={v} value={v}>{v}</option>)}
-              </select></label>
+              <label>Kasse / Region<input list="payerDetailOptions" value={payerDetail} onChange={e=>setPayerDetail(e.target.value)} placeholder={payer?'Kasse / Region suchen …':'z. B. spectrumK, VALUNY, AOK Bayern …'} autoComplete="off"/><datalist id="payerDetailOptions">{payerDetailOptions.map(v=><option key={v} value={v}/>)}</datalist></label>
               <label>Produktgruppe<select value={pg} onChange={e=>setPg(e.target.value)}><option value="">Alle PG</option>{pgOptions.map(v=><option key={v}>{v}</option>)}</select></label>
               <label>HMV / Position / Begriff<input id="assistantTerm" value={term} onChange={e=>setTerm(e.target.value)} placeholder="z. B. leichtgewichts, Rolli, 18.50, AOK Bayern …"/></label>
               <label>Standort<select value={siteId} onChange={e=>setSiteId(e.target.value)}><option value="">Standort wählen</option>{sites.map(s=><option key={s.site_id} value={s.site_id}>{s.branch||'Standort'}{s.ik?` · IK ${s.ik}`:''}</option>)}</select></label>
@@ -534,12 +533,12 @@ export default function App(){
 
       {active==='contracts'&&<>
         <div className="page-head"><div><h1>Verträge</h1><p>Vertragskatalog und zugehörige Positionen durchsuchen.</p></div><Badge>{filteredContracts.length} Verträge</Badge></div>
-        <section className="company-change-notice">
+        {Date.now()<=new Date(COMPANY_NOTICE_VISIBLE_UNTIL).getTime()&&<section className="company-change-notice">
           <div className="company-change-mark">i</div>
           <div><div className="company-change-title"><strong>spectrumK / ITSC → VALUNY GmbH</strong><Badge tone="info">seit 01.09.2026</Badge></div>
           <p><b>Neue Unternehmensbezeichnung: VALUNY GmbH.</b> Laut Mitteilung von spectrumK an rehaVital war der technische Go-live für den 01.09.2026 terminiert. VALUNY GmbH ist Rechtsnachfolgerin von spectrumK und ITSC; bestehende Verträge gelten ohne formale Änderungen weiter.</p>
           <small>Bekannte Ansprechpartner:innen, IK und Status als Arbeitsgemeinschaft bleiben laut Mitteilung unverändert. Zusätzlich kann die E-Mail-Domain <b>@valuny.de</b> verwendet werden. Suche funktioniert mit VALUNY, spectrumK und ITSC.</small></div>
-        </section>
+        </section>}
         <section className="panel"><div className="sectionbar"><div><h2>Vertragskatalog mit Beitrittsampel</h2><p>Beitritt, Gültigkeit und Voraussetzungen je Vertrag auf einen Blick.</p></div><input className="compact" value={contractQuery} onChange={e=>setContractQuery(e.target.value)} placeholder="Vertrag durchsuchen …"/></div>
           <ContractTrafficLightPanel contracts={filteredContracts}/>
         </section>
