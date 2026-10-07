@@ -242,6 +242,7 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
       setBusy('upload')
       const completed=await uploadContractSource(contractId,file,selectedContract?.contract_name||'')
       setUploadId(completed.upload_id)
+      if(precheckMode)saveCurrentUploadId('')
 
       if(precheckMode){
         const {error:holdError}=await supabase.rpc('vn_admin_hold_contract_upload',{p_upload_id:completed.upload_id})
