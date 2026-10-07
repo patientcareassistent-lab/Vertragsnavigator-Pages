@@ -321,8 +321,18 @@ export default function App(){
     (selected.contract_id&&e.contract_id&&String(e.contract_id)===String(selected.contract_id))
     || String(e.contract||'').toLowerCase()===String(selected.contract||'').toLowerCase()
   ))
-  const relatedKnowledge=selected?knowledge.filter(k=>(!k.pg||String(k.pg)===String(selected.pg))):[]
   const selectedContract=selected?contracts.find(c=>String(c.contract_id)===String(selected.contract_id)):null
+  const relatedKnowledge=selected?knowledge.filter(k=>{
+    if(k.contract_id&&String(k.contract_id)!==String(selected.contract_id||''))return false
+    if(k.pg&&String(k.pg)!==String(selected.pg||''))return false
+    if(k.hmv_code&&String(k.hmv_code)!==String(selected.code||''))return false
+    if(k.position_code&&String(k.position_code)!==String(selected.pos||''))return false
+    if(k.payer){
+      const hay=normalizeSearch([selected.family,selected.contract,selectedContract?.contract_name,escArray(selectedContract?.payer_families).join(' ')].filter(Boolean).join(' '))
+      if(!hay.includes(normalizeSearch(k.payer)))return false
+    }
+    return true
+  }):[]
   const resultContractCount=new Set(results.map(r=>r.contract_id||r.contract||r.family).filter(Boolean)).size
 
   if(!supabaseConfigured)return <main className="center"><section className="auth-card"><h1>Vertragsnavigator 2.1</h1><p>Supabase ist noch nicht konfiguriert.</p></section></main>
