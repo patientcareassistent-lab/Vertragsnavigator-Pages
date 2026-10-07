@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { BookOpenCheck, History, LoaderCircle, MessageSquareText, ShieldCheck, Upload } from 'lucide-react'
+import { BookOpenCheck, History, LayoutDashboard, LoaderCircle, MessageSquareText, ShieldCheck, Upload } from 'lucide-react'
 import { supabase, supabaseConfigured } from './lib/supabase.js'
 import ContractUpload from './components/ContractUpload.jsx'
 import ContractChanges from './components/ContractChanges.jsx'
@@ -7,6 +7,7 @@ import PositionDetail from './components/PositionDetail.jsx'
 import MissingSources from './components/MissingSources.jsx'
 import ContractTrafficLightPanel from './components/ContractTrafficLightPanel.jsx'
 import ContractPrecheck from './components/ContractPrecheck.jsx'
+import AdminDashboard from './components/AdminDashboard.jsx'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
@@ -148,6 +149,8 @@ export default function App(){
   const [error,setError]=useState('')
   const [contracts,setContracts]=useState([])
   const [knowledge,setKnowledge]=useState([])
+  const [relatedKnowledge,setRelatedKnowledge]=useState([])
+  const [siteMatch,setSiteMatch]=useState(null)
   const [questions,setQuestions]=useState([])
   const [sites,setSites]=useState([])
   const [stats,setStats]=useState({contracts:0,positions:0,knowledge:0,questions:0})
@@ -171,7 +174,7 @@ export default function App(){
   const role=session?.user?.app_metadata?.vn_role||'versorger'
   const canFach=['fach','admin'].includes(role)
   const isAdmin=role==='admin'
-  const navItems=isAdmin?[...NAV,['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:NAV
+  const navItems=isAdmin?[...NAV,['admin','Admin-Übersicht'],['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:NAV
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
     const base=contracts
@@ -202,6 +205,69 @@ export default function App(){
   },[])
 
   useEffect(()=>{if(session) loadData()},[session])
+
+  useEffect(()=>{
+    let cancelled=false
+    async function loadKnowledgePage(){
+      if(!canFach||active!=='knowledge')return
+      const {data,error:e}=await supabase.from('vn_contract_knowledge_approved')
+        .select('*')
+        .order('updated_at',{ascending:false})
+        .limit(250)
+      if(cancelled)return
+      if(e)setError(e.message||String(e))
+      else setKnowledge(data||[])
+    }
+    loadKnowledgePage()
+    return()=>{cancelled=true}
+  },[active,canFach])
+
+  useEffect(()=>{
+    let cancelled=false
+    async function loadSelectedDetails(){
+      if(!selected){
+        setRelatedKnowledge([])
+        setSiteMatch(null)
+        return
+      }
+      const knowledgeRequest=selected.contract_id
+        ? supabase.from('vn_contract_knowledge_approved').select('*')
+            .or('contract_id.eq.'+selected.contract_id+',contract_id.is.null')
+            .order('updated_at',{ascending:false}).limit(50)
+        : supabase.from('vn_contract_knowledge_approved').select('*')
+            .is('contract_id',null).order('updated_at',{ascending:false}).limit(50)
+      const siteRequest=siteId
+        ? supabase.from('vn_site_eligibility')
+            .select('site_id,ik,branch,contract_id,contract,status,prerequisites_met,vtv_status,valid_from,valid_to,legs,active,review_required,contract_match_status')
+            .eq('site_id',siteId).limit(300)
+        : Promise.resolve({data:[],error:null})
+      const [kr,sr]=await Promise.all([knowledgeRequest,siteRequest])
+      if(cancelled)return
+      const first=[kr,sr].find(r=>r.error)?.error
+      if(first){setError(first.message||String(first));return}
+
+      const contract=contracts.find(c=>String(c.contract_id)===String(selected.contract_id||''))||null
+      setRelatedKnowledge((kr.data||[]).filter(k=>{
+        if(k.contract_id&&String(k.contract_id)!==String(selected.contract_id||''))return false
+        if(k.pg&&String(k.pg)!==String(selected.pg||''))return false
+        if(k.hmv_code&&String(k.hmv_code)!==String(selected.code||''))return false
+        if(k.position_code&&String(k.position_code)!==String(selected.pos||''))return false
+        if(k.payer){
+          const hay=normalizeSearch([selected.family,selected.contract,contract?.contract_name,escArray(contract?.payer_families).join(' ')].filter(Boolean).join(' '))
+          if(!hay.includes(normalizeSearch(k.payer)))return false
+        }
+        return true
+      }))
+
+      setSiteMatch((sr.data||[]).find(e=>e.active&&(
+        (selected.contract_id&&e.contract_id&&String(e.contract_id)===String(selected.contract_id))
+        ||String(e.contract||'').toLowerCase()===String(selected.contract||'').toLowerCase()
+      ))||null)
+    }
+    loadSelectedDetails()
+    return()=>{cancelled=true}
+  },[selected?.position_row_id,selected?.contract_id,siteId,contracts])
+
   useEffect(()=>{
     let cancelled=false
     async function evaluateSelected(){
@@ -263,16 +329,15 @@ export default function App(){
 
   async function loadData(){
     setError('')
-    const [cc,pc,kc,qr,kr,cr,sr]=await Promise.all([
+    const [cc,pc,kc,qr,cr,sr]=await Promise.all([
       supabase.from('vn_contract_catalog').select('*',{count:'exact',head:true}),
       supabase.from('vn_position_catalog').select('*',{count:'exact',head:true}),
       supabase.from('vn_contract_knowledge_approved').select('*',{count:'exact',head:true}),
       supabase.from('vn_contract_questions').select('*').order('created_at',{ascending:false}).limit(100),
-      supabase.from('vn_contract_knowledge_approved').select('*').order('updated_at',{ascending:false}).limit(500),
-      supabase.from('vn_contract_catalog').select('*').order('contract_name').limit(700),
-      supabase.from('vn_site_eligibility').select('*').limit(5000),
+      supabase.from('vn_contract_index_cache').select('contract_id,contract_name,payer_families,product_groups,legs,catalog_valid_to,latest_valid_to,validity_mode,partner_display_name,partner_aliases').order('contract_name').limit(700),
+      supabase.from('vn_site_selector').select('site_id,ik,branch,active').order('branch'),
     ])
-    const first=[cc,pc,kc,qr,kr,cr,sr].find(r=>r.error)?.error
+    const first=[cc,pc,kc,qr,cr,sr].find(r=>r.error)?.error
     if(first){
       const raw=String(first.message||'')
       const recovering=/not accepting connections|starting up|hot standby|timeout/i.test(raw)
@@ -281,15 +346,10 @@ export default function App(){
         : raw)
       return
     }
-    const siteMap=new Map()
-    for(const e of sr.data||[]){
-      if(!siteMap.has(e.site_id))siteMap.set(e.site_id,{site_id:e.site_id,ik:e.ik,branch:e.branch,eligibilities:[]})
-      siteMap.get(e.site_id).eligibilities.push(e)
-    }
     setContracts(cr.data||[])
-    setKnowledge(kr.data||[])
+    setKnowledge([])
     setQuestions(qr.data||[])
-    setSites([...siteMap.values()].sort((a,b)=>String(a.branch||'').localeCompare(String(b.branch||''),'de')))
+    setSites(sr.data||[])
     setStats({contracts:cc.count||0,positions:pc.count||0,knowledge:kc.count||0,questions:qr.data?.length||0})
   }
 
@@ -390,22 +450,7 @@ export default function App(){
   }
 
   const selectedSite=sites.find(s=>String(s.site_id)===String(siteId))
-  const siteMatch=selected&&selectedSite?.eligibilities?.find(e=>e.active&&(
-    (selected.contract_id&&e.contract_id&&String(e.contract_id)===String(selected.contract_id))
-    || String(e.contract||'').toLowerCase()===String(selected.contract||'').toLowerCase()
-  ))
   const selectedContract=selected?contracts.find(c=>String(c.contract_id)===String(selected.contract_id)):null
-  const relatedKnowledge=selected?knowledge.filter(k=>{
-    if(k.contract_id&&String(k.contract_id)!==String(selected.contract_id||''))return false
-    if(k.pg&&String(k.pg)!==String(selected.pg||''))return false
-    if(k.hmv_code&&String(k.hmv_code)!==String(selected.code||''))return false
-    if(k.position_code&&String(k.position_code)!==String(selected.pos||''))return false
-    if(k.payer){
-      const hay=normalizeSearch([selected.family,selected.contract,selectedContract?.contract_name,escArray(selectedContract?.payer_families).join(' ')].filter(Boolean).join(' '))
-      if(!hay.includes(normalizeSearch(k.payer)))return false
-    }
-    return true
-  }):[]
   const resultContractCount=new Set(results.map(r=>r.contract_id||r.contract||r.family).filter(Boolean)).size
   const supplyDecision=supplyEval?.decision||''
   const decisionLabel=supplyDecision==='GRUEN'?'GRÜN':supplyDecision==='ROT'?'ROT':'PRÜFEN'
@@ -441,6 +486,7 @@ export default function App(){
 
     <aside className="quick-rail" aria-label="Schnellzugriff">
       <button className={active==='knowledge'?'active':''} onClick={()=>jump('knowledge','knowledgeSearch')} title="Vertragswissen" aria-label="Vertragswissen"><BookOpenCheck size={19}/></button>
+      {isAdmin&&<button className={active==='admin'?'active':''} onClick={()=>jump('admin')} title="Admin-Übersicht" aria-label="Admin-Übersicht"><LayoutDashboard size={19}/></button>}
       {isAdmin&&<button className={active==='precheck'?'active':''} onClick={()=>jump('precheck')} title="Vertragsvorprüfung" aria-label="Vertragsvorprüfung"><ShieldCheck size={19}/></button>}
       <button className={active==='upload'?'active':''} onClick={()=>jump('upload')} title="Vertrag hochladen" aria-label="Vertrag hochladen"><Upload size={19}/></button>
       <button className={active==='changes'?'active':''} onClick={()=>jump('changes')} title="Änderungen" aria-label="Änderungen"><History size={19}/></button>
@@ -542,8 +588,13 @@ export default function App(){
           <small>Bekannte Ansprechpartner:innen, IK und Status als Arbeitsgemeinschaft bleiben laut Mitteilung unverändert. Zusätzlich kann die E-Mail-Domain <b>@valuny.de</b> verwendet werden. Suche funktioniert mit VALUNY, spectrumK und ITSC.</small></div>
         </section>}
         <section className="panel"><div className="sectionbar"><div><h2>Vertragskatalog mit Beitrittsampel</h2><p>Beitritt, Gültigkeit und Voraussetzungen je Vertrag auf einen Blick.</p></div><input className="compact" value={contractQuery} onChange={e=>setContractQuery(e.target.value)} placeholder="Vertrag durchsuchen …"/></div>
-          <ContractTrafficLightPanel contracts={filteredContracts}/>
+          <ContractTrafficLightPanel query={contractQuery} contractIds={contractQuery.trim()?filteredContracts.map(r=>r.contract_id):null}/>
         </section>
+      </>}
+
+      {isAdmin&&active==='admin'&&<>
+        <div className="page-head"><div><h1>Admin-Übersicht</h1><p>Arbeitsvorrat, Entscheidungen und Datenpflege für das Vertragsmanagement.</p></div><Badge tone="info">Live-Arbeitsstand</Badge></div>
+        <AdminDashboard onNavigate={view=>setActive(view)}/>
       </>}
 
       {isAdmin&&active==='precheck'&&<>
