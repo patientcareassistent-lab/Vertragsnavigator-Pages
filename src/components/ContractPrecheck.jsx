@@ -34,21 +34,6 @@ const CATEGORY_LABELS={
   CHANGES:'Änderungen zum Bestand',
   OTHER:'Sonstiges',
 }
-const DEFAULT_CHECKS=[
-  ['SCOPE','Vertragsgegenstand, Kasse, Region und Produktgruppen',10],
-  ['TERM','Vertragsbeginn, Laufzeit, Kündigungsfristen und Verlängerung',20],
-  ['PQ_ACCESSION','PQ-Anforderungen, Beitrittsvoraussetzungen und Standorte',30],
-  ['PRICING','Preise, Pauschalen, Rabatte und Preisänderungsmechanismen',40],
-  ['AUTHORIZATION','Genehmigungspflicht, eKVA und Freigrenzen',50],
-  ['PRESCRIPTION','Verordnungsanforderungen',60],
-  ['BILLING','LEGS, LKZ/VWKZ, Versorgungsform und Abrechnungslogik',70],
-  ['DOCUMENTATION','Dokumentations- und Formularpflichten',80],
-  ['SERVICE','Lieferung, Reparatur, Wartung, Erprobung und Rückholung',90],
-  ['DEADLINES','Reaktions-, Liefer-, Genehmigungs- und sonstige Fristen',100],
-  ['LIABILITY','Haftung, Vertragsstrafen und sonstige Risiken',110],
-  ['CHANGES','Wesentliche Abweichungen zur Vorversion / zum Bestand',120],
-]
-
 function Badge({children,tone=''}){return <span className={'badge '+tone}>{children}</span>}
 function fmtDate(value){return value?new Date(value).toLocaleDateString('de-DE'):'—'}
 function statusLabel(value){return STATUS_LABELS[value]||value||'—'}
@@ -135,69 +120,19 @@ export default function ContractPrecheck({userId,onOpenChanges}){
   }),[prechecks])
 
   async function startPrecheck(){
-    const upload=uploads.find(r=>r.upload_id===newUploadId)
-    if(!upload){setError('Bitte zuerst einen Vertragsupload auswählen.');return}
+    if(!newUploadId){setError('Bitte zuerst einen Vertragsupload auswählen.');return}
     setBusy(true);setError('');setMessage('')
     try{
-      const {data:precheck,error:pe}=await supabase.from('contract_prechecks').insert({
-        contract_id:upload.contract_id,
-        upload_id:upload.upload_id,
-        status:'IN_REVIEW',
-        created_by:userId||null,
-        reviewed_by:userId||null,
-      }).select('*').single()
-      if(pe)throw pe
-
-      const diffRating=upload.baseline_upload_id
-        ? (Number(upload.change_count||0)>0?'YELLOW':'GREEN')
-        : 'PENDING'
-      const diffNote=upload.baseline_upload_id
-        ? (Number(upload.change_count||0)>0
-          ? Number(upload.change_count||0)+' Änderung(en) aus dem Upload-Diff müssen fachlich bewertet werden.'
-          : 'Zum vorhandenen Baseline-Upload wurden keine Änderungen erkannt.')
-        : 'Kein Baseline-Upload vorhanden; Vergleich zum Bestand fachlich prüfen.'
-
-      const rows=DEFAULT_CHECKS.map(([category,title,sort_order])=>({
-        precheck_id:precheck.precheck_id,
-        category,
-        title,
-        sort_order,
-        rating:category==='CHANGES'?diffRating:'PENDING',
-        note:category==='CHANGES'?diffNote:null,
-        source_reference:category==='CHANGES'?(upload.filename||null):null,
-        auto_generated:category==='CHANGES',
-        created_by:userId||null,
-      }))
-
-      if(Number(upload.review_count||0)>0){
-        rows.push({
-          precheck_id:precheck.precheck_id,
-          category:'OTHER',
-          title:'Automatische Prüfpunkte aus dem Vertragsupload',
-          sort_order:130,
-          rating:'YELLOW',
-          note:Number(upload.review_count||0)+' Prüfpunkte wurden beim Upload erkannt und müssen bestätigt werden.',
-          source_reference:upload.filename||null,
-          auto_generated:true,
-          created_by:userId||null,
-        })
-      }
-
-      const {error:fe}=await supabase.from('contract_precheck_findings').insert(rows)
-      if(fe)throw fe
-      const {error:ee}=await supabase.from('contract_precheck_events').insert({
-        precheck_id:precheck.precheck_id,
-        event_type:'PRECHECK_STARTED',
-        to_status:'IN_REVIEW',
-        note:'Vorprüfung über Admin-Menü gestartet.',
-        actor_user_id:userId||null,
+      const {data,error:e}=await supabase.rpc('vn_admin_create_contract_precheck',{
+        p_upload_id:newUploadId,
       })
-      if(ee)throw ee
-
+      if(e)throw e
+      const precheckId=typeof data==='string'?data:(data?.precheck_id||data)
+      if(!precheckId)throw new Error('Vorprüfung wurde angelegt, aber keine Prüf-ID zurückgegeben.')
       setNewUploadId('')
       setMessage('Vertragsvorprüfung wurde angelegt.')
-      await load(precheck.precheck_id)
-      await loadDetail(precheck.precheck_id)
+      await load(precheckId)
+      await loadDetail(precheckId)
     }catch(e){setError(e.message||String(e))}
     finally{setBusy(false)}
   }
