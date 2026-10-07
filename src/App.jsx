@@ -284,7 +284,7 @@ export default function App(){
       supabase.from('vn_position_catalog').select('position_row_id',{count:'planned',head:true}),
       supabase.from('vn_contract_knowledge_approved').select('knowledge_id',{count:'planned',head:true}),
       supabase.from('vn_contract_questions_open_p2').select('question_id',{count:'exact',head:true}),
-      supabase.from('vn_contract_read_model_p2').select('*').order('contract_name').limit(700),
+      supabase.from('vn_contract_index_cache').select('contract_id,contract_name,payer_families,product_groups,legs,catalog_valid_to,latest_valid_to,validity_mode,partner_display_name,partner_aliases').order('contract_name').limit(700),
       supabase.from('vn_site_directory').select('*').order('branch').limit(100),
     ])
     const first=[cc,pc,kc,qr,cr,sr].find(r=>r.error)?.error
@@ -625,7 +625,7 @@ export default function App(){
           <small>Bekannte Ansprechpartner:innen, IK und Status als Arbeitsgemeinschaft bleiben laut Mitteilung unverändert. Zusätzlich kann die E-Mail-Domain <b>@valuny.de</b> verwendet werden. Suche funktioniert mit VALUNY, spectrumK und ITSC.</small></div>
         </section>}
         <section className="panel"><div className="sectionbar"><div><h2>Vertragskatalog mit Beitrittsampel</h2><p>Beitritt, Gültigkeit und Voraussetzungen je Vertrag auf einen Blick.</p></div><input className="compact" value={contractQuery} onChange={e=>setContractQuery(e.target.value)} placeholder="Vertrag durchsuchen …"/></div>
-          <ContractTrafficLightPanel contracts={filteredContracts}/>
+          <ContractTrafficLightPanel query={contractQuery} contractIds={contractQuery.trim()?filteredContracts.map(r=>r.contract_id):null}/>
         </section>
       </>}
 
