@@ -222,3 +222,8 @@
 
 @media(max-width:1180px){.check-form{grid-template-columns:repeat(3,minmax(0,1fr))}.search-actions{align-self:end}}
 @media(max-width:760px){.check-form{grid-template-columns:1fr}.search-actions{width:100%}.search-actions button{flex:1}}
+
+.decision.ok{border-color:#8fd2b1;background:var(--ok-bg)}
+.decision.ok small,.decision.ok strong{color:var(--ok)}
+.decision.bad{border-color:#efb2b2;background:var(--bad-bg)}
+.decision.bad small,.decision.bad strong{color:var(--bad)}
