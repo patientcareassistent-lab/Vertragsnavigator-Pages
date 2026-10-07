@@ -9,6 +9,7 @@ import MissingSources from './components/MissingSources.jsx'
 import ContractTrafficLightPanel from './components/ContractTrafficLightPanel.jsx'
 import ContractPrecheck from './components/ContractPrecheck.jsx'
 import AdminDashboard from './components/AdminDashboard.jsx'
+import PayerFamilyReview from './components/PayerFamilyReview.jsx'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
@@ -179,7 +180,7 @@ export default function App(){
   const role=session?.user?.app_metadata?.vn_role||'versorger'
   const canFach=['fach','admin'].includes(role)
   const isAdmin=role==='admin'
-  const navItems=isAdmin?[...NAV,['admin','Admin-Cockpit'],['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:NAV
+  const navItems=isAdmin?[...NAV,['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:NAV
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
     const base=contracts
@@ -682,6 +683,11 @@ export default function App(){
       {isAdmin&&active==='admin'&&<>
         <div className="page-head"><div><h1>Admin-Cockpit</h1><p>Arbeitsvorrat, Blocker und nächste Schritte im Vertragsmanagement.</p></div><Badge tone="info">P2 · Steuerungsansicht</Badge></div>
         <AdminDashboard onNavigate={route=>setActive(route)}/>
+      </>}
+
+      {isAdmin&&active==='payerReview'&&<>
+        <div className="page-head"><div><h1>Kassenfamilien prüfen</h1><p>Fehlende Kostenträger-Zuordnungen nachvollziehbar prüfen, freigeben und protokollieren.</p></div><Badge tone="warn">P5 · Datenqualität</Badge></div>
+        <PayerFamilyReview onBack={()=>setActive('admin')} onDataChanged={()=>loadData(role)}/>
       </>}
 
       {isAdmin&&active==='precheck'&&<>
