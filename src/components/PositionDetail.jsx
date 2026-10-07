@@ -29,6 +29,7 @@ function sourceKeys(contract,position){
   if(name.includes('gwq'))keys.add('GWQ')
   return keys
 }
+function Badge({children,tone=''}){return <span className={'badge '+tone}>{children}</span>}
 function Field({label,value,wide=false}){
   return <div className={'position-field '+(wide?'wide':'')}><small>{label}</small><strong>{value??'—'}</strong></div>
 }
