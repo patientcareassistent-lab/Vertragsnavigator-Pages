@@ -341,3 +341,82 @@
 .company-change-notice p{margin:6px 0 4px;color:#475467;font-size:12px;line-height:1.45}
 .company-change-notice small{display:block;color:#667085;font-size:10px;line-height:1.45}
 @media(max-width:640px){.company-change-notice{padding:13px}.company-change-mark{width:30px;height:30px}}
+
+
+/* VN2 admin contract precheck */
+.precheck-workspace{display:grid;grid-template-columns:minmax(300px,.72fr) minmax(0,1.72fr);gap:16px}
+.precheck-workspace>.span2{grid-column:1/-1}
+.precheck-start{display:grid;gap:12px}
+.precheck-new-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end}
+.precheck-new-row .primary{display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap}
+.precheck-metrics{margin-top:2px}
+.precheck-list-panel,.precheck-detail{min-width:0}
+.precheck-list{display:grid;gap:7px;max-height:72vh;overflow:auto;padding-right:2px}
+.precheck-list-row{width:100%;display:grid;grid-template-columns:12px minmax(0,1fr) auto;align-items:center;gap:10px;text-align:left;border:1px solid #e1e7ec;border-radius:11px;background:#fff;padding:11px 12px}
+.precheck-list-row:hover{border-color:#cbd5dd;background:#fafcfd}
+.precheck-list-row.selected{border-color:#efb2c5;background:#fff7fa;box-shadow:0 0 0 2px rgba(229,0,70,.04)}
+.precheck-list-main{min-width:0}
+.precheck-list-main b,.precheck-list-main small{display:block}
+.precheck-list-main b{font-size:12px;color:#344054;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.precheck-list-main small{font-size:10px;color:var(--muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.precheck-dot{width:10px;height:10px;border-radius:50%;background:#98a2b3;box-shadow:0 0 0 3px #f2f4f7}
+.precheck-dot.green{background:var(--ok);box-shadow:0 0 0 3px var(--ok-bg)}
+.precheck-dot.yellow{background:var(--warn);box-shadow:0 0 0 3px var(--warn-bg)}
+.precheck-dot.red{background:var(--bad);box-shadow:0 0 0 3px var(--bad-bg)}
+.precheck-head-badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.precheck-flow{display:flex;align-items:center;gap:7px;overflow:auto;padding:9px 0 13px;border-bottom:1px solid #edf1f4;margin-bottom:13px}
+.precheck-flow span{white-space:nowrap;border:1px solid #dce3e7;border-radius:999px;background:#f8fafb;padding:6px 9px;color:#667085;font-size:10px;font-weight:800}
+.precheck-flow span.current{border-color:#efb2c5;background:#fff0f5;color:var(--pink)}
+.precheck-flow i{font-style:normal;color:#98a2b3}
+.precheck-context{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:13px}
+.precheck-context>div{border:1px solid #e2e7ea;border-radius:10px;background:#fafbfc;padding:10px}
+.precheck-context small{display:block;color:var(--muted);font-size:9px;text-transform:uppercase}
+.precheck-context strong{display:block;color:var(--blue);font-size:11px;line-height:1.4;margin-top:4px}
+.precheck-findings{display:grid;gap:9px}
+.precheck-finding{border:1px solid #dfe5e9;border-left:4px solid #98a2b3;border-radius:11px;background:#fff;padding:12px}
+.precheck-finding.green{border-left-color:var(--ok)}
+.precheck-finding.yellow{border-left-color:var(--warn);background:#fffdfa}
+.precheck-finding.red{border-left-color:var(--bad);background:#fffafa}
+.precheck-finding.resolved{opacity:.68}
+.precheck-finding-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.precheck-finding-title{display:flex;align-items:flex-start;gap:9px;min-width:0;color:#667085}
+.precheck-finding.green .precheck-finding-title{color:var(--ok)}
+.precheck-finding.yellow .precheck-finding-title{color:var(--warn)}
+.precheck-finding.red .precheck-finding-title{color:var(--bad)}
+.precheck-finding-title b{display:block;color:#344054;font-size:12px;line-height:1.35}
+.precheck-finding-title small{display:block;color:var(--muted);font-size:9px;margin-top:3px}
+.rating-control{display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.rating-control button{border:1px solid #d7dee3;border-radius:999px;background:#fff;color:#667085;padding:5px 7px;font-size:9px;font-weight:800}
+.rating-control button.active.green{background:var(--ok-bg);border-color:#9fd3bb;color:var(--ok)}
+.rating-control button.active.yellow{background:var(--warn-bg);border-color:#efc777;color:var(--warn)}
+.rating-control button.active.red{background:var(--bad-bg);border-color:#efb0aa;color:var(--bad)}
+.rating-control button.active.pending,.rating-control button.active.na{background:var(--info-bg);border-color:#b4cef8;color:var(--info)}
+.precheck-finding-body{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(180px,.6fr) auto;gap:9px;align-items:end;margin-top:10px}
+.precheck-finding-body textarea,.precheck-finding-body input{font-size:11px;padding:8px 9px}
+.small-button{padding:8px 10px;font-size:10px}
+.precheck-decision-box{margin-top:15px;border:1px solid #cfdbe4;border-radius:13px;background:#f9fcfe;padding:14px;display:grid;gap:11px}
+.precheck-decision-box h3{margin:0;color:var(--blue);font-size:15px}
+.precheck-decision-box p{margin:3px 0 0}
+.precheck-actions{display:flex;gap:7px;flex-wrap:wrap}
+.precheck-actions button{display:inline-flex;align-items:center;gap:6px}
+.danger-button{border:1px solid #efb0aa;border-radius:10px;background:var(--bad-bg);color:var(--bad);padding:11px 15px;font-weight:700}
+.danger-button:disabled{opacity:.5;cursor:not-allowed}
+.success-callout{border-color:#a6d8c0;background:var(--ok-bg)}
+.success-callout>div:first-child,.success-callout p{color:var(--ok)}
+.precheck-audit{margin-top:14px;border-top:1px solid #e7ecef;padding-top:11px}
+.precheck-audit summary{cursor:pointer;color:var(--blue);font-size:12px;font-weight:800}
+.precheck-audit .question-list{margin-top:10px}
+@media(max-width:1100px){
+  .precheck-workspace{grid-template-columns:1fr}
+  .precheck-workspace>.span2{grid-column:auto}
+  .precheck-list{max-height:360px}
+  .precheck-context{grid-template-columns:1fr 1fr}
+}
+@media(max-width:760px){
+  .precheck-new-row{grid-template-columns:1fr}
+  .precheck-context{grid-template-columns:1fr}
+  .precheck-finding-head{display:grid}
+  .rating-control{justify-content:flex-start}
+  .precheck-finding-body{grid-template-columns:1fr}
+  .precheck-actions{display:grid}
+}
