@@ -4,6 +4,7 @@ import { supabase, supabaseConfigured } from './lib/supabase.js'
 import ContractUpload from './components/ContractUpload.jsx'
 import ContractChanges from './components/ContractChanges.jsx'
 import PositionDetail from './components/PositionDetail.jsx'
+import MissingSources from './components/MissingSources.jsx'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
@@ -137,9 +138,12 @@ export default function App(){
   const [knowledgeQuery,setKnowledgeQuery]=useState('')
   const [questionForm,setQuestionForm]=useState({question_text:'',payer:'',contract_id:'',pg:'',hmv_code:'',position_code:''})
   const [questionMessage,setQuestionMessage]=useState('')
+  const [maintenanceContractId,setMaintenanceContractId]=useState('')
 
   const role=session?.user?.app_metadata?.vn_role||'versorger'
   const canFach=['fach','admin'].includes(role)
+  const isAdmin=role==='admin'
+  const navItems=isAdmin?[...NAV,['missingSources','Fehlende Quellen']]:NAV
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
     if(!payer)return []
@@ -399,7 +403,7 @@ export default function App(){
         <div className="userbar"><span>{session.user.email}</span><Badge>{mode==='fach'?'Innendienst':'Versorger'}</Badge><button className="secondary" onClick={()=>supabase.auth.signOut()}>Abmelden</button></div>
       </div>
       <div className="navwrap"><nav className="nav">
-        {NAV.map(([id,label])=><button key={id} className={active===id?'active':''} onClick={()=>setActive(id)}>{label}</button>)}
+        {navItems.map(([id,label])=><button key={id} className={active===id?'active':''} onClick={()=>setActive(id)}>{label}</button>)}
         <div className="mode-toggle"><button className={mode==='versorger'?'active':''} onClick={()=>setMode('versorger')}>Versorger</button><button className={mode==='fach'?'active':''} onClick={()=>setMode('fach')}>Innendienst</button></div>
       </nav></div>
     </header>
@@ -509,7 +513,7 @@ export default function App(){
 
       {active==='upload'&&<>
         <div className="page-head"><div><h1>Vertrag hochladen</h1><p>Vertragsquelle sicher ablegen, automatisch erkennen und Änderungen kontrolliert veröffentlichen.</p></div><Badge tone="warn">Versioniert · kein Überschreiben</Badge></div>
-        <ContractUpload contracts={contracts} sites={sites} canFach={canFach} onOpenChanges={()=>setActive('changes')}/>
+        <ContractUpload contracts={contracts} sites={sites} canFach={canFach} initialContractId={maintenanceContractId} onOpenChanges={()=>setActive('changes')}/>
       </>}
 
       {active==='changes'&&<>
@@ -525,6 +529,11 @@ export default function App(){
           <section className="panel"><h2>Neue Vertragsfrage</h2><form className="formstack" onSubmit={submitQuestion}><label>Vertragsfrage<textarea id="qText" rows="5" value={questionForm.question_text} onChange={e=>setQ('question_text',e.target.value)} required/></label><div className="formgrid"><label>Kostenträger<input value={questionForm.payer} onChange={e=>setQ('payer',e.target.value)}/></label><label>PG<input value={questionForm.pg} onChange={e=>setQ('pg',e.target.value)}/></label></div><label>Vertrag<select value={questionForm.contract_id} onChange={e=>setQ('contract_id',e.target.value)}><option value="">Nicht zugeordnet</option>{contracts.map(r=><option key={r.contract_id} value={r.contract_id}>{r.contract_name||r.contract_id}</option>)}</select></label><div className="formgrid"><label>HMV / Produktart<input value={questionForm.hmv_code} onChange={e=>setQ('hmv_code',e.target.value)}/></label><label>Position / GPOS<input value={questionForm.position_code} onChange={e=>setQ('position_code',e.target.value)}/></label></div>{questionMessage&&<div className={'alert '+(questionMessage.startsWith('Vertragsfrage wurde')?'success':'error')}>{questionMessage}</div>}<button className="primary" type="submit">Vertragsfrage anlegen</button></form></section>
           <section className="panel"><div className="sectionbar"><div><h2>Prüfqueue</h2><p>{canFach?'Fachlich sichtbare Fragen':'Eigene Vertragsfragen'}</p></div><Badge>{questions.length}</Badge></div><div className="question-list">{questions.map(r=><article className="question-row" key={r.question_id}><div><b>{r.question_text}</b><small>{[r.payer,r.pg&&`PG ${r.pg}`,r.hmv_code,r.position_code].filter(Boolean).join(' · ')||'ohne Zuordnung'}</small></div><Badge>{r.status}</Badge></article>)}{!questions.length&&<div className="empty-panel">Noch keine Vertragsfragen vorhanden.</div>}</div></section>
         </div>
+      </>}
+
+      {isAdmin&&active==='missingSources'&&<>
+        <div className="page-head"><div><h1>Fehlende Quellen</h1><p>Admin-Datenpflege für aktive Verträge ohne belastbare Originalquelle oder Vertragsinhalt.</p></div><Badge tone="warn">Admin</Badge></div>
+        <MissingSources onMaintain={contractId=>{setMaintenanceContractId(contractId);setActive('upload')}}/>
       </>}
 
       {active==='data'&&<><div className="page-head"><div><h1>Datenstand</h1><p>Aktuell im Vertragsnavigator verfügbare strukturierte Daten.</p></div><Badge tone="info">VN 2.1</Badge></div><div className="metrics"><Metric label="Verträge" value={stats.contracts}/><Metric label="Positionen importiert" value={stats.positions}/><Metric label="Freigegebenes Wissen" value={stats.knowledge}/><Metric label="Sichtbare Vertragsfragen" value={stats.questions}/></div><section className="panel spaced"><h2>Prüflogik</h2><p>Produkt/Position → Vertrag → Standort/IK → PQ → Vertragsbeitritt → Genehmigung/eKVA → Verordnung → Dokumentation → Fristen → Abrechnung.</p><div className="note">Kein positiver Prüfschritt ersetzt einen anderen.</div></section></>}
