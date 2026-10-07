@@ -250,3 +250,26 @@
   .ik-validity-header{display:none}
   .ik-validity-row input[type="date"]{grid-column:2}
 }
+
+
+/* Contract upload context: ERP + IK */
+.contract-context-panel{margin:14px 0 16px;border:1px solid #dbe4ea;border-radius:12px;background:#fbfcfd;overflow:hidden}
+.contract-context-panel.disabled-context{background:#f8fafc}
+.contract-context-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid #e8edf0}
+.contract-context-head h3{margin:0;color:var(--blue);font-size:13px}
+.contract-context-head p{margin:3px 0 0;color:#7b8794;font-size:9px}
+.erp-mapping-row{display:grid;grid-template-columns:minmax(260px,.9fr) minmax(260px,1.1fr);gap:14px;padding:12px 14px;background:#fff}
+.erp-mapping-row label{margin:0}
+.erp-mapping-row input{width:100%;margin-top:5px}
+.field-hint{font-weight:500;color:#7b8794}
+.erp-mapping-hint{border:1px solid #edf0f2;border-radius:9px;background:#fafbfc;padding:9px 11px}
+.erp-mapping-hint small,.erp-mapping-hint b,.erp-mapping-hint span{display:block}
+.erp-mapping-hint small{font-size:8px;color:#8a96a3;text-transform:uppercase;font-weight:800}
+.erp-mapping-hint b{font-size:11px;color:#344054;margin-top:2px}
+.erp-mapping-hint span{font-size:9px;color:#667085;margin-top:3px}
+.ik-validity-panel.embedded{margin:0;border:0;border-radius:0;border-top:1px solid #e8edf0}
+.context-placeholder{padding:18px 14px;color:#7b8794;font-size:9px;background:#fff}
+@media(max-width:780px){
+  .erp-mapping-row{grid-template-columns:1fr}
+  .contract-context-head{align-items:flex-start;flex-direction:column}
+}
