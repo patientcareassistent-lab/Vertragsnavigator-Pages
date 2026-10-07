@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { BookOpenCheck, History, MessageSquareText, Upload } from 'lucide-react'
+import { BookOpenCheck, History, LoaderCircle, MessageSquareText, Upload } from 'lucide-react'
 import { supabase, supabaseConfigured } from './lib/supabase.js'
 import ContractUpload from './components/ContractUpload.jsx'
 import ContractChanges from './components/ContractChanges.jsx'
@@ -132,6 +132,7 @@ export default function App(){
   const [selected,setSelected]=useState(null)
   const [supplyEval,setSupplyEval]=useState(null)
   const [supplyBusy,setSupplyBusy]=useState(false)
+  const [searchBusy,setSearchBusy]=useState(false)
   const [contractQuery,setContractQuery]=useState('')
   const [knowledgeQuery,setKnowledgeQuery]=useState('')
   const [questionForm,setQuestionForm]=useState({question_text:'',payer:'',contract_id:'',pg:'',hmv_code:'',position_code:''})
@@ -285,32 +286,39 @@ export default function App(){
     const rawTerm=term.trim()
     const termIsHmv=/^\d{2}(?:\.\d{2}){1,3}(?:\.\d{1,4})?$/.test(rawTerm)
     const termIsPosition=/^\d{6,12}$/.test(rawTerm)
-    const {data,error}=await supabase.rpc('vn_search_positions_v2',{
-      p_payer:payer||null,
-      p_payer_detail:payerDetail||null,
-      p_pg:pg||null,
-      p_query:(!termIsHmv&&!termIsPosition&&rawTerm)?rawTerm:null,
-      p_hmv:advanced.hmv.trim()||(termIsHmv?rawTerm:null),
-      p_position:advanced.position.trim()||(termIsPosition?rawTerm:null),
-      p_product_type:advanced.productType.trim()||null,
-      p_contract:advanced.contract.trim()||null,
-      p_legs:advanced.legs.trim()||null,
-      p_lkz:advanced.lkz.trim()||null,
-      p_approval:advanced.approval,
-      p_supply_form:advanced.supplyForm,
-      p_prescription:advanced.prescription,
-      p_valid_on:advanced.validOn||null,
-      p_price_mode:advanced.priceMode,
-      p_min_price:toNumber(advanced.minPrice),
-      p_max_price:toNumber(advanced.maxPrice),
-      p_authoritative_only:advanced.authoritative,
-      p_site_id:siteId||null,
-      p_pq:advanced.pq,
-      p_accession:advanced.accession,
-      p_limit:150,
-    })
-    if(error){setError(error.message);return}
-    setResults(data||[])
+    const freeTextQuery=(!termIsHmv&&!termIsPosition&&rawTerm)?rawTerm:null
+    const rpcName=freeTextQuery?'vn_search_positions_text_v2':'vn_search_positions_v2'
+    setSearchBusy(true)
+    try{
+      const {data,error}=await supabase.rpc(rpcName,{
+        p_payer:payer||null,
+        p_payer_detail:payerDetail||null,
+        p_pg:pg||null,
+        p_query:freeTextQuery,
+        p_hmv:advanced.hmv.trim()||(termIsHmv?rawTerm:null),
+        p_position:advanced.position.trim()||(termIsPosition?rawTerm:null),
+        p_product_type:advanced.productType.trim()||null,
+        p_contract:advanced.contract.trim()||null,
+        p_legs:advanced.legs.trim()||null,
+        p_lkz:advanced.lkz.trim()||null,
+        p_approval:advanced.approval,
+        p_supply_form:advanced.supplyForm,
+        p_prescription:advanced.prescription,
+        p_valid_on:advanced.validOn||null,
+        p_price_mode:advanced.priceMode,
+        p_min_price:toNumber(advanced.minPrice),
+        p_max_price:toNumber(advanced.maxPrice),
+        p_authoritative_only:advanced.authoritative,
+        p_site_id:siteId||null,
+        p_pq:advanced.pq,
+        p_accession:advanced.accession,
+        p_limit:150,
+      })
+      if(error){setError(error.message);return}
+      setResults(data||[])
+    }finally{
+      setSearchBusy(false)
+    }
   }
 
   function resetAssistantSearch(){
@@ -411,7 +419,7 @@ export default function App(){
         <div className="grid">
           <section className="panel assistant-hero span2">
             <div className="assistant-top"><div className="assistant-title"><small>Vertragsassistent</small><h2>Darf ich versorgen?</h2><p>Position auswählen, Standort festlegen und die Prüfpunkte nacheinander bewerten.</p></div><div className={'decision '+decisionTone}><small>Ergebnis</small><strong>{decisionLabel}</strong></div></div>
-            <form className="check-form" onSubmit={runAssistant}>
+            <form className="check-form" onSubmit={runAssistant} aria-busy={searchBusy}>
               <label>Kostenträger<select value={payer} onChange={e=>{setPayer(e.target.value);setPayerDetail('')}}><option value="">Alle Kassen</option>{payerOptions.map(v=><option key={v}>{v}</option>)}</select></label>
               <label>Kasse / Region<select value={payerDetail} onChange={e=>setPayerDetail(e.target.value)} disabled={!payer}>
                 <option value="">{payer?('Alle '+payer+'-Kassen / Regionen'):'Zuerst Kostenträger wählen'}</option>
@@ -420,7 +428,15 @@ export default function App(){
               <label>Produktgruppe<select value={pg} onChange={e=>setPg(e.target.value)}><option value="">Alle PG</option>{pgOptions.map(v=><option key={v}>{v}</option>)}</select></label>
               <label>HMV / Position / Begriff<input id="assistantTerm" value={term} onChange={e=>setTerm(e.target.value)} placeholder="z. B. leichtgewichts, Rolli, 18.50, AOK Bayern …"/></label>
               <label>Standort<select value={siteId} onChange={e=>setSiteId(e.target.value)}><option value="">Standort wählen</option>{sites.map(s=><option key={s.site_id} value={s.site_id}>{s.branch||'Standort'}{s.ik?` · IK ${s.ik}`:''}</option>)}</select></label>
-              <div className="search-actions"><button className="primary" type="submit">Prüfen</button><button className="secondary" type="button" onClick={resetAssistantSearch}>Zurücksetzen</button></div>
+              <div className="search-actions">
+                <button className="primary" type="submit" disabled={searchBusy}>
+                  {searchBusy?<><LoaderCircle className="spin" size={16}/> Suche …</>:'Prüfen'}
+                </button>
+                <button className="secondary" type="button" onClick={resetAssistantSearch} disabled={searchBusy}>Zurücksetzen</button>
+              </div>
+              {searchBusy&&<div className="search-running" role="status" aria-live="polite">
+                <LoaderCircle className="spin" size={17}/><span>Vertragsdaten werden durchsucht …</span>
+              </div>}
 
               <details className="advanced-search" open>
                 <summary>Erweiterte Suche <span>HMV · Position · Produktart · Vertrag · LEGS · LKZ · Genehmigung · Versorgungsform · Gültigkeit · PQ</span></summary>
