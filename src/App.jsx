@@ -3,6 +3,7 @@ import { BookOpenCheck, History, MessageSquareText, Upload } from 'lucide-react'
 import { supabase, supabaseConfigured } from './lib/supabase.js'
 import ContractUpload from './components/ContractUpload.jsx'
 import ContractChanges from './components/ContractChanges.jsx'
+import PositionDetail from './components/PositionDetail.jsx'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
@@ -280,6 +281,7 @@ export default function App(){
     || String(e.contract||'').toLowerCase()===String(selected.contract||'').toLowerCase()
   ))
   const relatedKnowledge=selected?knowledge.filter(k=>(!k.pg||String(k.pg)===String(selected.pg))):[]
+  const selectedContract=selected?contracts.find(c=>String(c.contract_id)===String(selected.contract_id)):null
   const resultContractCount=new Set(results.map(r=>r.contract_id||r.contract||r.family).filter(Boolean)).size
 
   if(!supabaseConfigured)return <main className="center"><section className="auth-card"><h1>Vertragsnavigator 2.1</h1><p>Supabase ist noch nicht konfiguriert.</p></section></main>
@@ -366,7 +368,14 @@ export default function App(){
               <Check n="5" title="Dokumentation" status={relatedKnowledge.length?'Wissen vorhanden':'prüfen'} value={relatedKnowledge.length?`${relatedKnowledge.length} freigegebene Wissenseinträge`:'Vertragswissen/Formularregeln'} ok={relatedKnowledge.length>0}/>
               <Check n="6" title="Abrechnung" status={selected?.preis!=null?'Preis vorhanden':'noch offen'} value={selected?.preis!=null?String(selected.preis):'Preis/Versorgungsform'} ok={selected?.preis!=null}/>
             </div>
-            {selected&&<div className="note detail-only selected-meta">HMV: {selected.code||'—'} · GPOS: {selected.pos||'—'} · LEGS: {selected.legs||'—'} · LKZ: {selected.lkz||'—'} · Versorgungsform: {selected.versorgungsform||'—'} · gültig: {selected.gueltig_ab||'—'} bis {selected.gueltig_bis||'offen'} · Position-ID: {selected.position_row_id}</div>}
+            {selected&&<PositionDetail
+              position={selected}
+              contract={selectedContract}
+              site={selectedSite}
+              siteMatch={siteMatch}
+              knowledge={relatedKnowledge}
+              canFach={canFach}
+            />}
           </section>
           <section className="panel span2"><div className="sectionbar"><div><h2>Treffer</h2><p>Eine Position anklicken, um sie zu übernehmen.</p></div><Badge>{results.length}</Badge></div>
             {results.length>0&&!selected&&<div className="result-hint"><b>{results.length} passende Positionen · {resultContractCount} Vertragsvarianten</b><span>{payer==='AOK'&&!siteId?'AOK-Verträge sind regional. Bitte Standort wählen oder unten den passenden Vertrag auswählen.':'Bitte den passenden Vertrag bzw. die Position auswählen.'}</span></div>}
