@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { BookOpenCheck, History, LoaderCircle, MessageSquareText, Upload } from 'lucide-react'
+import { BookOpenCheck, History, LoaderCircle, MessageSquareText, ShieldCheck, Upload } from 'lucide-react'
 import { supabase, supabaseConfigured } from './lib/supabase.js'
 import ContractUpload from './components/ContractUpload.jsx'
 import ContractChanges from './components/ContractChanges.jsx'
 import PositionDetail from './components/PositionDetail.jsx'
 import MissingSources from './components/MissingSources.jsx'
 import ContractTrafficLightPanel from './components/ContractTrafficLightPanel.jsx'
+import ContractPrecheck from './components/ContractPrecheck.jsx'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
@@ -170,7 +171,7 @@ export default function App(){
   const role=session?.user?.app_metadata?.vn_role||'versorger'
   const canFach=['fach','admin'].includes(role)
   const isAdmin=role==='admin'
-  const navItems=isAdmin?[...NAV,['missingSources','Fehlende Quellen']]:NAV
+  const navItems=isAdmin?[...NAV,['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:NAV
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
     const base=contracts
@@ -440,6 +441,7 @@ export default function App(){
 
     <aside className="quick-rail" aria-label="Schnellzugriff">
       <button className={active==='knowledge'?'active':''} onClick={()=>jump('knowledge','knowledgeSearch')} title="Vertragswissen" aria-label="Vertragswissen"><BookOpenCheck size={19}/></button>
+      {isAdmin&&<button className={active==='precheck'?'active':''} onClick={()=>jump('precheck')} title="Vertragsvorprüfung" aria-label="Vertragsvorprüfung"><ShieldCheck size={19}/></button>}
       <button className={active==='upload'?'active':''} onClick={()=>jump('upload')} title="Vertrag hochladen" aria-label="Vertrag hochladen"><Upload size={19}/></button>
       <button className={active==='changes'?'active':''} onClick={()=>jump('changes')} title="Änderungen" aria-label="Änderungen"><History size={19}/></button>
       <button className={active==='questions'?'active':''} onClick={()=>jump('questions','qText')} title="Vertragsfrage" aria-label="Vertragsfrage"><MessageSquareText size={19}/></button>
@@ -542,6 +544,11 @@ export default function App(){
         <section className="panel"><div className="sectionbar"><div><h2>Vertragskatalog mit Beitrittsampel</h2><p>Beitritt, Gültigkeit und Voraussetzungen je Vertrag auf einen Blick.</p></div><input className="compact" value={contractQuery} onChange={e=>setContractQuery(e.target.value)} placeholder="Vertrag durchsuchen …"/></div>
           <ContractTrafficLightPanel contracts={filteredContracts}/>
         </section>
+      </>}
+
+      {isAdmin&&active==='precheck'&&<>
+        <div className="page-head"><div><h1>Vertragsvorprüfung</h1><p>Neue und geänderte Verträge vor der Unterschrift strukturiert prüfen, Risiken dokumentieren und fachlich freigeben.</p></div><Badge tone="warn">Admin · vor Unterschrift</Badge></div>
+        <ContractPrecheck userId={session.user.id} onOpenChanges={()=>setActive('changes')}/>
       </>}
 
       {active==='upload'&&<>
