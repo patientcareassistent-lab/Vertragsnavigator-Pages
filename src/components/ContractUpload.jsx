@@ -8,9 +8,10 @@ import {
 import {
   acceptContractUpload,getContractUploadStatus,getCurrentUploadId,
   markContractUploadReady,parseContractUpload,saveCurrentUploadId,
-  uploadContractSource,validateContractFile,compareContractUpload,
+  uploadContractSource,validateContractFile,compareContractUpload,saveContractIkScopes,
 } from '../lib/contractUpload.js'
 import { ContractChangeList,formatUploadDate } from './ContractChangeList.jsx'
+import { supabase } from '../lib/supabase.js'
 
 const TYPE_LABELS={CONTRACT:'Vertragskopf',VERSION:'Vertragsversionen',POSITION:'Preis-/Versorgungspositionen'}
 const STATUS_LABELS={
@@ -67,7 +68,7 @@ function UploadStatusCard({detail,canFach,onAccept,busy}){
   </section>
 }
 
-export default function ContractUpload({contracts=[],canFach=false,onOpenChanges}){
+export default function ContractUpload({contracts=[],sites=[],canFach=false,onOpenChanges}){
   const inputRef=useRef(null)
   const [contractId,setContractId]=useState('')
   const [file,setFile]=useState(null)
@@ -79,9 +80,15 @@ export default function ContractUpload({contracts=[],canFach=false,onOpenChanges
   const [parser,setParser]=useState(null)
   const [completeTypes,setCompleteTypes]=useState([])
   const [detail,setDetail]=useState(null)
+  const [ikScopes,setIkScopes]=useState({})
+  const [existingIkScopes,setExistingIkScopes]=useState({})
 
   const selectedContract=contracts.find(c=>c.contract_id===contractId)
   const sortedContracts=useMemo(()=>[...contracts].sort((a,b)=>String(a.contract_name||'').localeCompare(String(b.contract_name||''),'de')),[contracts])
+  const sortedSites=useMemo(()=>[...sites].sort((a,b)=>{
+    if(Boolean(a.active)!==Boolean(b.active))return a.active?-1:1
+    return String(a.branch||a.ik||'').localeCompare(String(b.branch||b.ik||''),'de')
+  }),[sites])
   const suggested=parser?.result?.suggested_complete_entity_types||[]
   const parserName=parser?.parser||''
   const isPdf=parserName.includes('pdf')
@@ -90,8 +97,93 @@ export default function ContractUpload({contracts=[],canFach=false,onOpenChanges
 
   useEffect(()=>{
     if(!uploadId)return
-    getContractUploadStatus(uploadId).then(setDetail).catch(()=>{})
+    getContractUploadStatus(uploadId).then(current=>{
+      setDetail(current)
+      if(current?.upload?.contract_id)setContractId(current.upload.contract_id)
+      if(current?.ik_scopes?.length){
+        setIkScopes(prev=>{
+          const next={...prev}
+          current.ik_scopes.forEach(s=>{
+            next[s.ik]={
+              selected:s.scope_action!=='REMOVE',
+              validFrom:s.valid_from||'',
+              validTo:s.valid_to||'',
+            }
+          })
+          return next
+        })
+      }
+    }).catch(()=>{})
   },[])
+
+  useEffect(()=>{
+    let cancelled=false
+    async function loadIkValidity(){
+      if(!contractId){setIkScopes({});setExistingIkScopes({});return}
+      const {data,error}=await supabase.from('vn_contract_ik_validity')
+        .select('ik,site_id,branch,valid_from,valid_to')
+        .eq('contract_id',contractId)
+      if(cancelled||error)return
+      const existing={}
+      const initial={}
+      ;(data||[]).forEach(row=>{
+        existing[row.ik]=row
+        initial[row.ik]={
+          selected:true,
+          validFrom:row.valid_from||'',
+          validTo:row.valid_to||'',
+        }
+      })
+      setExistingIkScopes(existing)
+      setIkScopes(current=>Object.keys(current).length&&uploadId?current:initial)
+    }
+    loadIkValidity()
+    return()=>{cancelled=true}
+  },[contractId])
+
+  function setIkScope(ik,patch){
+    setIkScopes(current=>({
+      ...current,
+      [ik]:{selected:false,validFrom:'',validTo:'',...(current[ik]||{}),...patch},
+    }))
+  }
+
+  function buildIkScopePayload(){
+    const rows=[]
+    for(const site of sortedSites){
+      const current=ikScopes[site.ik]||{selected:false,validFrom:'',validTo:''}
+      const existing=existingIkScopes[site.ik]
+      if(current.selected){
+        rows.push({
+          ik:site.ik,
+          valid_from:current.validFrom||null,
+          valid_to:current.validTo||null,
+          scope_action:'UPSERT',
+        })
+      }else if(existing){
+        rows.push({
+          ik:site.ik,
+          valid_from:existing.valid_from||null,
+          valid_to:existing.valid_to||null,
+          scope_action:'REMOVE',
+        })
+      }
+    }
+    return rows
+  }
+
+  function ikScopeChanged(){
+    for(const site of sortedSites){
+      const current=ikScopes[site.ik]||{selected:false,validFrom:'',validTo:''}
+      const existing=existingIkScopes[site.ik]
+      if(Boolean(current.selected)!==Boolean(existing))return true
+      if(current.selected&&existing&&(
+        String(current.validFrom||'')!==String(existing.valid_from||'')
+        ||String(current.validTo||'')!==String(existing.valid_to||'')
+      ))return true
+    }
+    return false
+  }
 
   function selectFile(next){
     setError('');setMessage('')
@@ -105,9 +197,21 @@ export default function ContractUpload({contracts=[],canFach=false,onOpenChanges
       setBusy('upload')
       const completed=await uploadContractSource(contractId,file,selectedContract?.contract_name||'')
       setUploadId(completed.upload_id)
+
+      const scopeRows=buildIkScopePayload()
+      if(scopeRows.length)await saveContractIkScopes(completed.upload_id,scopeRows)
+
       if(completed.upload_status==='DUPLICATE'){
-        setDetail(await getContractUploadStatus(completed.upload_id))
-        setMessage('Diese Datei ist bereits im Vertragsbestand vorhanden.')
+        if(ikScopeChanged()){
+          setBusy('compare')
+          await compareContractUpload(completed.upload_id)
+          const current=await getContractUploadStatus(completed.upload_id)
+          setDetail(current)
+          setMessage('Vertragsdatei unverändert. IK-Gültigkeitsänderungen wurden zur Prüfung gestellt.')
+        }else{
+          setDetail(await getContractUploadStatus(completed.upload_id))
+          setMessage('Diese Datei ist bereits im Vertragsbestand vorhanden. Keine IK-Gültigkeitsänderung erkannt.')
+        }
         return
       }
 
@@ -160,6 +264,7 @@ export default function ContractUpload({contracts=[],canFach=false,onOpenChanges
 
   function reset(){
     setContractId('');setFile(null);setParser(null);setCompleteTypes([]);setDetail(null)
+    setIkScopes({});setExistingIkScopes({})
     setUploadId('');setError('');setMessage('');saveCurrentUploadId('')
   }
 
@@ -191,6 +296,33 @@ export default function ContractUpload({contracts=[],canFach=false,onOpenChanges
           <span>{selectedContract?.product_groups?.length?'PG '+selectedContract.product_groups.join(', '):'Der bestehende Vertragsstand dient als Vergleichsbasis.'}</span>
         </div>
       </div>
+
+      {contractId&&<div className="ik-validity-panel">
+        <div className="ik-validity-head">
+          <div><h3>IK-Zugehörigkeit / Gültigkeit</h3><p>Für welche IK gilt dieser Vertragsstand – und in welchem Zeitraum?</p></div>
+          <Badge tone="info">{Object.values(ikScopes).filter(x=>x?.selected).length} IK ausgewählt</Badge>
+        </div>
+        <div className="ik-validity-table">
+          <div className="ik-validity-row ik-validity-header">
+            <span>Gilt</span><span>Standort / IK</span><span>Gültig ab</span><span>Gültig bis</span>
+          </div>
+          {sortedSites.map(site=>{
+            const row=ikScopes[site.ik]||{selected:false,validFrom:'',validTo:''}
+            return <div className={'ik-validity-row '+(!site.active?'inactive':'')} key={site.site_id||site.ik}>
+              <label className="ik-check">
+                <input type="checkbox" checked={Boolean(row.selected)} disabled={Boolean(uploadId)}
+                  onChange={e=>setIkScope(site.ik,{selected:e.target.checked})}/>
+              </label>
+              <div className="ik-site"><b>{site.branch||'Standort'}</b><small>IK {site.ik}{!site.active?' · inaktiv':''}</small></div>
+              <input type="date" value={row.validFrom||''} disabled={!row.selected||Boolean(uploadId)}
+                onChange={e=>setIkScope(site.ik,{validFrom:e.target.value})}/>
+              <input type="date" value={row.validTo||''} disabled={!row.selected||Boolean(uploadId)}
+                onChange={e=>setIkScope(site.ik,{validTo:e.target.value})}/>
+            </div>
+          })}
+        </div>
+        <div className="ik-validity-note">IK-Gültigkeit wird separat von PQ und Vertragsbeitritt geführt. Erst die fachliche Freigabe veröffentlicht Änderungen.</div>
+      </div>}
 
       {!uploadId&&<div
         className={'dropzone '+(dragging?'dragging ':'')+(file?'has-file':'')}
