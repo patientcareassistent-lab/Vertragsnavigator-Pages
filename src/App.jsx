@@ -275,7 +275,10 @@ export default function App(){
   }
 
   const selectedSite=sites.find(s=>String(s.site_id)===String(siteId))
-  const siteMatch=selected&&selectedSite?.eligibilities?.find(e=>String(e.contract||'').toLowerCase()===String(selected.contract||'').toLowerCase()&&e.active)
+  const siteMatch=selected&&selectedSite?.eligibilities?.find(e=>e.active&&(
+    (selected.contract_id&&e.contract_id&&String(e.contract_id)===String(selected.contract_id))
+    || String(e.contract||'').toLowerCase()===String(selected.contract||'').toLowerCase()
+  ))
   const relatedKnowledge=selected?knowledge.filter(k=>(!k.pg||String(k.pg)===String(selected.pg))):[]
   const resultContractCount=new Set(results.map(r=>r.contract_id||r.contract||r.family).filter(Boolean)).size
 
