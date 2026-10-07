@@ -50,9 +50,13 @@ export default function AdminDashboard({onNavigate}){
   const [busy,setBusy]=useState(false)
   const [error,setError]=useState('')
 
-  async function load(){
+  async function load(refreshQuality=false){
     setBusy(true);setError('')
     try{
+      if(refreshQuality){
+        const {error:refreshError}=await supabase.rpc('vn_admin_refresh_p4_quality')
+        if(refreshError)throw refreshError
+      }
       const [mr,ar,or,qr,aer,rer]=await Promise.all([
         supabase.from('vn_admin_dashboard_p2').select('*').single(),
         supabase.from('vn_admin_action_queue_p2')
@@ -82,7 +86,7 @@ export default function AdminDashboard({onNavigate}){
     finally{setBusy(false)}
   }
 
-  useEffect(()=>{load()},[])
+  useEffect(()=>{load(false)},[])
 
   const sorted=useMemo(()=>[...actions].sort((a,b)=>{
     const p=(PRIORITY_ORDER[a.priority]??9)-(PRIORITY_ORDER[b.priority]??9)
@@ -130,7 +134,7 @@ export default function AdminDashboard({onNavigate}){
         <div className="admin-command-actions">
           <Badge tone={urgent.length?'bad':'ok'}>{urgent.length} dringend</Badge>
           <Badge tone={actionableCount?'warn':'ok'}>{actionableCount} Aufgaben</Badge>
-          <button className="secondary icon-button" type="button" onClick={load} disabled={busy} title="Aktualisieren">
+          <button className="secondary icon-button" type="button" onClick={()=>load(true)} disabled={busy} title="Betrieb und Datenqualität aktualisieren">
             <RefreshCw className={busy?'spin':''} size={17}/>
           </button>
         </div>
@@ -212,7 +216,7 @@ export default function AdminDashboard({onNavigate}){
 
     <section className="panel admin-quality-panel">
       <div className="sectionbar">
-        <div><h2>Datenqualität</h2><p>Ampel aus messbaren Lücken im aktiven Vertrags- und Positionsbestand.</p></div>
+        <div><h2>Datenqualität</h2><p>Ampel aus messbaren Lücken im aktiven Vertrags- und Positionsbestand. Stand: {fmtDateTime(sortedQuality[0]?.refreshed_at)}</p></div>
         <div className="admin-command-actions">
           <Badge tone={qualityRed?'bad':'ok'}>{qualityRed} rot</Badge>
           <Badge tone={qualityYellow?'warn':'ok'}>{qualityYellow} gelb</Badge>
