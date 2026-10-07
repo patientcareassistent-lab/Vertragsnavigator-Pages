@@ -130,6 +130,8 @@ export default function App(){
   const [advanced,setAdvanced]=useState({...EMPTY_ADVANCED})
   const [results,setResults]=useState([])
   const [selected,setSelected]=useState(null)
+  const [supplyEval,setSupplyEval]=useState(null)
+  const [supplyBusy,setSupplyBusy]=useState(false)
   const [contractQuery,setContractQuery]=useState('')
   const [knowledgeQuery,setKnowledgeQuery]=useState('')
   const [questionForm,setQuestionForm]=useState({question_text:'',payer:'',contract_id:'',pg:'',hmv_code:'',position_code:''})
@@ -166,6 +168,33 @@ export default function App(){
 
   useEffect(()=>{if(session) loadData()},[session])
   useEffect(()=>{if(payerDetail&&!payerDetailOptions.includes(payerDetail))setPayerDetail('')},[payerDetail,payerDetailOptions])
+  useEffect(()=>{
+    let cancelled=false
+    async function evaluateSelected(){
+      if(!selected||!siteId){setSupplyEval(null);setSupplyBusy(false);return}
+      setSupplyBusy(true)
+      try{
+        const args={
+          p_site_id:siteId,
+          p_position_row_id:selected.position_row_id,
+          p_hmv_code_override:selected.code||advanced.hmv||null,
+        }
+        if(advanced.validOn)args.p_as_of=advanced.validOn
+        const {data,error}=await supabase.rpc('evaluate_position_supply',args)
+        if(error)throw error
+        if(!cancelled)setSupplyEval(Array.isArray(data)?(data[0]||null):data||null)
+      }catch(e){
+        if(!cancelled){
+          setSupplyEval(null)
+          setError(e.message||String(e))
+        }
+      }finally{
+        if(!cancelled)setSupplyBusy(false)
+      }
+    }
+    evaluateSelected()
+    return()=>{cancelled=true}
+  },[selected?.position_row_id,siteId,advanced.validOn,advanced.hmv])
 
   async function login(e){
     e.preventDefault();setAuthError('')
@@ -231,7 +260,7 @@ export default function App(){
   }
 
   async function runAssistant(e){
-    e.preventDefault();setSelected(null);setError('')
+    e.preventDefault();setSelected(null);setSupplyEval(null);setError('')
 
     const hasAdvanced=[
       advanced.hmv,advanced.position,advanced.productType,advanced.contract,advanced.legs,advanced.lkz,
@@ -293,6 +322,7 @@ export default function App(){
     setAdvanced({...EMPTY_ADVANCED})
     setResults([])
     setSelected(null)
+    setSupplyEval(null)
     setError('')
     setTimeout(()=>document.getElementById('assistantTerm')?.focus(),80)
   }
@@ -334,6 +364,15 @@ export default function App(){
     return true
   }):[]
   const resultContractCount=new Set(results.map(r=>r.contract_id||r.contract||r.family).filter(Boolean)).size
+  const supplyDecision=supplyEval?.decision||''
+  const decisionLabel=supplyDecision==='GRUEN'?'GRÜN':supplyDecision==='ROT'?'ROT':'PRÜFEN'
+  const decisionTone=supplyDecision==='GRUEN'?'ok':supplyDecision==='ROT'?'bad':'warn'
+  const supplyPathOk=supplyEval?.pq_decision==='GRUEN'&&Number(supplyEval?.green_scope_count||0)>0
+  const supplyPathValue=!siteId?'Standort auswählen':
+    supplyBusy?'PQ und Vertragsbeitritt werden geprüft …':
+    supplyEval?
+      `PQ: ${supplyEval.pq_decision==='GRUEN'?'vorhanden':supplyEval.pq_decision==='ROT'?'nicht vorhanden':'prüfen'} · Vertragsweg: ${Number(supplyEval.green_scope_count||0)>0?Number(supplyEval.green_scope_count)+' aktiv':Number(supplyEval.matching_scope_count||0)>0?'prüfen':'kein passender Umfang'}`
+      :(siteMatch?([siteMatch.status,siteMatch.prerequisites_met].filter(Boolean).join(' · ')||'aktiv'):'Kein eindeutiger Vertragsbeitritt')
 
   if(!supabaseConfigured)return <main className="center"><section className="auth-card"><h1>Vertragsnavigator 2.1</h1><p>Supabase ist noch nicht konfiguriert.</p></section></main>
   if(!authReady)return <main className="center"><section className="auth-card"><p>Anmeldung wird geprüft …</p></section></main>
@@ -371,7 +410,7 @@ export default function App(){
         <div className="page-head"><div><h1>Versorgung prüfen</h1><p>Die wesentlichen Vertragsinformationen in einer Arbeitsansicht.</p></div><Badge tone="info">Vertragswissen zuerst</Badge></div>
         <div className="grid">
           <section className="panel assistant-hero span2">
-            <div className="assistant-top"><div className="assistant-title"><small>Vertragsassistent</small><h2>Darf ich versorgen?</h2><p>Position auswählen, Standort festlegen und die Prüfpunkte nacheinander bewerten.</p></div><div className="decision"><small>Ergebnis</small><strong>PRÜFEN</strong></div></div>
+            <div className="assistant-top"><div className="assistant-title"><small>Vertragsassistent</small><h2>Darf ich versorgen?</h2><p>Position auswählen, Standort festlegen und die Prüfpunkte nacheinander bewerten.</p></div><div className={'decision '+decisionTone}><small>Ergebnis</small><strong>{decisionLabel}</strong></div></div>
             <form className="check-form" onSubmit={runAssistant}>
               <label>Kostenträger<select value={payer} onChange={e=>{setPayer(e.target.value);setPayerDetail('')}}><option value="">Alle Kassen</option>{payerOptions.map(v=><option key={v}>{v}</option>)}</select></label>
               <label>Kasse / Region<select value={payerDetail} onChange={e=>setPayerDetail(e.target.value)} disabled={!payer}>
@@ -417,7 +456,10 @@ export default function App(){
                 status={selected?'Vertrag gefunden':results.length?(resultContractCount===1?'1 Vertrag gefunden':`${resultContractCount} Vertragsvarianten gefunden`):'noch offen'}
                 value={selected?(selected.contract||selected.family||'Vertrag vorhanden'):results.length?(siteId?'Passende Position auswählen':'Standort/Region wählen oder Position auswählen'):'Position suchen'}
                 ok={!!selected}/>
-              <Check n="2" title="PQ / IK / Beitritt" status={siteMatch?'Beitritt gefunden':siteId?'prüfen':'noch offen'} value={siteMatch?([siteMatch.status,siteMatch.prerequisites_met].filter(Boolean).join(' · ')||'aktiv'):siteId?'Kein eindeutiger Vertragsbeitritt':'Standort auswählen'} ok={!!siteMatch}/>
+              <Check n="2" title="PQ / IK / Beitritt"
+                status={!siteId?'noch offen':supplyBusy?'prüfen':supplyPathOk?'PQ + Beitritt bestätigt':supplyEval?.decision==='ROT'?'nicht erfüllt':'prüfen'}
+                value={supplyPathValue}
+                ok={supplyPathOk}/>
               <Check n="3" title="Genehmigung" status={selected?.genehmigung?'Vertragsangabe':'noch offen'} value={selected?.genehmigung||selected?.freigrenze||'Vertragsangabe fehlt'} ok={!!selected?.genehmigung}/>
               <Check n="4" title="Verordnung" status={selected?.verordnung?'Vertragsangabe':'noch offen'} value={selected?.verordnung||'Vertragsangabe fehlt'} ok={!!selected?.verordnung}/>
               <Check n="5" title="Dokumentation" status={relatedKnowledge.length?'Wissen vorhanden':'prüfen'} value={relatedKnowledge.length?`${relatedKnowledge.length} freigegebene Wissenseinträge`:'Vertragswissen/Formularregeln'} ok={relatedKnowledge.length>0}/>
