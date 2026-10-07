@@ -1,6 +1,4 @@
-// VN2 Vertragsampel – Beitritt, Gültigkeit und Voraussetzungen
-import React, { useEffect, useMemo, useState } from 'react'
-import { supabase } from '../lib/supabase.js'
+import React,{useMemo} from 'react'
 
 const META={
   GREEN:{symbol:'●',label:'Aktiv beigetreten',className:'green'},
@@ -11,59 +9,40 @@ const META={
 
 const arr=value=>Array.isArray(value)?value:(value?[value]:[])
 
-const norm=value=>String(value||'').toLowerCase().replace(/[^a-z0-9]+/g,' ')
-function displayCompanyName(value){
-  const name=String(value||'')
-  const n=norm(name)
-  if((n.includes('spectrumk')||n.includes('spectrum k'))&&!n.includes('valuny')){
-    return name.replace(/^spectrum\s*k/i,'VALUNY GmbH (ehemals spectrumK)')
-  }
-  return name
+function contractSuffix(value){
+  const raw=String(value||'').trim()
+  const i=raw.indexOf(':')
+  return i>=0?raw.slice(i+1).trim():''
 }
 
-function TrafficBadge({status='GRAY'}){
+function TrafficBadge({status='GRAY',compact=false}){
   const meta=META[status]||META.GRAY
-  return <span className={'traffic-badge '+meta.className}>
+  return <span className={'traffic-badge '+meta.className+(compact?' compact':'')}>
     <span className="traffic-dot" aria-hidden="true">{meta.symbol}</span>
     <span>{meta.label}</span>
   </span>
 }
 
 export default function ContractTrafficLightPanel({contracts=[]}){
-  const [summaries,setSummaries]=useState([])
-  const [loading,setLoading]=useState(true)
-  const [error,setError]=useState('')
+  const rows=useMemo(()=>contracts.map(contract=>({
+    contract,
+    summary:{
+      traffic_light:contract.traffic_light||'GRAY',
+      traffic_light_reason:contract.traffic_light_reason||'Keine zuordenbare Beitrittsinformation',
+      site_count:Number(contract.site_count||0),
+      green_count:Number(contract.green_count||0),
+      yellow_count:Number(contract.yellow_count||0),
+      red_count:Number(contract.red_count||0),
+      gray_count:Number(contract.gray_count||0),
+      green_sites:arr(contract.green_sites),
+    },
+  })),[contracts])
 
-  useEffect(()=>{
-    let cancelled=false
-    async function load(){
-      setLoading(true);setError('')
-      const {data,error}=await supabase
-        .from('vn_contract_accession_summary')
-        .select('*')
-        .order('contract_name')
-        .limit(700)
-      if(cancelled)return
-      if(error){setError(error.message||String(error));setSummaries([])}
-      else setSummaries(data||[])
-      setLoading(false)
-    }
-    load()
-    return()=>{cancelled=true}
-  },[])
-
-  const summaryMap=useMemo(()=>new Map(summaries.map(r=>[r.contract_id,r])),[summaries])
-  const rows=useMemo(()=>contracts.map(contract=>({contract,summary:summaryMap.get(contract.contract_id)||null})),[contracts,summaryMap])
-  const visibleSummary=useMemo(()=>rows.map(r=>r.summary).filter(Boolean),[rows])
-  const counts=useMemo(()=>visibleSummary.reduce((acc,r)=>{
-    const key=r.traffic_light||'GRAY'
+  const counts=useMemo(()=>rows.reduce((acc,{summary})=>{
+    const key=summary.traffic_light||'GRAY'
     acc[key]=(acc[key]||0)+1
     return acc
-  },{GREEN:0,YELLOW:0,RED:0,GRAY:0}),[visibleSummary])
-  const withoutData=rows.length-visibleSummary.length
-
-  if(loading)return <div className="traffic-loading">Vertragsampel wird geladen …</div>
-  if(error)return <div className="alert error">Vertragsampel konnte nicht geladen werden: {error}</div>
+  },{GREEN:0,YELLOW:0,RED:0,GRAY:0}),[rows])
 
   return <div className="traffic-workspace">
     <div className="traffic-summary" aria-label="Vertragsampel Zusammenfassung">
@@ -82,7 +61,6 @@ export default function ContractTrafficLightPanel({contracts=[]}){
       <span><i className="legend-dot yellow"/>Gelb: formal beigetreten, aber Voraussetzungen/Prüfung offen</span>
       <span><i className="legend-dot red"/>Rot: kein aktuell nutzbarer Beitritt</span>
       <span><i className="legend-dot gray"/>Grau: Status unklar</span>
-      {withoutData>0&&<small>{withoutData} angezeigte Verträge haben keine zuordenbare Teilnahmezeile und werden neutral behandelt.</small>}
     </div>
 
     <div className="tablewrap traffic-tablewrap">
@@ -98,22 +76,20 @@ export default function ContractTrafficLightPanel({contracts=[]}){
         </tr></thead>
         <tbody>
           {rows.map(({contract,summary})=>{
-            const status=summary?.traffic_light||'GRAY'
-            const greenSites=arr(summary?.green_sites)
-            const siteCount=summary?.site_count||0
+            const status=summary.traffic_light||'GRAY'
+            const greenSites=arr(summary.green_sites)
+            const siteCount=summary.site_count||0
             return <tr key={contract.contract_id} className={'traffic-row '+String(status).toLowerCase()}>
               <td><TrafficBadge status={status}/></td>
-              <td><b>{displayCompanyName(contract.contract_name||contract.contract_id)}</b><span className="detail-only tiny">{contract.contract_id}</span></td>
+              <td><b>{contract.partner_display_name||contract.contract_name||contract.contract_id}</b>{contractSuffix(contract.contract_name)&&<small className="traffic-contract-suffix">{contractSuffix(contract.contract_name)}</small>}<span className="detail-only tiny">{contract.contract_id}</span></td>
               <td>{arr(contract.payer_families).join(', ')||'—'}</td>
               <td>{arr(contract.product_groups).join(', ')||'—'}</td>
               <td>
-                {summary
-                  ? <><b className={summary.green_count>0?'traffic-count-ok':''}>{summary.green_count||0}/{siteCount} grün</b>
-                      {greenSites.length>0&&<small className="traffic-sites">{greenSites.join(', ')}</small>}
-                      {(summary.yellow_count||0)>0&&<small className="traffic-sites warn">{summary.yellow_count} gelb</small>}</>
-                  : <span>keine Teilnahmezeile</span>}
+                <><b className={summary.green_count>0?'traffic-count-ok':''}>{summary.green_count||0}/{siteCount} grün</b>
+                  {greenSites.length>0&&<small className="traffic-sites">{greenSites.join(', ')}</small>}
+                  {(summary.yellow_count||0)>0&&<small className="traffic-sites warn">{summary.yellow_count} gelb</small>}</>
               </td>
-              <td><span className="traffic-reason">{summary?.traffic_light_reason||'Keine zuordenbare Beitrittsinformation'}</span></td>
+              <td><span className="traffic-reason">{summary.traffic_light_reason}</span></td>
               <td>{contract.validity_mode==='SINGLE_SCOPE'?(contract.catalog_valid_to||contract.latest_valid_to||'—'):'PG-/Anlagen-spezifisch'}</td>
             </tr>
           })}
