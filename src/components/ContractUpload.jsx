@@ -68,9 +68,9 @@ function UploadStatusCard({detail,canFach,onAccept,busy}){
   </section>
 }
 
-export default function ContractUpload({contracts=[],sites=[],canFach=false,onOpenChanges}){
+export default function ContractUpload({contracts=[],sites=[],canFach=false,onOpenChanges,initialContractId=''}){
   const inputRef=useRef(null)
-  const [contractId,setContractId]=useState('')
+  const [contractId,setContractId]=useState(initialContractId||'')
   const [file,setFile]=useState(null)
   const [dragging,setDragging]=useState(false)
   const [busy,setBusy]=useState('')
@@ -84,6 +84,8 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
   const [existingIkScopes,setExistingIkScopes]=useState({})
   const [erpContractGroup,setErpContractGroup]=useState('')
   const [existingErpContractGroup,setExistingErpContractGroup]=useState('')
+
+  useEffect(()=>{if(initialContractId&&!uploadId)setContractId(initialContractId)},[initialContractId,uploadId])
 
   const selectedContract=contracts.find(c=>c.contract_id===contractId)
   const sortedContracts=useMemo(()=>[...contracts].sort((a,b)=>String(a.contract_name||'').localeCompare(String(b.contract_name||''),'de')),[contracts])
