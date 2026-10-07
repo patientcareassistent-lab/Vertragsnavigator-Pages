@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { BookOpenCheck, History, LayoutDashboard, LoaderCircle, MessageSquareText, ShieldCheck, Upload } from 'lucide-react'
 import { supabase, supabaseConfigured } from './lib/supabase.js'
+import { recordRuntimeEvent } from './lib/runtimeTelemetry.js'
 import ContractUpload from './components/ContractUpload.jsx'
 import ContractChanges from './components/ContractChanges.jsx'
 import PositionDetail from './components/PositionDetail.jsx'
@@ -209,6 +210,17 @@ export default function App(){
   },[])
 
   useEffect(()=>{
+    const onError=()=>recordRuntimeEvent({severity:'ERROR',area:'FRONTEND',code:'WINDOW_ERROR',route:'app'})
+    const onReject=()=>recordRuntimeEvent({severity:'ERROR',area:'FRONTEND',code:'UNHANDLED_REJECTION',route:'app'})
+    window.addEventListener('error',onError)
+    window.addEventListener('unhandledrejection',onReject)
+    return()=>{
+      window.removeEventListener('error',onError)
+      window.removeEventListener('unhandledrejection',onReject)
+    }
+  },[])
+
+  useEffect(()=>{
     let cancelled=false
     async function bootstrapSession(){
       if(session){
@@ -220,6 +232,7 @@ export default function App(){
           .maybeSingle()
         if(cancelled)return
         if(error){
+          recordRuntimeEvent({severity:'ERROR',area:'AUTH_BOOTSTRAP',code:error.code||'PROFILE_LOAD_FAILED',route:'login'})
           setError('Benutzerstatus konnte nicht geprüft werden: '+error.message)
           return
         }
@@ -299,6 +312,7 @@ export default function App(){
   }
 
   async function loadData(){
+    const started=performance.now()
     setError('')
     const [cc,pc,kc,qr,cr,sr]=await Promise.all([
       supabase.from('vn_contract_read_model_p2').select('contract_id',{count:'planned',head:true}),
@@ -312,11 +326,20 @@ export default function App(){
     if(first){
       const raw=String(first.message||'')
       const recovering=/not accepting connections|starting up|hot standby|timeout/i.test(raw)
+      recordRuntimeEvent({
+        severity:recovering?'WARN':'ERROR',
+        area:'APP_LOAD_DATA',
+        code:recovering?'DATABASE_RECOVERING':(first.code||'LOAD_FAILED'),
+        route:'bootstrap',
+        durationMs:performance.now()-started,
+      })
       setError(recovering
         ? 'Vertragsdatenbank befindet sich in Wiederherstellung. Bitte später erneut versuchen.'
         : raw)
       return
     }
+    const loadDuration=performance.now()-started
+    if(loadDuration>=5000)recordRuntimeEvent({severity:'WARN',area:'APP_LOAD_DATA',code:'SLOW_LOAD',route:'bootstrap',durationMs:loadDuration})
     setContracts(cr.data||[])
     setSites((sr.data||[]).map(s=>({...s,eligibilities:[]})))
     setQuestionCount(qr.count||0)
@@ -329,7 +352,10 @@ export default function App(){
       .select('*')
       .order('updated_at',{ascending:false})
       .limit(500)
-    if(e){setError(e.message||String(e));return}
+    if(e){
+      recordRuntimeEvent({severity:'ERROR',area:'KNOWLEDGE_LOAD',code:e.code||'LOAD_FAILED',route:'knowledge'})
+      setError(e.message||String(e));return
+    }
     setKnowledge(data||[])
     setKnowledgeLoaded(true)
   }
@@ -340,7 +366,10 @@ export default function App(){
       .select('*')
       .order('created_at',{ascending:false})
       .limit(100)
-    if(e){setError(e.message||String(e));return}
+    if(e){
+      recordRuntimeEvent({severity:'ERROR',area:'QUESTIONS_LOAD',code:e.code||'LOAD_FAILED',route:'questions'})
+      setError(e.message||String(e));return
+    }
     setQuestions(data||[])
     setQuestionsLoaded(true)
     setQuestionCount((data||[]).filter(q=>!['CLOSED','RESOLVED','ANSWERED'].includes(String(q.status||'').toUpperCase())).length)
