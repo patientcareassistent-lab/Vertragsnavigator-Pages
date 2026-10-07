@@ -37,6 +37,7 @@ function Field({label,value,wide=false}){
 export default function PositionDetail({position,contract,site,siteMatch,knowledge=[],canFach=false}){
   const [versions,setVersions]=useState([])
   const [documents,setDocuments]=useState([])
+  const [validityScopes,setValidityScopes]=useState([])
   const [loading,setLoading]=useState(false)
   const [sourceBusy,setSourceBusy]=useState(false)
   const [sourceError,setSourceError]=useState('')
@@ -44,7 +45,7 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
   useEffect(()=>{
     let cancelled=false
     async function load(){
-      if(!position){setVersions([]);setDocuments([]);return}
+      if(!position){setVersions([]);setDocuments([]);setValidityScopes([]);return}
       setLoading(true);setSourceError('')
       try{
         const jobs=[]
@@ -68,12 +69,24 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
           )
         }else jobs.push(Promise.resolve({data:[],error:null}))
 
-        const [vr,dr]=await Promise.all(jobs)
+        if(position.contract_id&&position.pg){
+          jobs.push(
+            supabase.from('vn_contract_validity_scope')
+              .select('*')
+              .eq('contract_id',position.contract_id)
+              .eq('pg',String(position.pg))
+              .order('authoritative',{ascending:false})
+          )
+        }else jobs.push(Promise.resolve({data:[],error:null}))
+
+        const [vr,dr,sr]=await Promise.all(jobs)
         if(cancelled)return
         if(vr.error)throw vr.error
         if(dr.error)throw dr.error
+        if(sr.error)throw sr.error
 
         setVersions(vr.data||[])
+        setValidityScopes(sr.data||[])
         const keys=sourceKeys(contract,position)
         const seen=new Set()
         const docs=(dr.data||[])
@@ -101,6 +114,13 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
     const matching=versions.filter(v=>versionRelevant(v,position?.pg))
     return (matching.length?matching:versions).slice(0,6)
   },[versions,position?.pg])
+
+  const pgValidity=validityScopes.find(v=>v.authoritative)||validityScopes[0]||null
+  const contractValidityText=pgValidity
+    ? `${pgValidity.valid_from||'offen'} → ${pgValidity.valid_to||'offen'}`
+    : contract?.validity_mode&&contract.validity_mode!=='SINGLE_SCOPE'
+      ? 'PG-/Anlagen-spezifisch – keine globale Laufzeit verwenden'
+      : `${contract?.first_valid_from||'—'} → ${contract?.catalog_valid_to||contract?.latest_valid_to||'offen'}`
 
   const canOpen=Boolean(
     /^https?:\/\//i.test(String(position?.source_doc||''))||
@@ -170,8 +190,9 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
           <Field label="Rabatt" value={position.rabatt===null||position.rabatt===undefined?'—':text(position.rabatt)}/>
           <Field label="Genehmigung" value={text(position.genehmigung||position.freigrenze)} wide/>
           <Field label="Verordnung" value={text(position.verordnung)} wide/>
-          <Field label="Gültig ab" value={text(position.gueltig_ab)}/>
-          <Field label="Gültig bis" value={text(position.gueltig_bis||'offen')}/>
+          <Field label="Positionsgültigkeit ab" value={text(position.gueltig_ab)}/>
+          <Field label="Positionsgültigkeit bis" value={text(position.gueltig_bis||'offen')}/>
+          <Field label={`Vertragsgeltung PG ${position.pg||'—'}`} value={contractValidityText} wide/>
         </div>
       </div>
 
