@@ -301,3 +301,34 @@
   .missing-source-filters{width:100%}
   .missing-source-filters input,.missing-source-filters select{min-width:0;flex:1}
 }
+
+
+/* VN2 Vertragsampel */
+.traffic-workspace{display:grid;gap:13px}
+.traffic-loading{padding:24px;text-align:center;color:var(--muted);font-size:12px}
+.traffic-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.traffic-kpi{display:flex;align-items:center;gap:11px;border:1px solid #e1e7ec;border-radius:12px;padding:13px 14px;background:#fff}
+.traffic-kpi-dot{font-size:28px;line-height:1}
+.traffic-kpi strong{display:block;font-size:23px;line-height:1;color:var(--blue)}
+.traffic-kpi span:last-child{display:block;margin-top:4px;color:var(--muted);font-size:10px;font-weight:800;text-transform:uppercase}
+.traffic-kpi.green{background:#f2fbf6;border-color:#b8dfcc}.traffic-kpi.green .traffic-kpi-dot{color:#168554}
+.traffic-kpi.yellow{background:#fff9ed;border-color:#f0cf8d}.traffic-kpi.yellow .traffic-kpi-dot{color:#d98d00}
+.traffic-kpi.red{background:#fff4f3;border-color:#efc0bc}.traffic-kpi.red .traffic-kpi-dot{color:#d13b31}
+.traffic-kpi.gray{background:#f7f8fa;border-color:#d9dee4}.traffic-kpi.gray .traffic-kpi-dot{color:#8a96a3}
+.traffic-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid #dde4e8;border-radius:10px;background:#f9fbfc;color:#566474;font-size:10px}
+.traffic-legend>b{color:var(--blue);font-size:11px;margin-right:2px}
+.traffic-legend>span{display:inline-flex;align-items:center;gap:5px}
+.traffic-legend small{width:100%;color:#7b8794}
+.legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.legend-dot.green{background:#168554}.legend-dot.yellow{background:#d98d00}.legend-dot.red{background:#d13b31}.legend-dot.gray{background:#8a96a3}
+.traffic-badge{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-size:11px;font-weight:900}
+.traffic-badge .traffic-dot{font-size:22px;line-height:.8}
+.traffic-badge.green{color:#0a7447}.traffic-badge.yellow{color:#a96700}.traffic-badge.red{color:#b42318}.traffic-badge.gray{color:#667085}
+.traffic-tablewrap{border-color:#dbe3e8}
+.traffic-table th:first-child,.traffic-table td:first-child{position:sticky;left:0;z-index:1;background:#fff}
+.traffic-table th:first-child{z-index:2;background:#f8fafb}
+.traffic-row.green{box-shadow:inset 4px 0 0 #168554}.traffic-row.yellow{box-shadow:inset 4px 0 0 #d98d00}.traffic-row.red{box-shadow:inset 4px 0 0 #d13b31}.traffic-row.gray{box-shadow:inset 4px 0 0 #8a96a3}
+.traffic-count-ok{color:#0a7447}.traffic-sites{display:block;margin-top:3px;color:#667085;font-size:9px;max-width:250px}.traffic-sites.warn{color:#a96700}
+.traffic-reason{display:block;min-width:210px;line-height:1.35;color:#475467}
+@media(max-width:950px){.traffic-summary{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.traffic-summary{grid-template-columns:1fr}.traffic-legend{align-items:flex-start;flex-direction:column}.traffic-table th:first-child,.traffic-table td:first-child{position:static}}
