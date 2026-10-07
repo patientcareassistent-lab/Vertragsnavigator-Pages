@@ -209,14 +209,35 @@ export default function App(){
   },[])
 
   useEffect(()=>{
-    if(session){
-      if(session.user?.app_metadata?.vn_role==='admin')setActive('admin')
-      loadData()
-      return
+    let cancelled=false
+    async function bootstrapSession(){
+      if(session){
+        const {data,error}=await supabase
+          .from('vn_users')
+          .select('active')
+          .eq('auth_user_id',session.user.id)
+          .eq('active',true)
+          .maybeSingle()
+        if(cancelled)return
+        if(error){
+          setError('Benutzerstatus konnte nicht geprüft werden: '+error.message)
+          return
+        }
+        if(!data){
+          setAuthError('Der Zugang zum Vertragsnavigator ist nicht freigeschaltet.')
+          await supabase.auth.signOut()
+          return
+        }
+        if(session.user?.app_metadata?.vn_role==='admin')setActive('admin')
+        await loadData()
+        return
+      }
+      setKnowledge([]);setKnowledgeLoaded(false)
+      setQuestions([]);setQuestionsLoaded(false);setQuestionCount(0)
+      setRelatedKnowledge([]);setSelectedSiteEligibilities([])
     }
-    setKnowledge([]);setKnowledgeLoaded(false)
-    setQuestions([]);setQuestionsLoaded(false);setQuestionCount(0)
-    setRelatedKnowledge([]);setSelectedSiteEligibilities([])
+    bootstrapSession()
+    return()=>{cancelled=true}
   },[session])
   useEffect(()=>{
     let cancelled=false
