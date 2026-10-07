@@ -124,3 +124,11 @@ export async function acceptContractUpload(uploadId,expectedChangeCount,resoluti
     resolution_note:resolutionNote||null,
   })
 }
+
+
+export async function saveContractIkScopes(uploadId,scopes=[]){
+  return invoke('vn2-contract-upload-ik',{
+    upload_id:uploadId,
+    scopes:Array.isArray(scopes)?scopes:[],
+  })
+}
