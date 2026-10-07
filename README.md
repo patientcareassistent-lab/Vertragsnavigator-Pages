@@ -11,3 +11,4 @@ Deployment: GitHub Pages (`main`, GitHub Actions).
 ## Stand 07.10.2026
 - Admin-Vertragsvorprüfung als geführter P1-Workflow: integrierter Upload, Publication Hold bis zur Unterschrift, Autosave, Blockeranzeige und serverseitige Pagination.
 - P3 Security: Active-User-Gate auf RLS-, Login- und Session-Ebene aktiviert.
+- P4 Betrieb: Admin-Betriebsdashboard, Datenqualitätscache, minimiertes Login-Audit und Runtime-Telemetrie aktiviert.
