@@ -132,3 +132,13 @@ export async function saveContractIkScopes(uploadId,scopes=[]){
     scopes:Array.isArray(scopes)?scopes:[],
   })
 }
+
+
+export async function saveContractErpMapping(uploadId,contractGroup,mappingAction='UPSERT'){
+  return invoke('vn2-contract-upload-erp',{
+    upload_id:uploadId,
+    erp_system:'SaniVision',
+    contract_group:contractGroup||'',
+    mapping_action:mappingAction,
+  })
+}
