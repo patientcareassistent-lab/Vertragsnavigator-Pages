@@ -213,12 +213,15 @@ export default function App(){
     }
 
     const toNumber=value=>String(value).trim()===''?null:Number(value)
+    const rawTerm=term.trim()
+    const termIsHmv=/^\d{2}(?:\.\d{2}){1,3}(?:\.\d{1,4})?$/.test(rawTerm)
+    const termIsPosition=/^\d{6,12}$/.test(rawTerm)
     const {data,error}=await supabase.rpc('vn_search_positions',{
       p_payer:payer||null,
       p_pg:pg||null,
-      p_query:term.trim()||null,
-      p_hmv:advanced.hmv.trim()||null,
-      p_position:advanced.position.trim()||null,
+      p_query:(!termIsHmv&&!termIsPosition&&rawTerm)?rawTerm:null,
+      p_hmv:advanced.hmv.trim()||(termIsHmv?rawTerm:null),
+      p_position:advanced.position.trim()||(termIsPosition?rawTerm:null),
       p_product_type:advanced.productType.trim()||null,
       p_contract:advanced.contract.trim()||null,
       p_legs:advanced.legs.trim()||null,
@@ -274,6 +277,7 @@ export default function App(){
   const selectedSite=sites.find(s=>String(s.site_id)===String(siteId))
   const siteMatch=selected&&selectedSite?.eligibilities?.find(e=>String(e.contract||'').toLowerCase()===String(selected.contract||'').toLowerCase()&&e.active)
   const relatedKnowledge=selected?knowledge.filter(k=>(!k.pg||String(k.pg)===String(selected.pg))):[]
+  const resultContractCount=new Set(results.map(r=>r.contract_id||r.contract||r.family).filter(Boolean)).size
 
   if(!supabaseConfigured)return <main className="center"><section className="auth-card"><h1>Vertragsnavigator 2.1</h1><p>Supabase ist noch nicht konfiguriert.</p></section></main>
   if(!authReady)return <main className="center"><section className="auth-card"><p>Anmeldung wird geprüft …</p></section></main>
@@ -349,7 +353,10 @@ export default function App(){
               </details>
             </form>
             <div className="checks">
-              <Check n="1" title="Vertrag" status={selected?'Vertrag gefunden':'noch offen'} value={selected?(selected.contract||selected.family||'Vertrag vorhanden'):'Position auswählen'} ok={!!selected}/>
+              <Check n="1" title="Vertrag"
+                status={selected?'Vertrag gefunden':results.length?(resultContractCount===1?'1 Vertrag gefunden':`${resultContractCount} Vertragsvarianten gefunden`):'noch offen'}
+                value={selected?(selected.contract||selected.family||'Vertrag vorhanden'):results.length?(siteId?'Passende Position auswählen':'Standort/Region wählen oder Position auswählen'):'Position suchen'}
+                ok={!!selected}/>
               <Check n="2" title="PQ / IK / Beitritt" status={siteMatch?'Beitritt gefunden':siteId?'prüfen':'noch offen'} value={siteMatch?([siteMatch.status,siteMatch.prerequisites_met].filter(Boolean).join(' · ')||'aktiv'):siteId?'Kein eindeutiger Vertragsbeitritt':'Standort auswählen'} ok={!!siteMatch}/>
               <Check n="3" title="Genehmigung" status={selected?.genehmigung?'Vertragsangabe':'noch offen'} value={selected?.genehmigung||selected?.freigrenze||'Vertragsangabe fehlt'} ok={!!selected?.genehmigung}/>
               <Check n="4" title="Verordnung" status={selected?.verordnung?'Vertragsangabe':'noch offen'} value={selected?.verordnung||'Vertragsangabe fehlt'} ok={!!selected?.verordnung}/>
@@ -359,6 +366,7 @@ export default function App(){
             {selected&&<div className="note detail-only selected-meta">HMV: {selected.code||'—'} · GPOS: {selected.pos||'—'} · LEGS: {selected.legs||'—'} · LKZ: {selected.lkz||'—'} · Versorgungsform: {selected.versorgungsform||'—'} · gültig: {selected.gueltig_ab||'—'} bis {selected.gueltig_bis||'offen'} · Position-ID: {selected.position_row_id}</div>}
           </section>
           <section className="panel span2"><div className="sectionbar"><div><h2>Treffer</h2><p>Eine Position anklicken, um sie zu übernehmen.</p></div><Badge>{results.length}</Badge></div>
+            {results.length>0&&!selected&&<div className="result-hint"><b>{results.length} passende Positionen · {resultContractCount} Vertragsvarianten</b><span>{payer==='AOK'&&!siteId?'AOK-Verträge sind regional. Bitte Standort wählen oder unten den passenden Vertrag auswählen.':'Bitte den passenden Vertrag bzw. die Position auswählen.'}</span></div>}
             <div className="tablewrap"><table><thead><tr><th>PG</th><th>HMV/Code</th><th>Position</th><th>Bezeichnung</th><th>Vertrag</th><th>Preis</th><th>Genehmigung</th></tr></thead><tbody>
               {results.map(r=><tr key={r.position_row_id} className={'selectable '+(selected?.position_row_id===r.position_row_id?'selected':'')} onClick={()=>setSelected(r)}><td>{r.pg||'—'}</td><td>{r.code||'—'}</td><td>{r.pos||'—'}</td><td><b>{r.bezeichnung||r.produktart_bezeichnung||'—'}</b></td><td>{r.contract||r.family||'—'}</td><td>{r.preis??'—'}</td><td>{r.genehmigung||r.freigrenze||'—'}</td></tr>)}
               {!results.length&&<tr><td colSpan="7" className="empty">Kasse, PG, Suchbegriff oder erweiterte Kriterien wählen und auf „Prüfen“ klicken.</td></tr>}
