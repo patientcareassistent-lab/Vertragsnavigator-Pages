@@ -409,7 +409,7 @@ export default function App(){
     </header>
 
     <aside className="quick-rail" aria-label="Schnellzugriff">
-      <button className={active==='questions'?'active':''} onClick={()=>jump('questions','knowledgeSearch')} title="Vertragswissen" aria-label="Vertragswissen"><BookOpenCheck size={19}/></button>
+      <button className={active==='knowledge'?'active':''} onClick={()=>jump('knowledge','knowledgeSearch')} title="Vertragswissen" aria-label="Vertragswissen"><BookOpenCheck size={19}/></button>
       <button className={active==='upload'?'active':''} onClick={()=>jump('upload')} title="Vertrag hochladen" aria-label="Vertrag hochladen"><Upload size={19}/></button>
       <button className={active==='changes'?'active':''} onClick={()=>jump('changes')} title="Änderungen" aria-label="Änderungen"><History size={19}/></button>
       <button className={active==='questions'?'active':''} onClick={()=>jump('questions','qText')} title="Vertragsfrage" aria-label="Vertragsfrage"><MessageSquareText size={19}/></button>
@@ -521,11 +521,17 @@ export default function App(){
         <ContractChanges canFach={canFach}/>
       </>}
 
-      {active==='questions'&&<>
-        <div className="page-head"><div><h1>Vertragsfragen</h1><p>Vertragswissen zuerst prüfen, nur ungeklärte Fälle neu anlegen.</p></div><Badge tone="ok">{knowledge.length} freigegeben</Badge></div>
+      {active==='knowledge'&&<>
+        <div className="page-head"><div><h1>Vertragswissen</h1><p>Freigegebenes Vertragswissen gezielt durchsuchen und prüfen.</p></div><Badge tone="ok">{knowledge.length} freigegeben</Badge></div>
         <div className="grid">
-          <section className="panel span2 knowledge-gate"><div className="sectionbar"><div><h2>Vertragswissen zuerst</h2><p>Nur APPROVED, aktuell gültig und ohne Revalidierungsbedarf.</p></div><input id="knowledgeSearch" className="compact" value={knowledgeQuery} onChange={e=>setKnowledgeQuery(e.target.value)} placeholder="Wissen durchsuchen …"/></div><div className="chain"><span>Vertragswissen</span><i>→</i><span>Gültigkeit / Geltungsbereich</span><i>→</i><span>Originalvertrag</span><i>→</i><span>Frage klären</span><i>→</i><span>Freigeben</span><i>→</i><span>Wissen zurückführen</span></div></section>
+          <section className="panel span2 knowledge-gate"><div className="sectionbar"><div><h2>Vertragswissen</h2><p>Nur APPROVED, aktuell gültig und ohne Revalidierungsbedarf.</p></div><input id="knowledgeSearch" className="compact" value={knowledgeQuery} onChange={e=>setKnowledgeQuery(e.target.value)} placeholder="Wissen durchsuchen …"/></div><div className="chain"><span>Vertragswissen</span><i>→</i><span>Gültigkeit / Geltungsbereich</span><i>→</i><span>Originalvertrag</span><i>→</i><span>Frage klären</span><i>→</i><span>Freigeben</span><i>→</i><span>Wissen zurückführen</span></div></section>
           <section className="panel span2"><div className="knowledge-list">{filteredKnowledge.map(r=><article className="knowledge-card" key={r.knowledge_id}><div className="knowledge-head"><div><b>{r.title}</b><small>{[r.payer,r.pg&&`PG ${r.pg}`,r.hmv_code,r.position_code].filter(Boolean).join(' · ')||'Allgemeiner Geltungsbereich'}</small></div><Badge tone="ok">APPROVED</Badge></div>{r.question_text&&<p><i>{r.question_text}</i></p>}<p>{r.decision_text}</p><footer className="detail-only">Vertrag: {r.contract_id||'—'} · Version: {r.contract_version_id||'—'} · Quelle: {r.source_id||'—'}</footer></article>)}{!filteredKnowledge.length&&<div className="empty-panel">Noch kein freigegebenes Vertragswissen vorhanden.</div>}</div></section>
+        </div>
+      </>}
+
+      {active==='questions'&&<>
+        <div className="page-head"><div><h1>Vertragsfragen</h1><p>Nur ungeklärte Vertragsfälle als neue Frage anlegen und in der Prüfqueue verfolgen.</p></div><Badge>{questions.length} sichtbar</Badge></div>
+        <div className="grid">
           <section className="panel"><h2>Neue Vertragsfrage</h2><form className="formstack" onSubmit={submitQuestion}><label>Vertragsfrage<textarea id="qText" rows="5" value={questionForm.question_text} onChange={e=>setQ('question_text',e.target.value)} required/></label><div className="formgrid"><label>Kostenträger<input value={questionForm.payer} onChange={e=>setQ('payer',e.target.value)}/></label><label>PG<input value={questionForm.pg} onChange={e=>setQ('pg',e.target.value)}/></label></div><label>Vertrag<select value={questionForm.contract_id} onChange={e=>setQ('contract_id',e.target.value)}><option value="">Nicht zugeordnet</option>{contracts.map(r=><option key={r.contract_id} value={r.contract_id}>{r.contract_name||r.contract_id}</option>)}</select></label><div className="formgrid"><label>HMV / Produktart<input value={questionForm.hmv_code} onChange={e=>setQ('hmv_code',e.target.value)}/></label><label>Position / GPOS<input value={questionForm.position_code} onChange={e=>setQ('position_code',e.target.value)}/></label></div>{questionMessage&&<div className={'alert '+(questionMessage.startsWith('Vertragsfrage wurde')?'success':'error')}>{questionMessage}</div>}<button className="primary" type="submit">Vertragsfrage anlegen</button></form></section>
           <section className="panel"><div className="sectionbar"><div><h2>Prüfqueue</h2><p>{canFach?'Fachlich sichtbare Fragen':'Eigene Vertragsfragen'}</p></div><Badge>{questions.length}</Badge></div><div className="question-list">{questions.map(r=><article className="question-row" key={r.question_id}><div><b>{r.question_text}</b><small>{[r.payer,r.pg&&`PG ${r.pg}`,r.hmv_code,r.position_code].filter(Boolean).join(' · ')||'ohne Zuordnung'}</small></div><Badge>{r.status}</Badge></article>)}{!questions.length&&<div className="empty-panel">Noch keine Vertragsfragen vorhanden.</div>}</div></section>
         </div>
