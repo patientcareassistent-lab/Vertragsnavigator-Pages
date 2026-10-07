@@ -1,7 +1,12 @@
-import React,{useEffect,useMemo,useState} from 'react'
-import { AlertTriangle,CheckCircle2,Circle,FileCheck2,RefreshCw,ShieldCheck,XCircle } from 'lucide-react'
+import React,{useEffect,useMemo,useRef,useState} from 'react'
+import {
+  AlertTriangle,CheckCircle2,ChevronLeft,ChevronRight,Circle,
+  CloudUpload,FileCheck2,ListChecks,LoaderCircle,RefreshCw,ShieldCheck,XCircle,
+} from 'lucide-react'
 import { supabase } from '../lib/supabase.js'
+import ContractUpload from './ContractUpload.jsx'
 
+const PAGE_SIZE=20
 const STATUS_LABELS={
   NEW:'Neu',
   IN_REVIEW:'In Prüfung',
@@ -13,10 +18,18 @@ const STATUS_LABELS={
   SIGNED:'Unterschrieben',
   ACTIVE:'Aktiv',
   ARCHIVED:'Archiviert',
+  RECEIVED:'Datei hochgeladen',
+  DUPLICATE:'Bereits vorhanden',
+  PARSING:'Inhalt erkannt',
+  READY:'Bereit zum Vergleich',
+  REVIEW:'Änderungen geprüft',
+  ACCEPTED:'Veröffentlicht',
+  ERROR:'Fehler',
 }
 const STATUS_TONES={
   IN_REVIEW:'info',CLARIFICATION:'warn',APPROVED:'ok',APPROVED_WITH_CONDITIONS:'warn',
   REJECTED:'bad',READY_FOR_SIGNATURE:'info',SIGNED:'ok',ACTIVE:'ok',ARCHIVED:'',
+  ACCEPTED:'ok',DUPLICATE:'info',REVIEW:'warn',ERROR:'bad',READY:'info',PARSING:'info',
 }
 const RATING_LABELS={PENDING:'Offen',GREEN:'Grün',YELLOW:'Gelb',RED:'Rot'}
 const CATEGORY_LABELS={
@@ -34,112 +47,205 @@ const CATEGORY_LABELS={
   CHANGES:'Änderungen zum Bestand',
   OTHER:'Sonstiges',
 }
+
 function Badge({children,tone=''}){return <span className={'badge '+tone}>{children}</span>}
 function fmtDate(value){return value?new Date(value).toLocaleDateString('de-DE'):'—'}
 function statusLabel(value){return STATUS_LABELS[value]||value||'—'}
 function toneForStatus(value){return STATUS_TONES[value]||''}
 function ratingTone(value){return value==='GREEN'?'ok':value==='YELLOW'?'warn':value==='RED'?'bad':'info'}
+function isDone(f){return f.finding_status!=='OPEN'||f.rating!=='PENDING'}
 
-export default function ContractPrecheck({userId,onOpenChanges}){
+export default function ContractPrecheck({userId,onOpenChanges,contracts=[],sites=[]}){
   const [prechecks,setPrechecks]=useState([])
-  const [uploads,setUploads]=useState([])
   const [selectedId,setSelectedId]=useState('')
+  const [selected,setSelected]=useState(null)
   const [findings,setFindings]=useState([])
   const [events,setEvents]=useState([])
-  const [newUploadId,setNewUploadId]=useState('')
+  const [legacyUploads,setLegacyUploads]=useState([])
+  const [legacyUploadId,setLegacyUploadId]=useState('')
   const [query,setQuery]=useState('')
+  const [debouncedQuery,setDebouncedQuery]=useState('')
+  const [page,setPage]=useState(0)
+  const [total,setTotal]=useState(0)
+  const [metrics,setMetrics]=useState({open:0,approved:0,signed:0,active:0})
+  const [showUpload,setShowUpload]=useState(false)
+  const [activeFindingId,setActiveFindingId]=useState('')
   const [busy,setBusy]=useState(false)
+  const [detailBusy,setDetailBusy]=useState(false)
+  const [autosaveState,setAutosaveState]=useState('')
   const [error,setError]=useState('')
   const [message,setMessage]=useState('')
 
-  async function load(preferId=''){
+  const listAbortRef=useRef(null)
+  const detailAbortRef=useRef(null)
+  const findingSaveTimers=useRef(new Map())
+  const decisionSaveTimer=useRef(null)
+  const creatingUploadRef=useRef(new Set())
+
+  useEffect(()=>{
+    const timer=setTimeout(()=>{setDebouncedQuery(query.trim());setPage(0)},350)
+    return()=>clearTimeout(timer)
+  },[query])
+
+  useEffect(()=>{
+    loadOverview()
+    return()=>listAbortRef.current?.abort()
+  },[page,debouncedQuery])
+
+  useEffect(()=>{
+    loadMetrics()
+    loadLegacyUploads()
+  },[])
+
+  useEffect(()=>{
+    if(!selectedId){setSelected(null);setFindings([]);setEvents([]);return}
+    loadSelected(selectedId)
+    return()=>detailAbortRef.current?.abort()
+  },[selectedId])
+
+  async function loadOverview(preferId=''){
+    listAbortRef.current?.abort()
+    const controller=new AbortController()
+    listAbortRef.current=controller
     setBusy(true);setError('')
     try{
-      const [pr,ur]=await Promise.all([
-        supabase.from('contract_prechecks')
-          .select('precheck_id,contract_id,upload_id,status,overall_rating,decision_note,created_by,reviewed_by,approved_at,signed_at,activated_at,created_at,updated_at,contract:contracts(contract_id,contract_name,payer_families,product_groups),upload:contract_uploads(upload_id,filename,upload_status,item_count,change_count,review_count,baseline_upload_id,received_at,accepted_at)')
-          .order('updated_at',{ascending:false})
-          .limit(300),
-        supabase.from('contract_uploads')
-          .select('upload_id,contract_id,filename,upload_status,item_count,change_count,review_count,baseline_upload_id,received_at,accepted_at')
-          .order('received_at',{ascending:false})
-          .limit(300),
-      ])
-      if(pr.error)throw pr.error
-      if(ur.error)throw ur.error
-      const rows=pr.data||[]
+      const from=page*PAGE_SIZE
+      let request=supabase.from('vn_admin_contract_precheck_overview')
+        .select('*',{count:'exact'})
+        .order('updated_at',{ascending:false})
+        .range(from,from+PAGE_SIZE-1)
+        .abortSignal(controller.signal)
+      if(debouncedQuery)request=request.ilike('search_text','%'+debouncedQuery.replace(/[%_]/g,'')+'%')
+      const {data,count,error:e}=await request
+      if(e){
+        if(e.name==='AbortError'||/abort/i.test(String(e.message||'')))return
+        throw e
+      }
+      const rows=data||[]
       setPrechecks(rows)
-      setUploads(ur.data||[])
-      const wanted=preferId||selectedId||rows[0]?.precheck_id||''
-      setSelectedId(wanted)
+      setTotal(count||0)
+      if(preferId){
+        setSelectedId(preferId)
+      }else if(!selectedId&&rows[0]){
+        setSelectedId(rows[0].precheck_id)
+      }else if(selectedId&&page>0&&!rows.length){
+        setPage(Math.max(0,page-1))
+      }
     }catch(e){setError(e.message||String(e))}
     finally{setBusy(false)}
   }
 
-  async function loadDetail(id){
-    if(!id){setFindings([]);setEvents([]);return}
-    try{
-      const [fr,er]=await Promise.all([
-        supabase.from('contract_precheck_findings')
-          .select('*')
-          .eq('precheck_id',id)
-          .order('sort_order')
-          .order('created_at'),
-        supabase.from('contract_precheck_events')
-          .select('*')
-          .eq('precheck_id',id)
-          .order('created_at',{ascending:false})
-          .limit(100),
-      ])
-      if(fr.error)throw fr.error
-      if(er.error)throw er.error
-      setFindings(fr.data||[])
-      setEvents(er.data||[])
-    }catch(e){setError(e.message||String(e))}
+  async function loadMetrics(){
+    const requests=[
+      supabase.from('contract_prechecks').select('*',{count:'exact',head:true}).in('status',['NEW','IN_REVIEW','CLARIFICATION']),
+      supabase.from('contract_prechecks').select('*',{count:'exact',head:true}).in('status',['APPROVED','APPROVED_WITH_CONDITIONS','READY_FOR_SIGNATURE']),
+      supabase.from('contract_prechecks').select('*',{count:'exact',head:true}).eq('status','SIGNED'),
+      supabase.from('contract_prechecks').select('*',{count:'exact',head:true}).eq('status','ACTIVE'),
+    ]
+    const rows=await Promise.all(requests)
+    const first=rows.find(r=>r.error)?.error
+    if(first){setError(first.message||String(first));return}
+    setMetrics({
+      open:rows[0].count||0,
+      approved:rows[1].count||0,
+      signed:rows[2].count||0,
+      active:rows[3].count||0,
+    })
   }
 
-  useEffect(()=>{load()},[])
-  useEffect(()=>{loadDetail(selectedId)},[selectedId])
+  async function loadLegacyUploads(){
+    const {data,error:e}=await supabase.from('contract_uploads')
+      .select('upload_id,contract_id,filename,upload_status,received_at')
+      .eq('workflow_context','STANDARD')
+      .not('upload_status','in','(ACCEPTED,BASELINE,REJECTED)')
+      .order('received_at',{ascending:false})
+      .limit(50)
+    if(e){setError(e.message);return}
+    setLegacyUploads(data||[])
+  }
 
-  const selected=prechecks.find(r=>r.precheck_id===selectedId)||null
-  const usedUploads=new Set(prechecks.map(r=>r.upload_id).filter(Boolean))
-  const availableUploads=uploads.filter(r=>!usedUploads.has(r.upload_id))
-  const filteredPrechecks=useMemo(()=>{
-    const q=query.trim().toLowerCase()
-    if(!q)return prechecks
-    return prechecks.filter(r=>JSON.stringify([
-      r.contract?.contract_name,r.contract_id,r.upload?.filename,r.status,r.overall_rating,
-    ]).toLowerCase().includes(q))
-  },[prechecks,query])
+  async function loadSelected(id){
+    detailAbortRef.current?.abort()
+    const controller=new AbortController()
+    detailAbortRef.current=controller
+    setDetailBusy(true);setError('')
+    try{
+      const [sr,fr,er]=await Promise.all([
+        supabase.from('vn_admin_contract_precheck_overview')
+          .select('*').eq('precheck_id',id).single().abortSignal(controller.signal),
+        supabase.from('contract_precheck_findings')
+          .select('*').eq('precheck_id',id).order('sort_order').order('created_at')
+          .abortSignal(controller.signal),
+        supabase.from('contract_precheck_events')
+          .select('*').eq('precheck_id',id).order('created_at',{ascending:false}).limit(60)
+          .abortSignal(controller.signal),
+      ])
+      const first=[sr,fr,er].find(r=>r.error)?.error
+      if(first){
+        if(first.name==='AbortError'||/abort/i.test(String(first.message||'')))return
+        throw first
+      }
+      const nextFindings=fr.data||[]
+      setSelected(sr.data||null)
+      setFindings(nextFindings)
+      setEvents(er.data||[])
+      setActiveFindingId(current=>{
+        if(current&&nextFindings.some(f=>f.finding_id===current))return current
+        return nextFindings.find(f=>f.finding_status==='OPEN'&&f.rating==='PENDING')?.finding_id
+          ||nextFindings.find(f=>f.finding_status==='OPEN'&&['RED','YELLOW'].includes(f.rating))?.finding_id
+          ||nextFindings[0]?.finding_id||''
+      })
+    }catch(e){setError(e.message||String(e))}
+    finally{setDetailBusy(false)}
+  }
 
-  const metrics=useMemo(()=>({
-    open:prechecks.filter(r=>['NEW','IN_REVIEW','CLARIFICATION'].includes(r.status)).length,
-    approved:prechecks.filter(r=>['APPROVED','APPROVED_WITH_CONDITIONS','READY_FOR_SIGNATURE'].includes(r.status)).length,
-    signed:prechecks.filter(r=>r.status==='SIGNED').length,
-    active:prechecks.filter(r=>r.status==='ACTIVE').length,
-  }),[prechecks])
+  async function refreshSelectedOverview(id=selectedId){
+    if(!id)return
+    const {data,error:e}=await supabase.from('vn_admin_contract_precheck_overview')
+      .select('*').eq('precheck_id',id).single()
+    if(e){setError(e.message);return}
+    setSelected(data)
+  }
 
-  async function startPrecheck(){
-    if(!newUploadId){setError('Bitte zuerst einen Vertragsupload auswählen.');return}
+  async function startPrecheck(uploadId=legacyUploadId){
+    if(!uploadId){setError('Bitte zuerst einen Vertragsupload auswählen.');return}
+    if(creatingUploadRef.current.has(uploadId))return
+    creatingUploadRef.current.add(uploadId)
     setBusy(true);setError('');setMessage('')
     try{
-      const {data,error:e}=await supabase.rpc('vn_admin_create_contract_precheck',{
-        p_upload_id:newUploadId,
-      })
+      const {data,error:e}=await supabase.rpc('vn_admin_create_contract_precheck',{p_upload_id:uploadId})
       if(e)throw e
       const precheckId=typeof data==='string'?data:(data?.precheck_id||data)
       if(!precheckId)throw new Error('Vorprüfung wurde angelegt, aber keine Prüf-ID zurückgegeben.')
-      setNewUploadId('')
-      setMessage('Vertragsvorprüfung wurde angelegt.')
-      await load(precheckId)
-      await loadDetail(precheckId)
-    }catch(e){setError(e.message||String(e))}
-    finally{setBusy(false)}
+      setLegacyUploadId('')
+      setShowUpload(false)
+      setMessage('Upload analysiert und Vertragsvorprüfung angelegt.')
+      setPage(0)
+      setDebouncedQuery('')
+      setQuery('')
+      await Promise.all([loadMetrics(),loadLegacyUploads()])
+      await loadOverview(precheckId)
+      setSelectedId(precheckId)
+    }catch(e){
+      const raw=String(e.message||e)
+      if(/besteht bereits eine Vorprüfung/i.test(raw)){
+        const {data}=await supabase.from('contract_prechecks').select('precheck_id').eq('upload_id',uploadId).maybeSingle()
+        if(data?.precheck_id){
+          setShowUpload(false)
+          setSelectedId(data.precheck_id)
+          setMessage('Die vorhandene Vertragsvorprüfung wurde geöffnet.')
+        }else setError(raw)
+      }else setError(raw)
+    }finally{
+      creatingUploadRef.current.delete(uploadId)
+      setBusy(false)
+    }
   }
 
   async function updateFinding(findingId,patch){
     setError('');setMessage('')
     const current=findings.find(r=>r.finding_id===findingId)
+    if(!current)return
     setFindings(rows=>rows.map(r=>r.finding_id===findingId?{...r,...patch}:r))
     const payload={...patch}
     if('finding_status' in patch){
@@ -152,31 +258,50 @@ export default function ContractPrecheck({userId,onOpenChanges}){
       setError(e.message)
       return
     }
-    await load(selectedId)
-    await loadDetail(selectedId)
+    await Promise.all([refreshSelectedOverview(),loadOverview(),loadMetrics()])
   }
 
-  async function saveFindingText(finding){
-    const {error:e}=await supabase.from('contract_precheck_findings').update({
-      note:finding.note||null,
-      source_reference:finding.source_reference||null,
-    }).eq('finding_id',finding.finding_id)
-    if(e)setError(e.message)
-    else setMessage('Prüfhinweis gespeichert.')
+  function queueFindingAutosave(findingId,key,value){
+    setFindings(rows=>rows.map(r=>r.finding_id===findingId?{...r,[key]:value}:r))
+    const timerKey=findingId+':'+key
+    const old=findingSaveTimers.current.get(timerKey)
+    if(old)clearTimeout(old)
+    setAutosaveState('saving')
+    const timer=setTimeout(async()=>{
+      const {error:e}=await supabase.from('contract_precheck_findings')
+        .update({[key]:value||null})
+        .eq('finding_id',findingId)
+      findingSaveTimers.current.delete(timerKey)
+      if(e){setAutosaveState('error');setError(e.message)}
+      else{
+        setAutosaveState('saved')
+        setTimeout(()=>setAutosaveState(current=>current==='saved'?'':current),1200)
+      }
+    },650)
+    findingSaveTimers.current.set(timerKey,timer)
   }
 
-  async function saveDecisionNote(){
-    if(!selected)return
-    const {error:e}=await supabase.from('contract_prechecks').update({
-      decision_note:selected.decision_note||null,
-      reviewed_by:userId||null,
-    }).eq('precheck_id',selected.precheck_id)
-    if(e)setError(e.message)
-    else setMessage('Entscheidungsnotiz gespeichert.')
+  function updateDecision(value){
+    const id=selectedId
+    setSelected(current=>current?{...current,decision_note:value}:current)
+    if(decisionSaveTimer.current)clearTimeout(decisionSaveTimer.current)
+    setAutosaveState('saving')
+    decisionSaveTimer.current=setTimeout(async()=>{
+      const {error:e}=await supabase.from('contract_prechecks').update({
+        decision_note:value||null,
+        reviewed_by:userId||null,
+      }).eq('precheck_id',id)
+      if(e){setAutosaveState('error');setError(e.message)}
+      else{
+        setAutosaveState('saved')
+        setTimeout(()=>setAutosaveState(current=>current==='saved'?'':current),1200)
+      }
+    },700)
   }
 
   async function setWorkflowStatus(nextStatus){
     if(!selected)return
+    if(decisionSaveTimer.current){clearTimeout(decisionSaveTimer.current);decisionSaveTimer.current=null}
     setBusy(true);setError('');setMessage('')
     try{
       const {error:e}=await supabase.from('contract_prechecks').update({
@@ -186,62 +311,112 @@ export default function ContractPrecheck({userId,onOpenChanges}){
       }).eq('precheck_id',selected.precheck_id)
       if(e)throw e
       setMessage('Status: '+statusLabel(nextStatus))
-      await load(selected.precheck_id)
-      await loadDetail(selected.precheck_id)
+      await Promise.all([loadOverview(selected.precheck_id),loadMetrics()])
+      await loadSelected(selected.precheck_id)
     }catch(e){setError(e.message||String(e))}
     finally{setBusy(false)}
   }
 
-  function updateLocalDecision(value){
-    setPrechecks(rows=>rows.map(r=>r.precheck_id===selectedId?{...r,decision_note:value}:r))
-  }
-  function updateLocalFinding(id,key,value){
-    setFindings(rows=>rows.map(r=>r.finding_id===id?{...r,[key]:value}:r))
-  }
-
-  const canApproveGreen=selected?.overall_rating==='GREEN'
-  const canApproveConditional=selected?.overall_rating==='YELLOW'
+  const completedCount=findings.filter(isDone).length
+  const pendingCount=findings.filter(f=>f.finding_status==='OPEN'&&f.rating==='PENDING').length
+  const redCount=findings.filter(f=>f.finding_status==='OPEN'&&f.rating==='RED').length
+  const yellowCount=findings.filter(f=>f.finding_status==='OPEN'&&f.rating==='YELLOW').length
+  const acceptedRiskCount=findings.filter(f=>f.finding_status==='ACCEPTED_RISK').length
+  const progress=findings.length?Math.round(completedCount/findings.length*100):0
+  const activeFinding=findings.find(f=>f.finding_id===activeFindingId)||findings[0]||null
+  const activeIndex=Math.max(0,findings.findIndex(f=>f.finding_id===activeFinding?.finding_id))
+  const totalPages=Math.max(1,Math.ceil(total/PAGE_SIZE))
+  const uploadPublished=selected?.upload_status==='ACCEPTED'
+  const canApproveGreen=selected?.overall_rating==='GREEN'&&pendingCount===0&&redCount===0&&yellowCount===0&&acceptedRiskCount===0
+  const canApproveConditional=redCount===0&&pendingCount===0&&(yellowCount>0||acceptedRiskCount>0)&&['GREEN','YELLOW'].includes(selected?.overall_rating)
   const canSendToSignature=selected?.overall_rating==='GREEN'&&['APPROVED','APPROVED_WITH_CONDITIONS'].includes(selected?.status)
   const canMarkSigned=selected?.status==='READY_FOR_SIGNATURE'
-  const uploadPublished=selected?.upload?.upload_status==='ACCEPTED'
   const canActivate=selected?.status==='SIGNED'&&uploadPublished
 
-  return <div className="precheck-workspace">
+  let blockerTone='ok'
+  let blockerTitle='Freigabe grundsätzlich möglich'
+  let blockerText='Alle Pflichtprüfpunkte sind bewertet.'
+  if(redCount>0){
+    blockerTone='bad';blockerTitle='Freigabe blockiert';blockerText=redCount+' roter Prüfpunkt'+(redCount===1?'':'e')+' muss zuerst geklärt werden.'
+  }else if(pendingCount>0){
+    blockerTone='warn';blockerTitle='Prüfung noch nicht vollständig';blockerText=pendingCount+' Prüfpunkt'+(pendingCount===1?' ist':'e sind')+' noch offen.'
+  }else if(yellowCount>0||acceptedRiskCount>0){
+    blockerTone='warn';blockerTitle='Freigabe nur mit Auflagen';blockerText=(yellowCount+acceptedRiskCount)+' Risiko-/Auflagenpunkt'+((yellowCount+acceptedRiskCount)===1?'':'e')+' ist dokumentiert.'
+  }
+
+  function moveFinding(delta){
+    if(!findings.length)return
+    const next=Math.max(0,Math.min(findings.length-1,activeIndex+delta))
+    setActiveFindingId(findings[next].finding_id)
+  }
+  function jumpNextOpen(){
+    if(!findings.length)return
+    const after=[...findings.slice(activeIndex+1),...findings.slice(0,activeIndex+1)]
+    const next=after.find(f=>f.finding_status==='OPEN'&&f.rating==='PENDING')
+      ||after.find(f=>f.finding_status==='OPEN'&&['RED','YELLOW'].includes(f.rating))
+    if(next)setActiveFindingId(next.finding_id)
+  }
+
+  return <div className="precheck-workspace p1">
     <section className="panel span2 precheck-start">
       <div className="sectionbar">
-        <div><h2>Neue Vorprüfung</h2><p>Ein Vertragsupload wird zunächst geprüft und bleibt bis zur dokumentierten Freigabe getrennt vom produktiven Vertragsbestand.</p></div>
-        <button className="secondary icon-button" onClick={()=>load(selectedId)} title="Aktualisieren"><RefreshCw className={busy?'spin':''} size={16}/></button>
+        <div><h2>Vertrag vor Unterschrift prüfen</h2><p>Upload, Analyse, fachliche Prüfung und Freigabe laufen jetzt in einem geführten Admin-Prozess.</p></div>
+        <div className="precheck-start-actions">
+          <button className="primary inline-button" onClick={()=>setShowUpload(v=>!v)}><CloudUpload size={17}/>{showUpload?'Upload schließen':'Neuen Vertrag prüfen'}</button>
+          <button className="secondary icon-button" onClick={()=>{loadOverview();loadMetrics()}} title="Aktualisieren"><RefreshCw className={busy?'spin':''} size={16}/></button>
+        </div>
       </div>
       {error&&<div className="alert error">{error}</div>}
       {message&&<div className="alert success">{message}</div>}
-      <div className="precheck-new-row">
-        <label>Vertragsupload<select value={newUploadId} onChange={e=>setNewUploadId(e.target.value)}>
-          <option value="">Upload auswählen …</option>
-          {availableUploads.map(u=><option key={u.upload_id} value={u.upload_id}>{u.contract_id} · {u.filename||'ohne Dateiname'} · {statusLabel(u.upload_status)}</option>)}
-        </select></label>
-        <button className="primary" type="button" onClick={startPrecheck} disabled={!newUploadId||busy}><FileCheck2 size={17}/> Vorprüfung starten</button>
-      </div>
-      {!availableUploads.length&&<div className="note">Für alle vorhandenen Vertragsuploads besteht bereits eine Vorprüfung. Neue Uploads erscheinen hier automatisch.</div>}
       <div className="metrics precheck-metrics">
         <article className="metric"><span>Offen / in Prüfung</span><strong>{metrics.open}</strong></article>
         <article className="metric"><span>Freigegeben</span><strong>{metrics.approved}</strong></article>
         <article className="metric"><span>Unterschrieben</span><strong>{metrics.signed}</strong></article>
         <article className="metric"><span>Aktiv</span><strong>{metrics.active}</strong></article>
       </div>
+      {showUpload&&<div className="precheck-upload-embedded">
+        <ContractUpload
+          contracts={contracts}
+          sites={sites}
+          canFach
+          precheckMode
+          onPrecheckReady={startPrecheck}
+          onOpenChanges={onOpenChanges}
+        />
+      </div>}
+      {!showUpload&&legacyUploads.length>0&&<details className="precheck-existing-upload">
+        <summary>Bereits vorhandenen, noch nicht veröffentlichten Upload übernehmen</summary>
+        <div className="precheck-new-row">
+          <label>Vorhandener Upload<select value={legacyUploadId} onChange={e=>setLegacyUploadId(e.target.value)}>
+            <option value="">Upload auswählen …</option>
+            {legacyUploads.map(u=><option key={u.upload_id} value={u.upload_id}>{u.contract_id} · {u.filename||'ohne Dateiname'} · {statusLabel(u.upload_status)}</option>)}
+          </select></label>
+          <button className="secondary inline-button" type="button" onClick={()=>startPrecheck()} disabled={!legacyUploadId||busy}><FileCheck2 size={17}/> Vorprüfung anlegen</button>
+        </div>
+      </details>}
     </section>
 
     <section className="panel precheck-list-panel">
       <div className="sectionbar">
-        <div><h2>Vorprüfungen</h2><p>Admin-Prüfqueue vor Vertragsunterschrift.</p></div>
+        <div><h2>Vorprüfungen</h2><p>{total.toLocaleString('de-DE')} Prüffälle · serverseitig geladen</p></div>
         <input className="compact" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Vertrag / Datei …"/>
       </div>
       <div className="precheck-list">
-        {filteredPrechecks.map(r=><button key={r.precheck_id} type="button" className={'precheck-list-row '+(selectedId===r.precheck_id?'selected':'')} onClick={()=>setSelectedId(r.precheck_id)}>
+        {prechecks.map(r=><button key={r.precheck_id} type="button" className={'precheck-list-row '+(selectedId===r.precheck_id?'selected':'')} onClick={()=>setSelectedId(r.precheck_id)}>
           <span className={'precheck-dot '+String(r.overall_rating||'PENDING').toLowerCase()}></span>
-          <span className="precheck-list-main"><b>{r.contract?.contract_name||r.contract_id}</b><small>{r.upload?.filename||'ohne Upload'} · {fmtDate(r.updated_at)}</small></span>
+          <span className="precheck-list-main">
+            <b>{r.contract_name||r.contract_id}</b>
+            <small>{r.filename||'ohne Upload'} · {r.completed_count}/{r.finding_count} geprüft · {fmtDate(r.updated_at)}</small>
+          </span>
           <Badge tone={toneForStatus(r.status)}>{statusLabel(r.status)}</Badge>
         </button>)}
-        {!filteredPrechecks.length&&!busy&&<div className="empty-panel">Noch keine Vertragsvorprüfung vorhanden.</div>}
+        {!prechecks.length&&!busy&&<div className="empty-panel">Keine Vorprüfungen für diese Suche.</div>}
+        {busy&&<div className="precheck-loading"><LoaderCircle className="spin" size={17}/> Prüffälle werden geladen …</div>}
+      </div>
+      <div className="precheck-pagination">
+        <button className="secondary icon-button" disabled={page===0||busy} onClick={()=>setPage(p=>Math.max(0,p-1))}><ChevronLeft size={17}/></button>
+        <span>Seite {page+1} von {totalPages}</span>
+        <button className="secondary icon-button" disabled={page+1>=totalPages||busy} onClick={()=>setPage(p=>p+1)}><ChevronRight size={17}/></button>
       </div>
     </section>
 
@@ -249,10 +424,11 @@ export default function ContractPrecheck({userId,onOpenChanges}){
       {!selected?<div className="empty-panel">Links eine Vorprüfung auswählen.</div>:<>
         <div className="sectionbar">
           <div>
-            <h2>{selected.contract?.contract_name||selected.contract_id}</h2>
-            <p>{selected.upload?.filename||'Kein Upload verknüpft'} · angelegt {fmtDate(selected.created_at)}</p>
+            <h2>{selected.contract_name||selected.contract_id}</h2>
+            <p>{selected.filename||'Kein Upload verknüpft'} · angelegt {fmtDate(selected.created_at)}</p>
           </div>
           <div className="precheck-head-badges">
+            {autosaveState&&<Badge tone={autosaveState==='error'?'bad':'info'}>{autosaveState==='saving'?'Speichert …':autosaveState==='saved'?'Gespeichert':'Speicherfehler'}</Badge>}
             <Badge tone={ratingTone(selected.overall_rating)}>Ampel {RATING_LABELS[selected.overall_rating]||selected.overall_rating}</Badge>
             <Badge tone={toneForStatus(selected.status)}>{statusLabel(selected.status)}</Badge>
           </div>
@@ -260,47 +436,73 @@ export default function ContractPrecheck({userId,onOpenChanges}){
 
         <div className="precheck-flow">
           {['IN_REVIEW','APPROVED','READY_FOR_SIGNATURE','SIGNED','ACTIVE'].map((s,i)=><React.Fragment key={s}>
-            <span className={selected.status===s?'current':(['APPROVED_WITH_CONDITIONS'].includes(selected.status)&&s==='APPROVED')?'current':''}>{statusLabel(s)}</span>
+            <span className={selected.status===s?'current':(selected.status==='APPROVED_WITH_CONDITIONS'&&s==='APPROVED')?'current':''}>{statusLabel(s)}</span>
             {i<4&&<i>→</i>}
           </React.Fragment>)}
         </div>
 
-        <div className="precheck-context">
-          <div><small>Uploadstatus</small><strong>{statusLabel(selected.upload?.upload_status)}</strong></div>
-          <div><small>Upload-Diff</small><strong>{Number(selected.upload?.change_count||0)} Änderungen</strong></div>
-          <div><small>Automatische Reviews</small><strong>{Number(selected.upload?.review_count||0)}</strong></div>
-          <div><small>Produktgruppen</small><strong>{(selected.contract?.product_groups||[]).join(', ')||'—'}</strong></div>
+        <div className={'precheck-blocker '+blockerTone}>
+          <div className="precheck-blocker-icon">{blockerTone==='bad'?<XCircle size={22}/>:blockerTone==='warn'?<AlertTriangle size={22}/>:<CheckCircle2 size={22}/>}</div>
+          <div><b>{blockerTitle}</b><p>{blockerText}</p></div>
+          <div className="precheck-blocker-kpis"><span><strong>{redCount}</strong> rot</span><span><strong>{yellowCount+acceptedRiskCount}</strong> Auflagen</span><span><strong>{pendingCount}</strong> offen</span></div>
         </div>
 
-        <div className="precheck-findings">
-          {findings.map(f=><article key={f.finding_id} className={'precheck-finding '+String(f.rating||'PENDING').toLowerCase()+(f.finding_status!=='OPEN'?' resolved':'')}>
+        <div className="precheck-progress-card">
+          <div className="precheck-progress-head">
+            <div><small>Prüffortschritt</small><b>{completedCount} von {findings.length} Prüfpunkten bewertet</b></div>
+            <strong>{progress}%</strong>
+          </div>
+          <div className="precheck-progress-track"><span style={{width:progress+'%'}}></span></div>
+        </div>
+
+        <div className="precheck-context">
+          <div><small>Uploadstatus</small><strong>{statusLabel(selected.upload_status)}</strong></div>
+          <div><small>Publication Hold</small><strong>{selected.publication_hold?'Aktiv – keine Veröffentlichung':'nicht aktiv'}</strong></div>
+          <div><small>Upload-Diff</small><strong>{Number(selected.change_count||0)} Änderungen</strong></div>
+          <div><small>Produktgruppen</small><strong>{(selected.product_groups||[]).join(', ')||'—'}</strong></div>
+        </div>
+
+        {detailBusy?<div className="precheck-loading"><LoaderCircle className="spin" size={17}/> Prüfpunkte werden geladen …</div>:<>
+          <div className="precheck-guide-index" aria-label="Prüfpunkte">
+            {findings.map((f,i)=><button key={f.finding_id} type="button" onClick={()=>setActiveFindingId(f.finding_id)}
+              className={(activeFinding?.finding_id===f.finding_id?'active ':'')+String(f.rating||'PENDING').toLowerCase()+(f.finding_status!=='OPEN'?' resolved':'')}>
+              <span>{i+1}</span>
+              <b>{CATEGORY_LABELS[f.category]||f.category}</b>
+              <small>{f.finding_status==='NOT_APPLICABLE'?'n/a':f.finding_status==='ACCEPTED_RISK'?'Risiko akzeptiert':RATING_LABELS[f.rating]||f.rating}</small>
+            </button>)}
+          </div>
+
+          {activeFinding&&<article className={'precheck-finding guided '+String(activeFinding.rating||'PENDING').toLowerCase()+(activeFinding.finding_status!=='OPEN'?' resolved':'')}>
             <div className="precheck-finding-head">
               <div className="precheck-finding-title">
-                {f.rating==='GREEN'?<CheckCircle2 size={18}/>:f.rating==='RED'?<XCircle size={18}/>:f.rating==='YELLOW'?<AlertTriangle size={18}/>:<Circle size={18}/>}
-                <div><b>{f.title}</b><small>{CATEGORY_LABELS[f.category]||f.category}{f.auto_generated?' · automatisch vorbefüllt':''}</small></div>
+                {activeFinding.rating==='GREEN'?<CheckCircle2 size={20}/>:activeFinding.rating==='RED'?<XCircle size={20}/>:activeFinding.rating==='YELLOW'?<AlertTriangle size={20}/>:<Circle size={20}/>}
+                <div><small>Prüfpunkt {activeIndex+1} von {findings.length} · {CATEGORY_LABELS[activeFinding.category]||activeFinding.category}</small><b>{activeFinding.title}</b>{activeFinding.auto_generated&&<em>automatisch vorbefüllt</em>}</div>
               </div>
-              <div className="rating-control" aria-label={'Bewertung '+f.title}>
-                {['PENDING','GREEN','YELLOW','RED'].map(v=><button key={v} type="button" className={f.rating===v?'active '+v.toLowerCase():''} onClick={()=>updateFinding(f.finding_id,{rating:v,finding_status:'OPEN'})}>{RATING_LABELS[v]}</button>)}
-                <button type="button" className={f.finding_status==='NOT_APPLICABLE'?'active na':''} onClick={()=>updateFinding(f.finding_id,{finding_status:f.finding_status==='NOT_APPLICABLE'?'OPEN':'NOT_APPLICABLE'})}>n/a</button>
+              <div className="rating-control" aria-label={'Bewertung '+activeFinding.title}>
+                {['PENDING','GREEN','YELLOW','RED'].map(v=><button key={v} type="button" className={activeFinding.rating===v&&activeFinding.finding_status==='OPEN'?'active '+v.toLowerCase():''} onClick={()=>updateFinding(activeFinding.finding_id,{rating:v,finding_status:'OPEN'})}>{RATING_LABELS[v]}</button>)}
+                <button type="button" className={activeFinding.finding_status==='NOT_APPLICABLE'?'active na':''} onClick={()=>updateFinding(activeFinding.finding_id,{finding_status:activeFinding.finding_status==='NOT_APPLICABLE'?'OPEN':'NOT_APPLICABLE'})}>n/a</button>
+                {activeFinding.rating==='YELLOW'&&<button type="button" className={activeFinding.finding_status==='ACCEPTED_RISK'?'active risk':''} onClick={()=>updateFinding(activeFinding.finding_id,{finding_status:activeFinding.finding_status==='ACCEPTED_RISK'?'OPEN':'ACCEPTED_RISK'})}>Risiko akzeptieren</button>}
               </div>
             </div>
-            <div className="precheck-finding-body">
-              <label>Bewertung / Hinweis<textarea rows="2" value={f.note||''} onChange={e=>updateLocalFinding(f.finding_id,'note',e.target.value)} placeholder="fachliche Bewertung, Risiko oder Auflage …"/></label>
-              <label>Quelle / Seite<input value={f.source_reference||''} onChange={e=>updateLocalFinding(f.finding_id,'source_reference',e.target.value)} placeholder="z. B. § 8 / Anlage 2 / Seite 14"/></label>
-              <button className="secondary small-button" type="button" onClick={()=>saveFindingText(f)}>Speichern</button>
+            <div className="precheck-finding-body guided-body">
+              <label>Bewertung / Hinweis<textarea rows="4" value={activeFinding.note||''} onChange={e=>queueFindingAutosave(activeFinding.finding_id,'note',e.target.value)} placeholder="fachliche Bewertung, Risiko oder Auflage …"/></label>
+              <label>Quelle / Seite<input value={activeFinding.source_reference||''} onChange={e=>queueFindingAutosave(activeFinding.finding_id,'source_reference',e.target.value)} placeholder="z. B. § 8 / Anlage 2 / Seite 14"/></label>
             </div>
-          </article>)}
-          {!findings.length&&<div className="empty-panel">Für diese Vorprüfung wurden noch keine Prüfpunkte angelegt.</div>}
-        </div>
+            <div className="precheck-guide-actions">
+              <button className="secondary inline-button" type="button" disabled={activeIndex===0} onClick={()=>moveFinding(-1)}><ChevronLeft size={16}/> Zurück</button>
+              <button className="secondary inline-button" type="button" onClick={jumpNextOpen}><ListChecks size={16}/> Nächster offener Punkt</button>
+              <button className="secondary inline-button" type="button" disabled={activeIndex>=findings.length-1} onClick={()=>moveFinding(1)}>Weiter <ChevronRight size={16}/></button>
+            </div>
+          </article>}
+        </>}
 
         <section className="precheck-decision-box">
           <div>
             <h3>Freigabeentscheidung</h3>
-            <p>Rot blockiert die Freigabe. Gelb kann nur mit Auflagen freigegeben werden. Eine Weitergabe zur Unterschrift setzt eine grüne Gesamtampel voraus.</p>
+            <p>Rot blockiert. Ungeprüfte Punkte blockieren. Gelb bzw. akzeptierte Risiken erfordern eine dokumentierte Freigabe mit Auflagen.</p>
           </div>
-          <label>Entscheidungsnotiz<textarea rows="3" value={selected.decision_note||''} onChange={e=>updateLocalDecision(e.target.value)} placeholder="Begründung, Auflagen oder Rückfrage dokumentieren …"/></label>
+          <label>Entscheidungsnotiz <span className="field-hint">wird automatisch gespeichert</span><textarea rows="3" value={selected.decision_note||''} onChange={e=>updateDecision(e.target.value)} placeholder="Begründung, Auflagen oder Rückfrage dokumentieren …"/></label>
           <div className="precheck-actions">
-            <button className="secondary" type="button" disabled={busy} onClick={saveDecisionNote}>Notiz speichern</button>
             <button className="secondary" type="button" disabled={busy} onClick={()=>setWorkflowStatus('CLARIFICATION')}>Rückfrage / offen</button>
             <button className="danger-button" type="button" disabled={busy} onClick={()=>setWorkflowStatus('REJECTED')}>Ablehnen</button>
             <button className="secondary" type="button" disabled={busy||!canApproveConditional} onClick={()=>setWorkflowStatus('APPROVED_WITH_CONDITIONS')}>Mit Auflagen freigeben</button>
@@ -309,7 +511,7 @@ export default function ContractPrecheck({userId,onOpenChanges}){
             <button className="primary" type="button" disabled={busy||!canMarkSigned} onClick={()=>setWorkflowStatus('SIGNED')}>Unterschrift dokumentieren</button>
           </div>
           {selected.status==='SIGNED'&&!uploadPublished&&<div className="review-callout">
-            <div><AlertTriangle size={18}/><div><b>Unterschrift dokumentiert – Veröffentlichung noch offen</b><p>Der zugeordnete Vertragsupload ist noch nicht veröffentlicht. Erst danach kann die Vorprüfung auf „Aktiv“ gesetzt werden.</p></div></div>
+            <div><AlertTriangle size={18}/><div><b>Unterschrift dokumentiert – Veröffentlichung noch offen</b><p>Der Upload ist weiterhin gesperrt. Jetzt darf der geprüfte Vertragsstand veröffentlicht werden.</p></div></div>
             <button className="primary inline-button" type="button" onClick={onOpenChanges}>Änderungen veröffentlichen</button>
           </div>}
           {canActivate&&<div className="review-callout success-callout">

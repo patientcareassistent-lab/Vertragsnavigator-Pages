@@ -548,7 +548,7 @@ export default function App(){
 
       {isAdmin&&active==='precheck'&&<>
         <div className="page-head"><div><h1>Vertragsvorprüfung</h1><p>Neue und geänderte Verträge vor der Unterschrift strukturiert prüfen, Risiken dokumentieren und fachlich freigeben.</p></div><Badge tone="warn">Admin · vor Unterschrift</Badge></div>
-        <ContractPrecheck userId={session.user.id} onOpenChanges={()=>setActive('changes')}/>
+        <ContractPrecheck userId={session.user.id} contracts={contracts} sites={sites} onOpenChanges={()=>setActive('changes')}/>
       </>}
 
       {active==='upload'&&<>
