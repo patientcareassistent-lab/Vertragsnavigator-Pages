@@ -4,7 +4,8 @@ import { supabase, supabaseConfigured } from './lib/supabase.js'
 import ContractUpload from './components/ContractUpload.jsx'
 import ContractChanges from './components/ContractChanges.jsx'
 import PositionDetail from './components/PositionDetail.jsx'
-import MissingSources from './components/MissingSources.jsx'\nimport ContractTrafficLightPanel from './components/ContractTrafficLightPanel.jsx'
+import MissingSources from './components/MissingSources.jsx'
+import ContractTrafficLightPanel from './components/ContractTrafficLightPanel.jsx'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
