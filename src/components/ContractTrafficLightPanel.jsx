@@ -11,6 +11,16 @@ const META={
 
 const arr=value=>Array.isArray(value)?value:(value?[value]:[])
 
+const norm=value=>String(value||'').toLowerCase().replace(/[^a-z0-9]+/g,' ')
+function displayCompanyName(value){
+  const name=String(value||'')
+  const n=norm(name)
+  if((n.includes('spectrumk')||n.includes('spectrum k'))&&!n.includes('valuny')){
+    return name.replace(/^spectrum\s*k/i,'VALUNY GmbH (ehemals spectrumK)')
+  }
+  return name
+}
+
 function TrafficBadge({status='GRAY'}){
   const meta=META[status]||META.GRAY
   return <span className={'traffic-badge '+meta.className}>
@@ -93,7 +103,7 @@ export default function ContractTrafficLightPanel({contracts=[]}){
             const siteCount=summary?.site_count||0
             return <tr key={contract.contract_id} className={'traffic-row '+String(status).toLowerCase()}>
               <td><TrafficBadge status={status}/></td>
-              <td><b>{contract.contract_name||contract.contract_id}</b><span className="detail-only tiny">{contract.contract_id}</span></td>
+              <td><b>{displayCompanyName(contract.contract_name||contract.contract_id)}</b><span className="detail-only tiny">{contract.contract_id}</span></td>
               <td>{arr(contract.payer_families).join(', ')||'—'}</td>
               <td>{arr(contract.product_groups).join(', ')||'—'}</td>
               <td>
