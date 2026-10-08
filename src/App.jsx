@@ -180,6 +180,8 @@ export default function App(){
   const role=session?.user?.app_metadata?.vn_role||'versorger'
   const canFach=['fach','admin'].includes(role)
   const isAdmin=role==='admin'
+  const modeLabel=mode==='admin'?'Administrator':mode==='fach'?'Innendienst':'Versorger'
+  const displayName=session?.user?.user_metadata?.display_name||(isAdmin?'Vertragsmanager':session?.user?.email)||''
   const navItems=isAdmin?[...NAV,['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:NAV
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
@@ -209,6 +211,11 @@ export default function App(){
     const {data:listener}=supabase.auth.onAuthStateChange((_e,s)=>{setSession(s);setAuthReady(true)})
     return ()=>listener.subscription.unsubscribe()
   },[])
+
+  useEffect(()=>{
+    if(!session?.user?.id)return
+    if(session.user.app_metadata?.vn_role==='admin'){setMode('admin');setActive('admin')}
+  },[session?.user?.id])
 
   useEffect(()=>{
     const onError=()=>recordRuntimeEvent({severity:'ERROR',area:'FRONTEND',code:'WINDOW_ERROR',route:'app'})
@@ -560,15 +567,15 @@ export default function App(){
     {authError&&<div className="alert error">{authError}</div>}<button className="primary" type="submit">Anmelden</button>
   </form></main>
 
-  return <div className={'app '+(mode==='fach'?'mode-fach':'')}>
+  return <div className={'app '+(['fach','admin'].includes(mode)?'mode-fach':'')}>
     <header className="top">
       <div className="masthead">
         <div className="brand-small"><div className="brandmark">B</div><div><strong>Vertragsnavigator 2.1</strong><small>brillinger | ottobock.care · Vertragsassistent</small></div></div>
-        <div className="userbar"><span>{session.user.email}</span><Badge>{mode==='fach'?'Innendienst':'Versorger'}</Badge><button className="secondary" onClick={()=>supabase.auth.signOut()}>Abmelden</button></div>
+        <div className="userbar"><span>{displayName}</span><Badge>{modeLabel}</Badge><button className="secondary" onClick={()=>supabase.auth.signOut()}>Abmelden</button></div>
       </div>
       <div className="navwrap"><nav className="nav">
         {navItems.map(([id,label])=><button key={id} className={active===id?'active':''} onClick={()=>setActive(id)}>{label}</button>)}
-        <div className="mode-toggle"><button className={mode==='versorger'?'active':''} onClick={()=>setMode('versorger')}>Versorger</button><button className={mode==='fach'?'active':''} onClick={()=>setMode('fach')}>Innendienst</button></div>
+        <div className="mode-toggle"><button className={mode==='versorger'?'active':''} onClick={()=>setMode('versorger')}>Versorger</button><button className={mode==='fach'?'active':''} onClick={()=>setMode('fach')}>Innendienst</button>{isAdmin&&<button className={mode==='admin'?'active':''} onClick={()=>{setMode('admin');setActive('admin')}}>Administrator</button>}</div>
       </nav></div>
     </header>
 
