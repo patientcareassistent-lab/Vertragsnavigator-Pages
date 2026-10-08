@@ -142,6 +142,7 @@ function Badge({children,tone=''}){return <span className={'badge '+tone}>{child
 
 export default function App(){
   const [session,setSession]=useState(null)
+  const [userProfile,setUserProfile]=useState(null)
   const [authReady,setAuthReady]=useState(false)
   const [authError,setAuthError]=useState('')
   const [username,setUsername]=useState('')
@@ -177,11 +178,13 @@ export default function App(){
   const [questionMessage,setQuestionMessage]=useState('')
   const [maintenanceContractId,setMaintenanceContractId]=useState('')
 
-  const role=session?.user?.app_metadata?.vn_role||'versorger'
+  // Die serverseitig gepflegte VN-Rolle ist maßgeblich, nicht veränderbare User-Metadaten.
+  const databaseRole=String(userProfile?.role||'').toUpperCase()
+  const role=databaseRole==='ADMIN'?'admin':databaseRole==='PG_ADMIN'?'fach':'versorger'
   const canFach=['fach','admin'].includes(role)
   const isAdmin=role==='admin'
   const modeLabel=mode==='admin'?'Administrator':mode==='fach'?'Innendienst':'Versorger'
-  const candidateDisplayName=String(session?.user?.user_metadata?.display_name||session?.user?.user_metadata?.full_name||session?.user?.user_metadata?.username||'').trim()
+  const candidateDisplayName=String(userProfile?.display_name||session?.user?.user_metadata?.display_name||session?.user?.user_metadata?.full_name||session?.user?.user_metadata?.username||'').trim()
   const displayName=candidateDisplayName&&!candidateDisplayName.includes('@')?candidateDisplayName:'Vertragsmanager'
   const inAdminMode=isAdmin&&mode==='admin'
   const inFachMode=canFach&&mode!=='versorger'
@@ -216,12 +219,6 @@ export default function App(){
   },[])
 
   useEffect(()=>{
-    if(!session?.user?.id)return
-    if(session.user.app_metadata?.vn_role==='admin'){setMode('admin');setActive('admin')}
-    else setMode(session.user.app_metadata?.vn_role==='fach'?'fach':'versorger')
-  },[session?.user?.id])
-
-  useEffect(()=>{
     const onError=()=>recordRuntimeEvent({severity:'ERROR',area:'FRONTEND',code:'WINDOW_ERROR',route:'app'})
     const onReject=()=>recordRuntimeEvent({severity:'ERROR',area:'FRONTEND',code:'UNHANDLED_REJECTION',route:'app'})
     window.addEventListener('error',onError)
@@ -238,31 +235,38 @@ export default function App(){
       if(session){
         const {data,error}=await supabase
           .from('vn_users')
-          .select('active')
+          .select('active,role,display_name')
           .eq('auth_user_id',session.user.id)
           .eq('active',true)
           .maybeSingle()
         if(cancelled)return
         if(error){
+          setUserProfile(null)
           recordRuntimeEvent({severity:'ERROR',area:'AUTH_BOOTSTRAP',code:error.code||'PROFILE_LOAD_FAILED',route:'login'})
           setError('Benutzerstatus konnte nicht geprüft werden: '+error.message)
           return
         }
         if(!data){
+          setUserProfile(null)
           setAuthError('Der Zugang zum Vertragsnavigator ist nicht freigeschaltet.')
           await supabase.auth.signOut()
           return
         }
+        setUserProfile(data)
+        const profileRole=String(data.role||'').toUpperCase()
+        setMode(profileRole==='ADMIN'?'admin':profileRole==='PG_ADMIN'?'fach':'versorger')
+        setActive(profileRole==='ADMIN'?'admin':'assistant')
         await loadData()
         return
       }
+      setUserProfile(null)
       setKnowledge([]);setKnowledgeLoaded(false)
       setQuestions([]);setQuestionsLoaded(false);setQuestionCount(0)
       setRelatedKnowledge([]);setSelectedSiteEligibilities([])
     }
     bootstrapSession()
     return()=>{cancelled=true}
-  },[session])
+  },[session?.user?.id])
   useEffect(()=>{
     let cancelled=false
     async function evaluateSelected(){
