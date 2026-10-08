@@ -16,10 +16,10 @@ import { supabase } from '../lib/supabase.js'
 const TYPE_LABELS={CONTRACT:'Vertragskopf',VERSION:'Vertragsversionen',POSITION:'Preis-/Versorgungspositionen'}
 const STATUS_LABELS={
   RECEIVED:'Datei hochgeladen',DUPLICATE:'Bereits vorhanden',PARSING:'Inhalt erkannt',
-  READY:'Bereit zum Vergleich',REVIEW:'Änderungen prüfen',ACCEPTED:'Veröffentlicht',
+  READY:'Bereit zum Vergleich',REVIEW:'Änderungen prüfen',SOURCE_ONLY:'Originalquelle erfasst (Teilquelle)',ACCEPTED:'Veröffentlicht',
   REJECTED:'Abgelehnt',ERROR:'Fehler',
 }
-const STATUS_TONES={ACCEPTED:'ok',DUPLICATE:'info',REVIEW:'warn',ERROR:'bad',REJECTED:'bad',READY:'info',PARSING:'info'}
+const STATUS_TONES={ACCEPTED:'ok',DUPLICATE:'info',REVIEW:'warn',SOURCE_ONLY:'info',ERROR:'bad',REJECTED:'bad',READY:'info',PARSING:'info'}
 
 function Badge({children,tone=''}){return <span className={'badge '+tone}>{children}</span>}
 function statusLabel(status){return STATUS_LABELS[status]||status||'—'}
@@ -65,6 +65,7 @@ function UploadStatusCard({detail,canFach,onAccept,busy,precheckMode=false}){
       <div><small>Verglichen</small><strong className="date-value">{formatUploadDate(u.compared_at)}</strong></div>
     </div>
     {u.upload_status==='DUPLICATE'&&<div className="alert success">Die Datei ist bereits vorhanden. Es wurde keine zweite Vertragsquelle angelegt.</div>}
+    {u.upload_status==='SOURCE_ONLY'&&<div className="note">Die PDF wurde analysiert und als Originalquelle registriert. Sie enthält nur teilweise strukturierbare Positionshinweise; ein vollständiger Preis- oder Leistungskonditionenvergleich wurde bewusst nicht durchgeführt. Bitte ergänzende strukturierte Vertragsdaten zur fachlichen Prüfung bereitstellen. Kein Livebestand wurde verändert.</div>}
     {u.upload_status==='ACCEPTED'&&!precheckMode&&<div className="alert success inline-alert"><CheckCircle2 size={17}/> Die Änderungen sind veröffentlicht. Der vorherige Stand bleibt historisch nachvollziehbar.</div>}
     {u.upload_status==='REVIEW'&&<div className="review-callout">
       <div><AlertTriangle size={19}/><div><b>{precheckMode?'Für Vertragsvorprüfung bereit':'Fachliche Freigabe erforderlich'}</b><p>{precheckMode?'Der Upload bleibt bis zur dokumentierten Unterschrift für die Veröffentlichung gesperrt.':'Das Änderungsprotokoll ist erzeugt. Erst die Freigabe verändert den Live-Vertragsbestand.'}</p></div></div>
@@ -274,12 +275,16 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
       setParser(parsed)
       const nextTypes=parsed?.result?.suggested_complete_entity_types||[]
       setCompleteTypes(nextTypes)
+      if(!precheckMode&&!nextTypes.length&&parsed?.result?.pages!=null){
+        const {error:sourceOnlyError}=await supabase.rpc('vn_mark_upload_source_only',{p_upload_id:completed.upload_id})
+        if(sourceOnlyError)throw sourceOnlyError
+      }
       setDetail(await getContractUploadStatus(completed.upload_id))
       setMessage(nextTypes.length
         ? 'Inhalt erkannt. Bitte prüfen, welche Bereiche vollständig geliefert wurden.'
         : (precheckMode
           ? 'Quelle wurde sicher analysiert. Die Vertragsvorprüfung wird jetzt angelegt.'
-          : 'Quelle wurde sicher abgelegt. Für diesen Dateityp ist keine automatische Vollständigkeitsannahme zulässig.'))
+          : 'PDF-Teilquelle ist als Originaldokument archiviert. Kein automatischer Preis- oder Leistungskonditionenvergleich; ergänzende Strukturdaten erforderlich.'))
       if(precheckMode&&!nextTypes.length&&onPrecheckReady)await onPrecheckReady(completed.upload_id)
     }catch(e){setError(e.message)}
     finally{setBusy('')}
