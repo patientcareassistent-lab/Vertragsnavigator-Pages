@@ -1,0 +1,48 @@
+.supply-v3-audit{grid-column:1/-1;border:1px solid #d7e0ea;border-left:4px solid var(--blue);border-radius:10px;background:#f7fafc;padding:12px 15px;margin:14px 0 5px;color:#344054;font-size:12px}
+.supply-v3-audit strong{display:block;color:var(--blue);font-size:13px}
+.supply-v3-audit p{color:#475467;margin:7px 0 0;line-height:1.45}
+.pg-review-filters{display:grid;grid-template-columns:minmax(180px,1fr) minmax(170px,1fr) 160px;gap:12px;align-items:end;margin:16px 0}
+.pg-review-filters>div{padding:9px 12px;border:1px solid #dee5e9;border-radius:9px;background:#f8fafc}
+.pg-review-filters>div small{display:block;color:#667085}
+.pg-review-filters>div strong{display:block;font-size:22px;color:var(--blue);margin-top:3px}
+.pg-review-buttons{display:flex;gap:6px;flex-wrap:wrap}
+.pg-review-buttons button,.pg-review .sectionbar button{display:flex;align-items:center;gap:5px;font-size:11px;padding:7px 9px}
+.pg-review td{font-size:11px}
+.pg-review td textarea{padding:8px;font-size:11px;min-width:220px}
+.pg-review-pages{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:12px;font-size:11px;color:#667085}
+.pg-review-pages button{font-size:11px;padding:7px 10px}
+.question-answer{padding:10px 12px;margin-top:10px;border:1px solid #d9e6f0;border-radius:9px;background:#f7fbff}
+.question-answer b{font-size:12px;color:var(--blue)}
+.question-answer p{margin:5px 0 0;white-space:pre-wrap;color:#344054}
+.contract-notice-banner{padding:14px 16px;margin-bottom:17px;border:1px solid #ced8e1;border-left:4px solid #0b3b6f;border-radius:12px;background:#fff}
+.contract-notice-heading{display:flex;align-items:center;gap:9px;margin-bottom:10px;color:var(--blue)}
+.contract-notice-heading>strong{font-size:13px}
+.contract-notice-heading>small{margin-left:auto;color:#667085;font-size:11px}
+.contract-notice-item{padding:10px 0;border-top:1px solid #eef1f5}
+.contract-notice-item>b{display:block;color:#344054;font-size:12px}
+.contract-notice-item small{color:#667085;font-size:10px}
+.contract-notice-item p{color:#475467;font-size:12px;line-height:1.45;margin:5px 0 0}
+.contract-notice-banner>button{display:flex;align-items:center;gap:6px;font-size:11px;padding:7px 9px;margin-top:8px}
+.matrix-payer-row{display:grid;grid-template-columns:minmax(160px,1fr) minmax(200px,1.6fr) 42px;gap:10px;align-items:end}
+.matrix-payer-row>button{height:42px;display:grid;place-items:center;padding:0}
+.matrix-actions{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:5px}
+.matrix-actions button{display:flex;align-items:center;gap:7px}
+.matrix-comparison{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.matrix-payer-column{min-width:0;padding:12px;border:1px solid #dce3e6;background:#f8fafc;border-radius:12px}
+.matrix-payer-column h3{font-size:14px;color:var(--blue);margin:0 0 4px}
+.matrix-payer-column>small{display:block;font-size:11px;color:#667085;margin-bottom:11px}
+.matrix-position{border:1px solid #e1e7ed;background:#fff;border-radius:10px;padding:11px 12px;margin-bottom:10px;min-width:0}
+.matrix-position-main{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px}
+.matrix-position-main b{font-size:12px;line-height:1.4;color:#243b58;grid-column:1/3}
+.matrix-position-main small{font-size:10px;color:#667085;padding-top:5px}
+.matrix-position-main strong{font-size:13px;color:#0a5b3f;white-space:nowrap}
+.matrix-contract-name{display:block;margin:7px 0;color:#667085;font-size:10px;overflow-wrap:anywhere}
+.matrix-position>button{font-size:11px;padding:7px 9px;width:100%}
+.matrix-extra{font-size:11px;line-height:1.5;color:#344054;display:grid;gap:7px;margin-top:10px;border-top:1px solid #edf1f4;padding-top:10px}
+.matrix-extra>div{overflow-wrap:anywhere}
+.matrix-extra>small{color:#975507}
+.matrix-addon{border:1px solid #d5e2ef;background:#f7fbff;padding:8px;border-radius:8px}
+.matrix-addon p{margin:4px 0 0;color:#667085;font-size:11px}
+@media(min-width:1450px){.matrix-comparison{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:850px){.matrix-comparison{grid-template-columns:1fr}.pg-review-filters{grid-template-columns:1fr 1fr}.pg-review-filters>div{grid-column:1/-1}.contract-notice-heading{flex-wrap:wrap}.contract-notice-heading>small{margin-left:0}}
+@media(max-width:600px){.matrix-payer-row{grid-template-columns:1fr 1fr}.matrix-payer-row>button{grid-column:1/-1;width:100%}.pg-review-filters{grid-template-columns:1fr}.pg-review-filters>div{grid-column:auto}}
