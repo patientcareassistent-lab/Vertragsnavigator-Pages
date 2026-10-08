@@ -19,6 +19,7 @@ function PriorityPill({priority}){return <span className={'backlog-priority back
 export default function DevelopmentBacklog({userId,canManage=false,reportOnly=false}){
   const [rows,setRows]=useState([])
   const [runtimeRollups,setRuntimeRollups]=useState({})
+  const [chatSources,setChatSources]=useState([])
   const [busy,setBusy]=useState(true)
   const [saving,setSaving]=useState(false)
   const [error,setError]=useState('')
@@ -47,6 +48,10 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
         if(rollupError)throw rollupError
         setRuntimeRollups(Object.fromEntries((rollups||[]).map(r=>[r.reference_code,r])))
       }else setRuntimeRollups({})
+      const {data:sourceData,error:sourceError}=await supabase.from('vn_backlog_chat_sources')
+        .select('source_key,backlog_id,project_name,source_label,summary,source_url,imported_at,last_seen_at,import_count').limit(500)
+      if(sourceError)throw sourceError
+      setChatSources(sourceData||[])
     }catch(e){setError('Backlog konnte nicht geladen werden: '+(e.message||String(e)))}
     finally{setBusy(false)}
   }
@@ -69,16 +74,18 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
       if(kindFilter!=='ALLE'&&r.kind!==kindFilter)return false
       if(priorityFilter!=='ALLE'&&r.priority!==priorityFilter)return false
       if(sourceFilter==='AUTOMATISCH'&&!r.source_reference?.startsWith('Automatisch:'))return false
-      if(sourceFilter==='MANUELL'&&r.source_reference?.startsWith('Automatisch:'))return false
+      if(sourceFilter==='CHAT'&&!chatSources.some(s=>s.backlog_id===r.id))return false
+      if(sourceFilter==='MANUELL'&&(r.source_reference?.startsWith('Automatisch:')||chatSources.some(s=>s.backlog_id===r.id)))return false
       return !q||[code(r),r.title,r.description,r.area,r.owner_name,r.source_reference].join(' ').toLocaleLowerCase('de-DE').includes(q)
     }).sort((a,b)=>
       (STATUS_ORDER[a.status]??9)-(STATUS_ORDER[b.status]??9)
       || PRIORITIES.indexOf(a.priority)-PRIORITIES.indexOf(b.priority)
       || new Date(b.updated_at)-new Date(a.updated_at)
     )
-  },[rows,query,statusFilter,kindFilter,priorityFilter,sourceFilter])
+  },[rows,query,statusFilter,kindFilter,priorityFilter,sourceFilter,chatSources])
 
   const selected=rows.find(r=>r.id===selectedId)||null
+  const selectedChatSources=chatSources.filter(s=>s.backlog_id===selectedId)
 
   async function openRow(row){
     setCreating(false);setSelectedId(row.id);setDraft(fromRow(row))
@@ -168,7 +175,7 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
       <label><span>Status</span><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="AKTIV">Aktive Einträge</option><option value="ALLE">Alle Status</option><option value="OFFEN">Offen</option><option value="IN_ARBEIT">In Arbeit</option><option value="BLOCKIERT">Blockiert</option><option value="TESTEN">Testen</option><option value="ABGESCHLOSSEN">Abgeschlossen</option></select></label>
       <label><span>Art</span><select value={kindFilter} onChange={e=>setKindFilter(e.target.value)}><option value="ALLE">Alle Arten</option>{Object.entries(KIND).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
       <label><span>Priorität</span><select value={priorityFilter} onChange={e=>setPriorityFilter(e.target.value)}><option value="ALLE">Alle Prioritäten</option>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</select></label>
-      {canManage&&<label><span>Herkunft</span><select value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)}><option value="ALLE">Alle Quellen</option><option value="AUTOMATISCH">Automatisch erfasst</option><option value="MANUELL">Manuell / Projektchat</option></select></label>}
+      {canManage&&<label><span>Herkunft</span><select value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)}><option value="ALLE">Alle Quellen</option><option value="AUTOMATISCH">Laufzeitfehler</option><option value="CHAT">Aus Projektchats</option><option value="MANUELL">Nur manuell</option></select></label>}
     </div>
     <div className={'backlog-main '+(showEditor?'backlog-detail-open':'')}>
       <section className="backlog-list" aria-label="Änderungs- und Fehlerliste">
@@ -178,7 +185,7 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
           <div className="backlog-tablewrap"><table className="backlog-table"><thead><tr><th>Prio / ID</th><th>Änderung oder Fehler</th><th>Status</th><th>Verantwortlich</th><th>Stand</th></tr></thead><tbody>
             {visible.map(row=><tr key={row.id} className={selectedId===row.id?'backlog-selected':''} onClick={()=>openRow(row)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openRow(row)}}} tabIndex={0} aria-label={code(row)+': '+row.title}>
               <td><PriorityPill priority={row.priority}/><small className="backlog-code">{code(row)}</small></td>
-              <td><b>{row.title}</b><small>{KIND[row.kind]||row.kind} · {row.area}</small>{runtimeRollups[row.reference_code]&&<small className="backlog-auto-meta">Automatisch erfasst · {Number(runtimeRollups[row.reference_code].event_count).toLocaleString('de-DE')} Vorkommen · zuletzt {prettyDateTime(runtimeRollups[row.reference_code].last_seen_at)}</small>}</td>
+              <td><b>{row.title}</b><small>{KIND[row.kind]||row.kind} · {row.area}</small>{runtimeRollups[row.reference_code]&&<small className="backlog-auto-meta">Automatisch erfasst · {Number(runtimeRollups[row.reference_code].event_count).toLocaleString('de-DE')} Vorkommen · zuletzt {prettyDateTime(runtimeRollups[row.reference_code].last_seen_at)}</small>}{chatSources.some(s=>s.backlog_id===row.id)&&<small className="backlog-chat-meta">ChatGPT · {chatSources.filter(s=>s.backlog_id===row.id).length} Quellenverweis(e)</small>}</td>
               <td><StatusPill status={row.status}/></td>
               <td>{row.owner_name||<span className="backlog-muted">Nicht zugewiesen</span>}</td>
               <td>{prettyDate(row.updated_at)}</td>
@@ -212,6 +219,7 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
           {(creating||canManage)&&<button className="primary backlog-save" type="submit" disabled={saving}>{saving?<LoaderCircle className="spin" size={16}/>:<Save size={16}/>} {saving?'Speichern …':creating?'Meldung speichern':'Änderungen speichern'}</button>}
           {!creating&&!canManage&&<div className="backlog-readonly">Die Meldung ist gespeichert. Den Status verwaltet der Innendienst.</div>}
         </form>
+        {!creating&&selectedChatSources.length>0&&<section className="backlog-chat-sources" aria-label="Verknüpfte Projektchats"><h3>Projektchat-Quellen</h3>{selectedChatSources.map(s=><article key={s.source_key}><b>{s.source_label}</b><small>{s.project_name} · übernommen {prettyDateTime(s.imported_at)}{s.import_count>1?' · '+s.import_count+' Übernahmen':''}</small><p>{s.summary}</p>{s.source_url&&<a href={s.source_url} target="_blank" rel="noopener noreferrer">Chatverweis öffnen</a>}</article>)}</section>}
         {!creating&&<div className="backlog-history"><h3><History size={16}/> Änderungshistorie</h3>
           {historyBusy?<p>Wird geladen …</p>:history.length?history.map(ev=>{
             const changed=ev.action==='CREATE'?['Erstellt']:
