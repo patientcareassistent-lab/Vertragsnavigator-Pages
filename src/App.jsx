@@ -181,8 +181,11 @@ export default function App(){
   const canFach=['fach','admin'].includes(role)
   const isAdmin=role==='admin'
   const modeLabel=mode==='admin'?'Administrator':mode==='fach'?'Innendienst':'Versorger'
-  const displayName=String(session?.user?.user_metadata?.display_name||session?.user?.user_metadata?.full_name||session?.user?.user_metadata?.username||'Vertragsmanager').trim()
-  const navItems=isAdmin?[...NAV,['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:NAV
+  const candidateDisplayName=String(session?.user?.user_metadata?.display_name||session?.user?.user_metadata?.full_name||session?.user?.user_metadata?.username||'').trim()
+  const displayName=candidateDisplayName&&!candidateDisplayName.includes('@')?candidateDisplayName:'Vertragsmanager'
+  const inAdminMode=isAdmin&&mode==='admin'
+  const inFachMode=canFach&&mode!=='versorger'
+  const navItems=inAdminMode?[...NAV,['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:NAV
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
     if(!payer)return []
@@ -250,7 +253,6 @@ export default function App(){
           await supabase.auth.signOut()
           return
         }
-        if(session.user?.app_metadata?.vn_role==='admin')setActive('admin')
         await loadData()
         return
       }
@@ -546,6 +548,15 @@ export default function App(){
     if(focusId)setTimeout(()=>document.getElementById(focusId)?.focus(),120)
   }
 
+  function switchMode(next){
+    if(next==='admin'&&!isAdmin)return
+    if(next==='fach'&&!canFach)return
+    setMode(next)
+    const adminPages=['admin','payerReview','precheck','missingSources']
+    if(next==='admin')setActive('admin')
+    else if(adminPages.includes(active))setActive('assistant')
+  }
+
   const selectedSite=sites.find(s=>String(s.site_id)===String(siteId))
   const siteMatch=selectedSiteEligibilities.find(e=>e.active)||selectedSiteEligibilities[0]||null
   const selectedContract=selected?contracts.find(c=>String(c.contract_id)===String(selected.contract_id)):null
@@ -578,14 +589,14 @@ export default function App(){
       </div>
       <div className="navwrap"><nav className="nav">
         {navItems.map(([id,label])=><button key={id} className={active===id?'active':''} onClick={()=>setActive(id)}>{label}</button>)}
-        <div className="mode-toggle"><button className={mode==='versorger'?'active':''} onClick={()=>setMode('versorger')}>Versorger</button>{canFach&&<button className={mode==='fach'?'active':''} onClick={()=>setMode('fach')}>Innendienst</button>}{isAdmin&&<button className={mode==='admin'?'active':''} onClick={()=>{setMode('admin');setActive('admin')}}>Administrator</button>}</div>
+        <div className="mode-toggle"><button className={mode==='versorger'?'active':''} onClick={()=>switchMode('versorger')}>Versorger</button>{canFach&&<button className={mode==='fach'?'active':''} onClick={()=>switchMode('fach')}>Innendienst</button>}{isAdmin&&<button className={mode==='admin'?'active':''} onClick={()=>switchMode('admin')}>Administrator</button>}</div>
       </nav></div>
     </header>
 
     <aside className="quick-rail" aria-label="Schnellzugriff">
       <button className={active==='knowledge'?'active':''} onClick={()=>jump('knowledge','knowledgeSearch')} title="Vertragswissen" aria-label="Vertragswissen"><BookOpenCheck size={19}/></button>
-      {isAdmin&&<button className={active==='admin'?'active':''} onClick={()=>jump('admin')} title="Admin-Cockpit" aria-label="Admin-Cockpit"><LayoutDashboard size={19}/></button>}
-      {isAdmin&&<button className={active==='precheck'?'active':''} onClick={()=>jump('precheck')} title="Vertragsvorprüfung" aria-label="Vertragsvorprüfung"><ShieldCheck size={19}/></button>}
+      {inAdminMode&&<button className={active==='admin'?'active':''} onClick={()=>jump('admin')} title="Admin-Cockpit" aria-label="Admin-Cockpit"><LayoutDashboard size={19}/></button>}
+      {inAdminMode&&<button className={active==='precheck'?'active':''} onClick={()=>jump('precheck')} title="Vertragsvorprüfung" aria-label="Vertragsvorprüfung"><ShieldCheck size={19}/></button>}
       <button className={active==='upload'?'active':''} onClick={()=>jump('upload')} title="Vertrag hochladen" aria-label="Vertrag hochladen"><Upload size={19}/></button>
       <button className={active==='changes'?'active':''} onClick={()=>jump('changes')} title="Änderungen" aria-label="Änderungen"><History size={19}/></button>
       <button className={active==='questions'?'active':''} onClick={()=>jump('questions','qText')} title="Vertragsfrage" aria-label="Vertragsfrage"><MessageSquareText size={19}/></button>
@@ -664,7 +675,7 @@ export default function App(){
               site={selectedSite}
               siteMatch={siteMatch}
               knowledge={relatedKnowledge}
-              canFach={canFach}
+              canFach={inFachMode}
             />}
           </section>
           <section className="panel span2"><div className="sectionbar"><div><h2>Treffer</h2><p>Eine Position anklicken, um sie zu übernehmen.</p></div><Badge>{results.length}</Badge></div>
@@ -690,29 +701,29 @@ export default function App(){
         </section>
       </>}
 
-      {isAdmin&&active==='admin'&&<>
+      {inAdminMode&&active==='admin'&&<>
         <div className="page-head"><div><h1>Admin-Cockpit</h1><p>Arbeitsvorrat, Blocker und nächste Schritte im Vertragsmanagement.</p></div><Badge tone="info">P2 · Steuerungsansicht</Badge></div>
         <AdminDashboard onNavigate={route=>setActive(route)}/>
       </>}
 
-      {isAdmin&&active==='payerReview'&&<>
+      {inAdminMode&&active==='payerReview'&&<>
         <div className="page-head"><div><h1>Kassenfamilien prüfen</h1><p>Fehlende Kostenträger-Zuordnungen nachvollziehbar prüfen, freigeben und protokollieren.</p></div><Badge tone="warn">P5 · Datenqualität</Badge></div>
         <PayerFamilyReview onBack={()=>setActive('admin')} onDataChanged={()=>loadData(role)}/>
       </>}
 
-      {isAdmin&&active==='precheck'&&<>
+      {inAdminMode&&active==='precheck'&&<>
         <div className="page-head"><div><h1>Vertragsvorprüfung</h1><p>Neue und geänderte Verträge vor der Unterschrift strukturiert prüfen, Risiken dokumentieren und fachlich freigeben.</p></div><Badge tone="warn">Admin · vor Unterschrift</Badge></div>
         <ContractPrecheck userId={session.user.id} contracts={contracts} sites={sites} onOpenChanges={()=>setActive('changes')}/>
       </>}
 
       {active==='upload'&&<>
         <div className="page-head"><div><h1>Vertrag hochladen</h1><p>Vertragsquelle sicher ablegen, automatisch erkennen und Änderungen kontrolliert veröffentlichen.</p></div><Badge tone="warn">Versioniert · kein Überschreiben</Badge></div>
-        <ContractUpload contracts={contracts} sites={sites} canFach={canFach} initialContractId={maintenanceContractId} onOpenChanges={()=>setActive('changes')}/>
+        <ContractUpload contracts={contracts} sites={sites} canFach={inFachMode} initialContractId={maintenanceContractId} onOpenChanges={()=>setActive('changes')}/>
       </>}
 
       {active==='changes'&&<>
         <div className="page-head"><div><h1>Änderungen</h1><p>Uploadverlauf, Alt/Neu-Vergleich und fachliche Freigabe in einer Ansicht.</p></div><Badge tone="info">Änderungsprotokoll</Badge></div>
-        <ContractChanges canFach={canFach}/>
+        <ContractChanges canFach={inFachMode}/>
       </>}
 
       {active==='knowledge'&&<>
@@ -731,7 +742,7 @@ export default function App(){
         </div>
       </>}
 
-      {isAdmin&&active==='missingSources'&&<>
+      {inAdminMode&&active==='missingSources'&&<>
         <div className="page-head"><div><h1>Fehlende Quellen</h1><p>Admin-Datenpflege für aktive Verträge ohne belastbare Originalquelle oder Vertragsinhalt.</p></div><Badge tone="warn">Admin</Badge></div>
         <MissingSources onMaintain={contractId=>{setMaintenanceContractId(contractId);setActive('upload')}}/>
       </>}
