@@ -12,6 +12,7 @@ import AdminDashboard from './components/AdminDashboard.jsx'
 import PayerFamilyReview from './components/PayerFamilyReview.jsx'
 import DevelopmentBacklog from './components/DevelopmentBacklog.jsx'
 import PGReviewQueue from './components/PGReviewQueue.jsx'
+import QuestionsQueue from './components/QuestionsQueue.jsx'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
@@ -772,7 +773,7 @@ export default function App(){
         <div className="page-head"><div><h1>Vertragsfragen</h1><p>Nur ungeklärte Vertragsfälle als neue Frage anlegen und in der Prüfqueue verfolgen.</p></div><Badge>{questionsLoaded?questions.length:questionCount} sichtbar</Badge></div>
         <div className="grid">
           <section className="panel"><h2>Neue Vertragsfrage</h2><form className="formstack" onSubmit={submitQuestion}><label>Vertragsfrage<textarea id="qText" rows="5" value={questionForm.question_text} onChange={e=>setQ('question_text',e.target.value)} required/></label><div className="formgrid"><label>Kostenträger<input value={questionForm.payer} onChange={e=>setQ('payer',e.target.value)}/></label><label>PG<input value={questionForm.pg} onChange={e=>setQ('pg',e.target.value)}/></label></div><label>Vertrag<select value={questionForm.contract_id} onChange={e=>setQ('contract_id',e.target.value)}><option value="">Nicht zugeordnet</option>{contracts.map(r=><option key={r.contract_id} value={r.contract_id}>{r.contract_name||r.contract_id}</option>)}</select></label><div className="formgrid"><label>HMV / Produktart<input value={questionForm.hmv_code} onChange={e=>setQ('hmv_code',e.target.value)}/></label><label>Position / GPOS<input value={questionForm.position_code} onChange={e=>setQ('position_code',e.target.value)}/></label></div>{questionMessage&&<div className={'alert '+(questionMessage.startsWith('Vertragsfrage wurde')?'success':'error')}>{questionMessage}</div>}<button className="primary" type="submit">Vertragsfrage anlegen</button></form></section>
-          <section className="panel"><div className="sectionbar"><div><h2>Prüfqueue</h2><p>{canFach?'Fachlich sichtbare Fragen':'Eigene Vertragsfragen'}</p></div><Badge>{questionsLoaded?questions.length:'…'}</Badge></div>{!questionsLoaded?<div className="precheck-loading"><LoaderCircle className="spin" size={17}/> Vertragsfragen werden geladen …</div>:<div className="question-list">{questions.map(r=><article className="question-row" key={r.question_id}><div><b>{r.question_text}</b><small>{[r.payer,r.pg&&`PG ${r.pg}`,r.hmv_code,r.position_code].filter(Boolean).join(' · ')||'ohne Zuordnung'}</small></div><Badge>{r.status}</Badge></article>)}{!questions.length&&<div className="empty-panel">Noch keine Vertragsfragen vorhanden.</div>}</div>}</section>
+          <QuestionsQueue questions={questions} loaded={questionsLoaded} canAnswer={inAdminMode} canAcknowledge={role==='fach'&&inFachMode} onChanged={updated=>{if(updated?.question_id){setQuestions(items=>items.map(q=>q.question_id===updated.question_id?updated:q));setQuestionCount(count=>count+(updated.status==='CLOSED'?-1:0))}}}/>
         </div>
       </>}
 
