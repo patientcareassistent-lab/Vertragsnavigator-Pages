@@ -571,7 +571,7 @@ export default function App(){
     <header className="top">
       <div className="masthead">
         <div className="brand-small"><div className="brandmark">B</div><div><strong>Vertragsnavigator 2.1</strong><small>brillinger | ottobock.care · Vertragsassistent</small></div></div>
-        <div className="userbar"><span>{displayName}</span><Badge>{modeLabel}</Badge><button className="secondary" onClick={()=>supabase.auth.signOut()}>Abmelden</button></div>
+        <div className="userbar"><span>{displayName}</span>{displayName.trim().toLocaleLowerCase()!=='sachbearbeiter'&&<Badge>{modeLabel}</Badge>}<button className="secondary" onClick={()=>supabase.auth.signOut()}>Abmelden</button></div>
       </div>
       <div className="navwrap"><nav className="nav">
         {navItems.map(([id,label])=><button key={id} className={active===id?'active':''} onClick={()=>setActive(id)}>{label}</button>)}
