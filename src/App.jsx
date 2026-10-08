@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { BookOpenCheck, History, LayoutDashboard, LoaderCircle, MessageSquareText, ShieldCheck, Upload } from 'lucide-react'
+import { BookOpenCheck, Bug, History, LayoutDashboard, LoaderCircle, MessageSquareText, ShieldCheck, Upload } from 'lucide-react'
 import { supabase, supabaseConfigured } from './lib/supabase.js'
 import { recordRuntimeEvent } from './lib/runtimeTelemetry.js'
 import ContractUpload from './components/ContractUpload.jsx'
@@ -10,6 +10,7 @@ import ContractTrafficLightPanel from './components/ContractTrafficLightPanel.js
 import ContractPrecheck from './components/ContractPrecheck.jsx'
 import AdminDashboard from './components/AdminDashboard.jsx'
 import PayerFamilyReview from './components/PayerFamilyReview.jsx'
+import DevelopmentBacklog from './components/DevelopmentBacklog.jsx'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
@@ -188,7 +189,8 @@ export default function App(){
   const displayName=candidateDisplayName&&!candidateDisplayName.includes('@')?candidateDisplayName:'Vertragsmanager'
   const inAdminMode=isAdmin&&mode==='admin'
   const inFachMode=canFach&&mode!=='versorger'
-  const navItems=inAdminMode?[...NAV,['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:NAV
+  const backlogNav=['backlog',mode==='versorger'?'Fehler melden':'Änderungs- & Fehlerbacklog']
+  const navItems=inAdminMode?[...NAV,backlogNav,['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:[...NAV,backlogNav]
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
     if(!payer)return []
@@ -611,6 +613,7 @@ export default function App(){
       {inAdminMode&&<button className={active==='admin'?'active':''} onClick={()=>jump('admin')} title="Admin-Cockpit" aria-label="Admin-Cockpit"><LayoutDashboard size={19}/></button>}
       {inAdminMode&&<button className={active==='precheck'?'active':''} onClick={()=>jump('precheck')} title="Vertragsvorprüfung" aria-label="Vertragsvorprüfung"><ShieldCheck size={19}/></button>}
       <button className={active==='upload'?'active':''} onClick={()=>jump('upload')} title="Vertrag hochladen" aria-label="Vertrag hochladen"><Upload size={19}/></button>
+      <button className={active==='backlog'?'active':''} onClick={()=>jump('backlog')} title={inFachMode?'Änderungs- und Fehlerbacklog':'Fehler melden'} aria-label="Änderungs- und Fehlerbacklog"><Bug size={19}/></button>
       <button className={active==='changes'?'active':''} onClick={()=>jump('changes')} title="Änderungen" aria-label="Änderungen"><History size={19}/></button>
       <button className={active==='questions'?'active':''} onClick={()=>jump('questions','qText')} title="Vertragsfrage" aria-label="Vertragsfrage"><MessageSquareText size={19}/></button>
     </aside>
@@ -737,6 +740,11 @@ export default function App(){
       {active==='changes'&&<>
         <div className="page-head"><div><h1>Änderungen</h1><p>Uploadverlauf, Alt/Neu-Vergleich und fachliche Freigabe in einer Ansicht.</p></div><Badge tone="info">Änderungsprotokoll</Badge></div>
         <ContractChanges canFach={inFachMode}/>
+      </>}
+
+      {active==='backlog'&&<>
+        <div className="page-head"><div><h1>{inFachMode?'Änderungs- und Fehlerbacklog':'Fehler oder Änderungswunsch melden'}</h1><p>{inFachMode?'Projektentwicklung: offene Fehler, Änderungen, Datenqualitätsaufgaben und Abnahmetests.':'Meldung erfassen und deren Bearbeitungsstand verfolgen.'}</p></div><Badge tone="info">Entwicklungs-Backlog</Badge></div>
+        <DevelopmentBacklog userId={session.user.id} canManage={inFachMode} reportOnly={!inFachMode}/>
       </>}
 
       {active==='knowledge'&&<>
