@@ -18,6 +18,7 @@ function PriorityPill({priority}){return <span className={'backlog-priority back
 
 export default function DevelopmentBacklog({userId,canManage=false,reportOnly=false}){
   const [rows,setRows]=useState([])
+  const [runtimeRollups,setRuntimeRollups]=useState({})
   const [busy,setBusy]=useState(true)
   const [saving,setSaving]=useState(false)
   const [error,setError]=useState('')
@@ -26,6 +27,7 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
   const [statusFilter,setStatusFilter]=useState('AKTIV')
   const [kindFilter,setKindFilter]=useState('ALLE')
   const [priorityFilter,setPriorityFilter]=useState('ALLE')
+  const [sourceFilter,setSourceFilter]=useState('ALLE')
   const [selectedId,setSelectedId]=useState(null)
   const [draft,setDraft]=useState({...emptyDraft})
   const [creating,setCreating]=useState(false)
@@ -39,11 +41,17 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
         .select('*').order('updated_at',{ascending:false}).limit(500)
       if(dbError)throw dbError
       setRows(data||[])
+      if(canManage){
+        const {data:rollups,error:rollupError}=await supabase.from('vn_backlog_runtime_rollup')
+          .select('reference_code,event_count,first_seen_at,last_seen_at').limit(500)
+        if(rollupError)throw rollupError
+        setRuntimeRollups(Object.fromEntries((rollups||[]).map(r=>[r.reference_code,r])))
+      }else setRuntimeRollups({})
     }catch(e){setError('Backlog konnte nicht geladen werden: '+(e.message||String(e)))}
     finally{setBusy(false)}
   }
 
-  useEffect(()=>{if(userId)reload()},[userId])
+  useEffect(()=>{if(userId)reload()},[userId,canManage])
 
   const totals=useMemo(()=>({
     all:rows.length,
@@ -60,13 +68,15 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
       if(statusFilter!=='ALLE'&&!['AKTIV','ABGESCHLOSSEN'].includes(statusFilter)&&r.status!==statusFilter)return false
       if(kindFilter!=='ALLE'&&r.kind!==kindFilter)return false
       if(priorityFilter!=='ALLE'&&r.priority!==priorityFilter)return false
+      if(sourceFilter==='AUTOMATISCH'&&!r.source_reference?.startsWith('Automatisch:'))return false
+      if(sourceFilter==='MANUELL'&&r.source_reference?.startsWith('Automatisch:'))return false
       return !q||[code(r),r.title,r.description,r.area,r.owner_name,r.source_reference].join(' ').toLocaleLowerCase('de-DE').includes(q)
     }).sort((a,b)=>
       (STATUS_ORDER[a.status]??9)-(STATUS_ORDER[b.status]??9)
       || PRIORITIES.indexOf(a.priority)-PRIORITIES.indexOf(b.priority)
       || new Date(b.updated_at)-new Date(a.updated_at)
     )
-  },[rows,query,statusFilter,kindFilter,priorityFilter])
+  },[rows,query,statusFilter,kindFilter,priorityFilter,sourceFilter])
 
   const selected=rows.find(r=>r.id===selectedId)||null
 
@@ -158,6 +168,7 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
       <label><span>Status</span><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="AKTIV">Aktive Einträge</option><option value="ALLE">Alle Status</option><option value="OFFEN">Offen</option><option value="IN_ARBEIT">In Arbeit</option><option value="BLOCKIERT">Blockiert</option><option value="TESTEN">Testen</option><option value="ABGESCHLOSSEN">Abgeschlossen</option></select></label>
       <label><span>Art</span><select value={kindFilter} onChange={e=>setKindFilter(e.target.value)}><option value="ALLE">Alle Arten</option>{Object.entries(KIND).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
       <label><span>Priorität</span><select value={priorityFilter} onChange={e=>setPriorityFilter(e.target.value)}><option value="ALLE">Alle Prioritäten</option>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</select></label>
+      {canManage&&<label><span>Herkunft</span><select value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)}><option value="ALLE">Alle Quellen</option><option value="AUTOMATISCH">Automatisch erfasst</option><option value="MANUELL">Manuell / Projektchat</option></select></label>}
     </div>
     <div className={'backlog-main '+(showEditor?'backlog-detail-open':'')}>
       <section className="backlog-list" aria-label="Änderungs- und Fehlerliste">
@@ -167,7 +178,7 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
           <div className="backlog-tablewrap"><table className="backlog-table"><thead><tr><th>Prio / ID</th><th>Änderung oder Fehler</th><th>Status</th><th>Verantwortlich</th><th>Stand</th></tr></thead><tbody>
             {visible.map(row=><tr key={row.id} className={selectedId===row.id?'backlog-selected':''} onClick={()=>openRow(row)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openRow(row)}}} tabIndex={0} aria-label={code(row)+': '+row.title}>
               <td><PriorityPill priority={row.priority}/><small className="backlog-code">{code(row)}</small></td>
-              <td><b>{row.title}</b><small>{KIND[row.kind]||row.kind} · {row.area}</small></td>
+              <td><b>{row.title}</b><small>{KIND[row.kind]||row.kind} · {row.area}</small>{runtimeRollups[row.reference_code]&&<small className="backlog-auto-meta">Automatisch erfasst · {Number(runtimeRollups[row.reference_code].event_count).toLocaleString('de-DE')} Vorkommen · zuletzt {prettyDateTime(runtimeRollups[row.reference_code].last_seen_at)}</small>}</td>
               <td><StatusPill status={row.status}/></td>
               <td>{row.owner_name||<span className="backlog-muted">Nicht zugewiesen</span>}</td>
               <td>{prettyDate(row.updated_at)}</td>
@@ -197,7 +208,7 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
             <label>Quelle / Referenz<input value={draft.source_reference} disabled={creating} onChange={e=>change('source_reference',e.target.value)} placeholder="Projektchat, Audit, Ticket"/></label>
             <label>Bearbeitungs- / Erledigungsvermerk<textarea rows={2} value={draft.resolution_note} onChange={e=>change('resolution_note',e.target.value)} placeholder="Maßnahme, Testergebnis, Deployment-Nachweis"/></label>
           </>}
-          {!creating&&selected&&<div className="backlog-details-meta"><span><CalendarClock size={14}/> Erfasst: {prettyDateTime(selected.created_at)}</span><span>Aktualisiert: {prettyDateTime(selected.updated_at)}</span>{selected.completed_at&&<span><CheckCircle2 size={14}/> Erledigt: {prettyDate(selected.completed_at)}</span>}</div>}
+          {!creating&&selected&&<div className="backlog-details-meta"><span><CalendarClock size={14}/> Erfasst: {prettyDateTime(selected.created_at)}</span><span>Aktualisiert: {prettyDateTime(selected.updated_at)}</span>{selected.completed_at&&<span><CheckCircle2 size={14}/> Erledigt: {prettyDate(selected.completed_at)}</span>}{runtimeRollups[selected.reference_code]&&<span>Automatische Meldungen: {runtimeRollups[selected.reference_code].event_count} · zuletzt {prettyDateTime(runtimeRollups[selected.reference_code].last_seen_at)}</span>}</div>}
           {(creating||canManage)&&<button className="primary backlog-save" type="submit" disabled={saving}>{saving?<LoaderCircle className="spin" size={16}/>:<Save size={16}/>} {saving?'Speichern …':creating?'Meldung speichern':'Änderungen speichern'}</button>}
           {!creating&&!canManage&&<div className="backlog-readonly">Die Meldung ist gespeichert. Den Status verwaltet der Innendienst.</div>}
         </form>
