@@ -185,15 +185,15 @@ export default function App(){
   const navItems=isAdmin?[...NAV,['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:NAV
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
-    const base=contracts
-      .filter(r=>!payer||escArray(r.payer_families).includes(payer))
+    if(!payer)return []
+    // Keine globalen Namensalias-Einträge: nur Verträge der gewählten Kassenfamilie.
+    const scoped=contracts
+      .filter(r=>escArray(r.payer_families).includes(payer))
       .filter(r=>!pg||escArray(r.product_groups).includes(pg))
-      .map(r=>payerDetailLabel(r,payer||escArray(r.payer_families)[0]||''))
-      .filter(v=>v&&(!payer||normalizeSearch(v)!==normalizeSearch(payer)))
-    const companyAliases=contracts.some(r=>companyRelated(r.contract_name))
-      ? ['VALUNY GmbH (ehemals spectrumK / ITSC)','spectrumK','ITSC']
-      : []
-    return uniq([...base,...companyAliases])
+      .map(r=>payerDetailLabel(r,payer))
+      .filter(v=>v&&normalizeSearch(v)!==normalizeSearch(payer))
+    // Firmenumbenennungen als ein Eintrag statt drei scheinbar unterschiedlicher Kassen.
+    return uniq(scoped.map(v=>companyRelated(v)?'VALUNY GmbH (ehemals spectrumK / ITSC)':v))
   },[contracts,payer,pg])
   const pgOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.product_groups))),[contracts])
   const filteredContracts=useMemo(()=>{
@@ -601,7 +601,6 @@ export default function App(){
               <label>Kasse / Region<input list="payerDetailOptions" value={payerDetail} onChange={e=>setPayerDetail(e.target.value)} placeholder={payer?'Kasse / Region suchen …':'z. B. spectrumK, VALUNY, AOK Bayern …'} autoComplete="off"/><datalist id="payerDetailOptions">{payerDetailOptions.map(v=><option key={v} value={v}/>)}</datalist></label>
               <label>Produktgruppe<select value={pg} onChange={e=>setPg(e.target.value)}><option value="">Alle PG</option>{pgOptions.map(v=><option key={v}>{v}</option>)}</select></label>
               <label>HMV / Position / Begriff<input id="assistantTerm" value={term} onChange={e=>setTerm(e.target.value)} placeholder="z. B. leichtgewichts, Rolli, 18.50, AOK Bayern …"/></label>
-              <label>Standort<select value={siteId} onChange={e=>setSiteId(e.target.value)}><option value="">Standort wählen</option>{sites.map(s=><option key={s.site_id} value={s.site_id}>{s.branch||'Standort'}{s.ik?` · IK ${s.ik}`:''}</option>)}</select></label>
               <div className="search-actions">
                 <button className="primary" type="submit" disabled={searchBusy}>
                   {searchBusy?<><LoaderCircle className="spin" size={16}/> Suche …</>:'Prüfen'}
@@ -612,9 +611,10 @@ export default function App(){
                 <LoaderCircle className="spin" size={17}/><span>Vertragsdaten werden durchsucht …</span>
               </div>}
 
-              <details className="advanced-search" open>
-                <summary>Erweiterte Suche <span>HMV · Position · Produktart · Vertrag · LEGS · LKZ · Genehmigung · Versorgungsform · Gültigkeit · PQ</span></summary>
+              <details className="advanced-search">
+                <summary>Erweiterte Suche <span>HMV · Position · Produktart · Vertrag · LEGS · LKZ · Genehmigung · Versorgungsform · Gültigkeit · PQ · Standort</span></summary>
                 <div className="advanced-grid">
+              <label>Standort<select value={siteId} onChange={e=>setSiteId(e.target.value)}><option value="">Standort wählen</option>{sites.map(s=><option key={s.site_id} value={s.site_id}>{s.branch||'Standort'}{s.ik?` · IK ${s.ik}`:''}</option>)}</select></label>
                   <label>HMV-/Produktartcode<input value={advanced.hmv} onChange={e=>setA('hmv',e.target.value)} placeholder="z. B. 18.50.03"/></label>
                   <label>Position / GPOS<input value={advanced.position} onChange={e=>setA('position',e.target.value)} placeholder="z. B. 1850032"/></label>
                   <label>Produktart<input value={advanced.productType} onChange={e=>setA('productType',e.target.value)} placeholder="z. B. Spezialrollstuhl"/></label>
