@@ -147,7 +147,7 @@ export default function App(){
   const [username,setUsername]=useState('')
   const [password,setPassword]=useState('')
   const [active,setActive]=useState('assistant')
-  const [mode,setMode]=useState('fach')
+  const [mode,setMode]=useState('versorger')
   const [error,setError]=useState('')
   const [contracts,setContracts]=useState([])
   const [knowledge,setKnowledge]=useState([])
@@ -181,7 +181,7 @@ export default function App(){
   const canFach=['fach','admin'].includes(role)
   const isAdmin=role==='admin'
   const modeLabel=mode==='admin'?'Administrator':mode==='fach'?'Innendienst':'Versorger'
-  const displayName=session?.user?.user_metadata?.display_name||(isAdmin?'Vertragsmanager':session?.user?.email)||''
+  const displayName=String(session?.user?.user_metadata?.display_name||session?.user?.user_metadata?.full_name||session?.user?.user_metadata?.username||'Vertragsmanager').trim()
   const navItems=isAdmin?[...NAV,['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:NAV
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
@@ -215,6 +215,7 @@ export default function App(){
   useEffect(()=>{
     if(!session?.user?.id)return
     if(session.user.app_metadata?.vn_role==='admin'){setMode('admin');setActive('admin')}
+    else setMode(session.user.app_metadata?.vn_role==='fach'?'fach':'versorger')
   },[session?.user?.id])
 
   useEffect(()=>{
@@ -448,6 +449,8 @@ export default function App(){
   async function runAssistant(e){
     e.preventDefault();setSelected(null);setSupplyEval(null);setError('')
 
+    if(payerDetail&&(!payer||!payerDetailOptions.includes(payerDetail))){setError('Bitte eine zum Kostenträger passende Kasse / Region auswählen.');setResults([]);return}
+
     const hasAdvanced=[
       advanced.hmv,advanced.position,advanced.productType,advanced.contract,advanced.legs,advanced.lkz,
       advanced.approval!=='all'?'x':'',
@@ -575,7 +578,7 @@ export default function App(){
       </div>
       <div className="navwrap"><nav className="nav">
         {navItems.map(([id,label])=><button key={id} className={active===id?'active':''} onClick={()=>setActive(id)}>{label}</button>)}
-        <div className="mode-toggle"><button className={mode==='versorger'?'active':''} onClick={()=>setMode('versorger')}>Versorger</button><button className={mode==='fach'?'active':''} onClick={()=>setMode('fach')}>Innendienst</button>{isAdmin&&<button className={mode==='admin'?'active':''} onClick={()=>{setMode('admin');setActive('admin')}}>Administrator</button>}</div>
+        <div className="mode-toggle"><button className={mode==='versorger'?'active':''} onClick={()=>setMode('versorger')}>Versorger</button>{canFach&&<button className={mode==='fach'?'active':''} onClick={()=>setMode('fach')}>Innendienst</button>}{isAdmin&&<button className={mode==='admin'?'active':''} onClick={()=>{setMode('admin');setActive('admin')}}>Administrator</button>}</div>
       </nav></div>
     </header>
 
@@ -598,8 +601,8 @@ export default function App(){
             <div className="assistant-top"><div className="assistant-title"><small>Vertragsassistent</small><h2>Darf ich versorgen?</h2><p>Position auswählen, Standort festlegen und die Prüfpunkte nacheinander bewerten.</p></div><div className={'decision '+decisionTone}><small>Ergebnis</small><strong>{decisionLabel}</strong></div></div>
             <form className="check-form" onSubmit={runAssistant} aria-busy={searchBusy}>
               <label>Kostenträger<select value={payer} onChange={e=>{setPayer(e.target.value);setPayerDetail('')}}><option value="">Alle Kassen</option>{payerOptions.map(v=><option key={v}>{v}</option>)}</select></label>
-              <label>Kasse / Region<input list="payerDetailOptions" value={payerDetail} onChange={e=>setPayerDetail(e.target.value)} placeholder={payer?'Kasse / Region suchen …':'z. B. spectrumK, VALUNY, AOK Bayern …'} autoComplete="off"/><datalist id="payerDetailOptions">{payerDetailOptions.map(v=><option key={v} value={v}/>)}</datalist></label>
-              <label>Produktgruppe<select value={pg} onChange={e=>setPg(e.target.value)}><option value="">Alle PG</option>{pgOptions.map(v=><option key={v}>{v}</option>)}</select></label>
+              <label>Kasse / Region<select value={payerDetailOptions.includes(payerDetail)?payerDetail:''} onChange={e=>setPayerDetail(e.target.value)} disabled={!payer} aria-label="Kasse und Region des gewählten Kostenträgers"><option value="">{payer?'Alle Kassen / Regionen der Auswahl':'Zuerst Kostenträger wählen'}</option>{payerDetailOptions.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+              <label>Produktgruppe<select value={pg} onChange={e=>{setPg(e.target.value);setPayerDetail('')}}><option value="">Alle PG</option>{pgOptions.map(v=><option key={v}>{v}</option>)}</select></label>
               <label>HMV / Position / Begriff<input id="assistantTerm" value={term} onChange={e=>setTerm(e.target.value)} placeholder="z. B. leichtgewichts, Rolli, 18.50, AOK Bayern …"/></label>
               <div className="search-actions">
                 <button className="primary" type="submit" disabled={searchBusy}>
