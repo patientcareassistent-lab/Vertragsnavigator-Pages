@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Vertragsnavigator – Appsymbol 2026</title>
+  <desc id="desc">VN App-Symbol mit Dokument und Statusmarkierungen</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#07305E"/>
+      <stop offset="1" stop-color="#1267B1"/>
+    </linearGradient>
+  </defs>
+  <rect x="30" y="30" width="964" height="964" rx="220" fill="url(#bg)"/>
+  <rect x="245" y="215" width="534" height="595" rx="72" fill="none" stroke="#fff" stroke-width="42"/>
+  <path d="M650 215h129v130z" fill="#fff" opacity=".28"/>
+  <rect x="335" y="395" width="360" height="30" rx="15" fill="#fff"/>
+  <rect x="335" y="485" width="300" height="30" rx="15" fill="#fff"/>
+  <rect x="335" y="575" width="355" height="30" rx="15" fill="#fff"/>
+  <rect x="335" y="665" width="135" height="35" rx="17" fill="#F28F1C"/>
+  <rect x="500" y="665" width="130" height="35" rx="17" fill="#00A3AD"/>
+  <circle cx="723" cy="672" r="33" fill="#fff"/>
+  <circle cx="723" cy="672" r="12" fill="#00A3AD"/>
+  <text x="512" y="950" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="132" font-weight="700" fill="#fff">VN</text>
+</svg>
