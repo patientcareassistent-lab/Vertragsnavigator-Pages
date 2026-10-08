@@ -80,3 +80,8 @@
 .backlog-chat-sources article small{display:block;margin-top:4px;font-size:10px;color:#667085}
 .backlog-chat-sources article p{font-size:11px;line-height:1.5;color:#4b5e72;margin:8px 0 5px;overflow-wrap:anywhere}
 .backlog-chat-sources article a{font-size:11px;color:#175cd3;text-decoration:underline}
+
+.backlog-workqueues{display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid #dae3e8;padding:3px 0 13px}
+.backlog-workqueues button{border:1px solid #d1d9e1;border-radius:10px;padding:10px 14px;background:#fff;color:#344054;font-weight:700;font-size:12px}
+.backlog-workqueues button.active{background:#0b3b6f;border-color:#0b3b6f;color:#fff}
+.backlog-internal-note{border:1px solid #dce3e9;border-radius:10px;padding:11px 13px;background:#f7f9fc;color:#475467;font-size:12px;line-height:1.5}
