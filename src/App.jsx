@@ -13,10 +13,14 @@ import PayerFamilyReview from './components/PayerFamilyReview.jsx'
 import DevelopmentBacklog from './components/DevelopmentBacklog.jsx'
 import PGReviewQueue from './components/PGReviewQueue.jsx'
 import QuestionsQueue from './components/QuestionsQueue.jsx'
+import ContractExclusions from './components/ContractExclusions.jsx'
+import ContractNoticeBanner from './components/ContractNoticeBanner.jsx'
+import ContractMatrix from './components/ContractMatrix.jsx'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
   ['contracts','Verträge'],
+  ['matrix','Vertragsmatrix'],
   ['data','Datenstand'],
 ]
 
@@ -192,7 +196,7 @@ export default function App(){
   const inAdminMode=isAdmin&&mode==='admin'
   const inFachMode=canFach&&mode!=='versorger'
   const backlogNav=['backlog',mode==='versorger'?'Fehler melden':'Änderungs- & Fehlerbacklog']
-  const navItems=inAdminMode?[...NAV,backlogNav,['pgReviews','PG-Prüfungen'],['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:inFachMode?[...NAV,backlogNav,['pgReviews','PG-Prüfungen']]:[...NAV,backlogNav]
+  const navItems=inAdminMode?[...NAV,backlogNav,['pgReviews','PG-Prüfungen'],['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['contractExclusions','Verträge ausschließen'],['missingSources','Fehlende Quellen']]:inFachMode?[...NAV,backlogNav,['pgReviews','PG-Prüfungen']]:[...NAV,backlogNav]
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
     if(!payer)return []
@@ -572,7 +576,7 @@ export default function App(){
     if(next==='admin'&&!isAdmin)return
     if(next==='fach'&&!canFach)return
     setMode(next)
-    const adminPages=['admin','payerReview','precheck','missingSources','pgReviews']
+    const adminPages=['admin','payerReview','precheck','missingSources','pgReviews','contractExclusions']
     if(next==='admin')setActive('admin')
     else if(adminPages.includes(active))setActive('assistant')
   }
@@ -627,6 +631,7 @@ export default function App(){
     </aside>
 
     <main className="content">
+      <ContractNoticeBanner/>
       {error&&<div className="alert error">{error}</div>}
 
       {active==='assistant'&&<>
@@ -729,6 +734,16 @@ export default function App(){
       {inFachMode&&active==='pgReviews'&&<>
         <div className="page-head"><div><h1>PG-Änderungsprüfungen</h1><p>Alle geänderten Vertragsbestände fachlich je PG und Geschäftsbereich bewerten.</p></div><Badge tone="warn">Fachprüfung · dokumentiert</Badge></div>
         <PGReviewQueue canReview={role==='fach'}/>
+      </>}
+
+      {active==='matrix'&&<>
+        <div className="page-head"><div><h1>Vertragsmatrix</h1><p>Vertragspositionen und verifizierte Zusatzpositionen ausgewählter Kostenträger vergleichen.</p></div><Badge tone="info">Kassenvergleich</Badge></div>
+        <ContractMatrix contracts={contracts}/>
+      </>}
+
+      {inAdminMode&&active==='contractExclusions'&&<>
+        <div className="page-head"><div><h1>Verträge ausschließen / reaktivieren</h1><p>Falsche Vertragszuordnungen nachvollziehbar aus dem aktiven Vertragsbestand ausschließen.</p></div><Badge tone="warn">Administrator · Auditpflicht</Badge></div>
+        <ContractExclusions onChanged={loadData}/>
       </>}
 
       {inAdminMode&&active==='admin'&&<>
