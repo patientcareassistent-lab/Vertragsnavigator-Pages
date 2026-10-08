@@ -482,7 +482,7 @@ export default function App(){
     const companyContractQuery=canonicalCompanyQuery(advanced.contract)
     const contractAliasQuery=companyContractQuery.toLowerCase()==='valuny'&&!term.trim()?companyContractQuery:null
     const freeTextQuery=(!termIsHmv&&!termIsPosition&&rawTerm)?rawTerm:contractAliasQuery
-    const rpcName=freeTextQuery?'vn_search_positions_text_v2':'vn_search_positions_v2'
+    const rpcName='vn_search_positions_v13'
     setSearchBusy(true)
     try{
       const {data,error}=await supabase.rpc(rpcName,{
@@ -492,6 +492,7 @@ export default function App(){
         p_query:freeTextQuery,
         p_hmv:advanced.hmv.trim()||(termIsHmv?rawTerm:null),
         p_position:advanced.position.trim()||(termIsPosition?rawTerm:null),
+        p_identifier:null,
         p_product_type:advanced.productType.trim()||null,
         p_contract:canonicalCompanyQuery(advanced.contract).toLowerCase()==='valuny'?null:(advanced.contract.trim()||null),
         p_legs:advanced.legs.trim()||null,
@@ -507,10 +508,19 @@ export default function App(){
         p_site_id:siteId||null,
         p_pq:advanced.pq,
         p_accession:advanced.accession,
+        p_fuzzy:false,
         p_limit:150,
       })
-      if(error){setError(error.message);return}
+      if(error){
+        setResults([])
+        const timeout=error.code==='57014'||/statement timeout|canceling statement due to statement timeout/i.test(error.message||'')
+        setError(timeout?'Die Suche hat das Datenbank-Zeitlimit erreicht. Bitte Suche durch eine Kasse/Region, Produktgruppe oder einen Suchbegriff eingrenzen.':error.message)
+        return
+      }
       setResults(data||[])
+    }catch(e){
+      setResults([])
+      setError('Suchanfrage fehlgeschlagen: '+(e?.message||'Verbindung zur Datenbank prüfen.'))
     }finally{
       setSearchBusy(false)
     }
@@ -614,10 +624,10 @@ export default function App(){
           <section className="panel assistant-hero span2">
             <div className="assistant-top"><div className="assistant-title"><small>Vertragsassistent</small><h2>Darf ich versorgen?</h2><p>Position auswählen, Standort festlegen und die Prüfpunkte nacheinander bewerten.</p></div><div className={'decision '+decisionTone}><small>Ergebnis</small><strong>{decisionLabel}</strong></div></div>
             <form className="check-form" onSubmit={runAssistant} aria-busy={searchBusy}>
-              <label>Kostenträger<select value={payer} onChange={e=>{setPayer(e.target.value);setPayerDetail('')}}><option value="">Alle Kassen</option>{payerOptions.map(v=><option key={v}>{v}</option>)}</select></label>
-              <label>Kasse / Region<select value={payerDetailOptions.includes(payerDetail)?payerDetail:''} onChange={e=>setPayerDetail(e.target.value)} disabled={!payer} aria-label="Kasse und Region des gewählten Kostenträgers"><option value="">{payer?'Alle Kassen / Regionen der Auswahl':'Zuerst Kostenträger wählen'}</option>{payerDetailOptions.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
-              <label>Produktgruppe<select value={pg} onChange={e=>setPg(e.target.value)}><option value="">Alle PG</option>{pgOptions.map(v=><option key={v}>{v}</option>)}</select></label>
-              <label>HMV / Position / Begriff<input id="assistantTerm" value={term} onChange={e=>setTerm(e.target.value)} placeholder="z. B. leichtgewichts, Rolli, 18.50, AOK Bayern …"/></label>
+              <label>Kostenträger<select value={payer} onChange={e=>{setPayer(e.target.value);setPayerDetail('');setError('')}}><option value="">Alle Kassen</option>{payerOptions.map(v=><option key={v}>{v}</option>)}</select></label>
+              <label>Kasse / Region<select value={payerDetailOptions.includes(payerDetail)?payerDetail:''} onChange={e=>{setPayerDetail(e.target.value);setError('')}} disabled={!payer} aria-label="Kasse und Region des gewählten Kostenträgers"><option value="">{payer?'Alle Kassen / Regionen der Auswahl':'Zuerst Kostenträger wählen'}</option>{payerDetailOptions.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+              <label>Produktgruppe<select value={pg} onChange={e=>{setPg(e.target.value);setError('')}}><option value="">Alle PG</option>{pgOptions.map(v=><option key={v}>{v}</option>)}</select></label>
+              <label>HMV / Position / Begriff<input id="assistantTerm" value={term} onChange={e=>{setTerm(e.target.value);setError('')}} placeholder="z. B. leichtgewichts, Rolli, 18.50, AOK Bayern …"/></label>
               <div className="search-actions">
                 <button className="primary" type="submit" disabled={searchBusy}>
                   {searchBusy?<><LoaderCircle className="spin" size={16}/> Suche …</>:'Prüfen'}
