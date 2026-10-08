@@ -16,6 +16,7 @@ import QuestionsQueue from './components/QuestionsQueue.jsx'
 import ContractExclusions from './components/ContractExclusions.jsx'
 import ContractNoticeBanner from './components/ContractNoticeBanner.jsx'
 import ContractMatrix from './components/ContractMatrix.jsx'
+import './components/VNFeatures.css'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
