@@ -10,10 +10,10 @@ import { ContractChangeList,formatUploadDate } from './ContractChangeList.jsx'
 const TYPE_LABELS={CONTRACT:'Vertragskopf',VERSION:'Vertragsversionen',POSITION:'Preis-/Versorgungspositionen'}
 const STATUS_LABELS={
   RECEIVED:'Datei hochgeladen',DUPLICATE:'Bereits vorhanden',PARSING:'Inhalt erkannt',
-  READY:'Bereit zum Vergleich',REVIEW:'Änderungen prüfen',ACCEPTED:'Veröffentlicht',
+  READY:'Bereit zum Vergleich',REVIEW:'Änderungen prüfen',SOURCE_ONLY:'Originalquelle erfasst (Teilquelle)',ACCEPTED:'Veröffentlicht',
   REJECTED:'Abgelehnt',ERROR:'Fehler',
 }
-const STATUS_TONES={ACCEPTED:'ok',DUPLICATE:'info',REVIEW:'warn',ERROR:'bad',REJECTED:'bad',READY:'info',PARSING:'info'}
+const STATUS_TONES={ACCEPTED:'ok',DUPLICATE:'info',REVIEW:'warn',SOURCE_ONLY:'info',ERROR:'bad',REJECTED:'bad',READY:'info',PARSING:'info'}
 
 function Badge({children,tone=''}){return <span className={'badge '+tone}>{children}</span>}
 function statusLabel(status){return STATUS_LABELS[status]||status||'—'}
