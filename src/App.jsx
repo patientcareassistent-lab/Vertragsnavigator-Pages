@@ -287,6 +287,7 @@ export default function App(){
         if(!cancelled){
           setSupplyEval(null)
           setError(e.message||String(e))
+          recordRuntimeEvent({severity:'ERROR',area:'SUPPLY_EVAL',code:e?.code||'EVALUATION_FAILED',route:'assistant'})
         }
       }finally{
         if(!cancelled)setSupplyBusy(false)
@@ -516,12 +517,14 @@ export default function App(){
       if(error){
         setResults([])
         const timeout=error.code==='57014'||/statement timeout|canceling statement due to statement timeout/i.test(error.message||'')
+        recordRuntimeEvent({severity:'ERROR',area:'SEARCH',code:timeout?'57014':(error.code||'SEARCH_FAILED'),route:'assistant'})
         setError(timeout?'Die Suche hat das Datenbank-Zeitlimit erreicht. Bitte Suche durch eine Kasse/Region, Produktgruppe oder einen Suchbegriff eingrenzen.':error.message)
         return
       }
       setResults(data||[])
     }catch(e){
       setResults([])
+      recordRuntimeEvent({severity:'ERROR',area:'SEARCH',code:e?.code||'SEARCH_FAILED',route:'assistant'})
       setError('Suchanfrage fehlgeschlagen: '+(e?.message||'Verbindung zur Datenbank prüfen.'))
     }finally{
       setSearchBusy(false)
