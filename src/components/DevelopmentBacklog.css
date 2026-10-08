@@ -71,3 +71,12 @@
 @media(max-width:1320px){.backlog-main.backlog-detail-open{grid-template-columns:minmax(0,1fr)}.backlog-tablewrap{max-height:500px}}
 @media(max-width:940px){.backlog-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.backlog-summary{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:620px){.backlog-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.backlog-toolbar{align-items:stretch;flex-direction:column}.backlog-toolbar-actions button{flex:1}.backlog-filters{grid-template-columns:1fr}.backlog-main.backlog-detail-open{grid-template-columns:minmax(0,1fr)}.backlog-formgrid{grid-template-columns:1fr}.backlog-editor{padding:0 13px 13px}}
+
+.backlog-chat-meta{display:block;margin-top:4px;font-size:10px;color:#175cd3;font-weight:700}
+.backlog-chat-sources{padding:14px 0 15px;border-top:1px solid #edf0f4}
+.backlog-chat-sources h3{font-size:13px;color:var(--blue);margin:0 0 9px}
+.backlog-chat-sources article{border:1px solid #d8e6f8;border-radius:9px;padding:11px 12px;background:#f8fbff;margin:0 0 9px}
+.backlog-chat-sources article b{display:block;font-size:12px;color:#1b3250}
+.backlog-chat-sources article small{display:block;margin-top:4px;font-size:10px;color:#667085}
+.backlog-chat-sources article p{font-size:11px;line-height:1.5;color:#4b5e72;margin:8px 0 5px;overflow-wrap:anywhere}
+.backlog-chat-sources article a{font-size:11px;color:#175cd3;text-decoration:underline}
