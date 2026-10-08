@@ -15,6 +15,7 @@ function code(row){return row.reference_code||'VM-'+String(row.id).padStart(5,'0
 function fromRow(row){return Object.fromEntries(Object.keys(emptyDraft).map(key=>[key,row[key]??(emptyDraft[key]||'')]))}
 function StatusPill({status}){return <span className={'backlog-status backlog-status-'+String(status||'OFFEN').toLowerCase()}>{STATUS[status]||status}</span>}
 function PriorityPill({priority}){return <span className={'backlog-priority backlog-priority-'+String(priority||'P2').toLowerCase()}>{priority}</span>}
+const isLiveTestTicket=row=>['Automatisch:','Mitarbeiter-Livetest','Direktmeldung aus Vertragsnavigator','ChatGPT-Projekt:'].some(prefix=>String(row.source_reference||'').startsWith(prefix))
 
 export default function DevelopmentBacklog({userId,canManage=false,reportOnly=false}){
   const [rows,setRows]=useState([])
@@ -29,6 +30,7 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
   const [kindFilter,setKindFilter]=useState('ALLE')
   const [priorityFilter,setPriorityFilter]=useState('ALLE')
   const [sourceFilter,setSourceFilter]=useState('ALLE')
+  const [workQueue,setWorkQueue]=useState('LIVE')
   const [selectedId,setSelectedId]=useState(null)
   const [draft,setDraft]=useState({...emptyDraft})
   const [creating,setCreating]=useState(false)
@@ -58,16 +60,18 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
 
   useEffect(()=>{if(userId)reload()},[userId,canManage])
 
+  const workItems=useMemo(()=>rows.filter(r=>!canManage||isLiveTestTicket(r)===(workQueue==='LIVE')),[rows,canManage,workQueue])
+  const historicalOpen=useMemo(()=>rows.filter(r=>!isLiveTestTicket(r)&&!['ERLEDIGT','ZURUECKGESTELLT'].includes(r.status)).length,[rows])
   const totals=useMemo(()=>({
-    all:rows.length,
-    open:rows.filter(r=>!['ERLEDIGT','ZURUECKGESTELLT'].includes(r.status)).length,
-    urgent:rows.filter(r=>r.priority==='P0'&&!['ERLEDIGT','ZURUECKGESTELLT'].includes(r.status)).length,
-    testing:rows.filter(r=>r.status==='TESTEN').length,
-    done:rows.filter(r=>r.status==='ERLEDIGT').length,
-  }),[rows])
+    all:workItems.length,
+    open:workItems.filter(r=>!['ERLEDIGT','ZURUECKGESTELLT'].includes(r.status)).length,
+    urgent:workItems.filter(r=>r.priority==='P0'&&!['ERLEDIGT','ZURUECKGESTELLT'].includes(r.status)).length,
+    testing:workItems.filter(r=>r.status==='TESTEN').length,
+    done:workItems.filter(r=>r.status==='ERLEDIGT').length,
+  }),[workItems])
   const visible=useMemo(()=>{
     const q=query.trim().toLocaleLowerCase('de-DE')
-    return rows.filter(r=>{
+    return workItems.filter(r=>{
       if(statusFilter==='AKTIV'&&['ERLEDIGT','ZURUECKGESTELLT'].includes(r.status))return false
       if(statusFilter==='ABGESCHLOSSEN'&&!['ERLEDIGT','ZURUECKGESTELLT'].includes(r.status))return false
       if(statusFilter!=='ALLE'&&!['AKTIV','ABGESCHLOSSEN'].includes(statusFilter)&&r.status!==statusFilter)return false
@@ -82,7 +86,7 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
       || PRIORITIES.indexOf(a.priority)-PRIORITIES.indexOf(b.priority)
       || new Date(b.updated_at)-new Date(a.updated_at)
     )
-  },[rows,query,statusFilter,kindFilter,priorityFilter,sourceFilter,chatSources])
+  },[workItems,query,statusFilter,kindFilter,priorityFilter,sourceFilter,chatSources])
 
   const selected=rows.find(r=>r.id===selectedId)||null
   const selectedChatSources=chatSources.filter(s=>s.backlog_id===selectedId)
@@ -122,7 +126,7 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
       acceptance_criteria:canManage?draft.acceptance_criteria.trim():'',
       status:creating?'OFFEN':draft.status,
       owner_name:canManage?draft.owner_name.trim():'',
-      source_reference:creating?'Direktmeldung aus Vertragsnavigator':draft.source_reference.trim(),
+      source_reference:creating?'Mitarbeiter-Livetest (VN 2.1)':draft.source_reference.trim(),
       version_target:canManage?draft.version_target.trim():'',
       due_date:canManage&&draft.due_date?draft.due_date:null,
       resolution_note:canManage?draft.resolution_note.trim():'',
@@ -154,8 +158,13 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
 
   const showEditor=creating||selected
   return <div className="backlog">
+    {canManage&&<div className="backlog-workqueues" role="group" aria-label="Backlog-Arbeitsvorrat">
+      <button type="button" className={workQueue==='LIVE'?'active':''} onClick={()=>{setWorkQueue('LIVE');setSelectedId(null);setCreating(false);setStatusFilter('AKTIV');setQuery('')}}>Mitarbeiter-Livetest</button>
+      <button type="button" className={workQueue==='INTERNAL'?'active':''} onClick={()=>{setWorkQueue('INTERNAL');setSelectedId(null);setCreating(false);setStatusFilter('AKTIV');setQuery('')}}>Interne Vorbereitungsfälle ({historicalOpen} offen)</button>
+    </div>}
+    {canManage&&workQueue==='INTERNAL'&&<div className="backlog-internal-note">Dieser Bestand enthält offene fachliche Prüfungen und dokumentierte Entwicklungsabschlüsse aus der Vorbereitung. Er wird nicht durch die leere Live-Test-Ansicht gelöscht oder automatisch freigegeben.</div>}
     <div className="backlog-summary">
-      <div><small>{reportOnly?'Eigene Meldungen':'Alle erfassten Einträge'}</small><strong>{totals.all}</strong></div>
+      <div><small>{reportOnly?'Eigene Meldungen':workQueue==='LIVE'?'Live-Test-Meldungen':'Interne Vorbereitungsaufgaben'}</small><strong>{totals.all}</strong></div>
       <div><small>Offen / in Bearbeitung</small><strong>{totals.open}</strong></div>
       <div><small>Dringend (P0)</small><strong>{totals.urgent}</strong></div>
       <div><small>Im Test</small><strong>{totals.testing}</strong></div>
@@ -181,7 +190,7 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
       <section className="backlog-list" aria-label="Änderungs- und Fehlerliste">
         <div className="backlog-resultbar"><strong>{visible.length} Einträge</strong><small>Sortierung: Status und Priorität</small></div>
         {busy?<div className="backlog-loading"><LoaderCircle size={20} className="spin"/> Einträge werden geladen …</div>:
-          visible.length===0?<div className="backlog-empty">Keine Einträge für die aktuelle Filterung gefunden.</div>:
+          visible.length===0?<div className="backlog-empty">{workQueue==='LIVE'?'Noch keine Meldungen aus dem Mitarbeiter-Livetest erfasst.':'Keine Einträge für die aktuelle Filterung gefunden.'}</div>:
           <div className="backlog-tablewrap"><table className="backlog-table"><thead><tr><th>Prio / ID</th><th>Änderung oder Fehler</th><th>Status</th><th>Verantwortlich</th><th>Stand</th></tr></thead><tbody>
             {visible.map(row=><tr key={row.id} className={selectedId===row.id?'backlog-selected':''} onClick={()=>openRow(row)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openRow(row)}}} tabIndex={0} aria-label={code(row)+': '+row.title}>
               <td><PriorityPill priority={row.priority}/><small className="backlog-code">{code(row)}</small></td>
