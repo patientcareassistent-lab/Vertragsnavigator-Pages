@@ -195,12 +195,11 @@ export default function App(){
     // Keine globalen Namensalias-Einträge: nur Verträge der gewählten Kassenfamilie.
     const scoped=contracts
       .filter(r=>escArray(r.payer_families).includes(payer))
-      .filter(r=>!pg||escArray(r.product_groups).includes(pg))
       .map(r=>payerDetailLabel(r,payer))
       .filter(v=>v&&normalizeSearch(v)!==normalizeSearch(payer))
     // Firmenumbenennungen als ein Eintrag statt drei scheinbar unterschiedlicher Kassen.
     return uniq(scoped.map(v=>companyRelated(v)?'VALUNY GmbH (ehemals spectrumK / ITSC)':v))
-  },[contracts,payer,pg])
+  },[contracts,payer])
   const pgOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.product_groups))),[contracts])
   const filteredContracts=useMemo(()=>{
     const q=normalizeSearch(contractQuery)
@@ -617,7 +616,7 @@ export default function App(){
             <form className="check-form" onSubmit={runAssistant} aria-busy={searchBusy}>
               <label>Kostenträger<select value={payer} onChange={e=>{setPayer(e.target.value);setPayerDetail('')}}><option value="">Alle Kassen</option>{payerOptions.map(v=><option key={v}>{v}</option>)}</select></label>
               <label>Kasse / Region<select value={payerDetailOptions.includes(payerDetail)?payerDetail:''} onChange={e=>setPayerDetail(e.target.value)} disabled={!payer} aria-label="Kasse und Region des gewählten Kostenträgers"><option value="">{payer?'Alle Kassen / Regionen der Auswahl':'Zuerst Kostenträger wählen'}</option>{payerDetailOptions.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
-              <label>Produktgruppe<select value={pg} onChange={e=>{setPg(e.target.value);setPayerDetail('')}}><option value="">Alle PG</option>{pgOptions.map(v=><option key={v}>{v}</option>)}</select></label>
+              <label>Produktgruppe<select value={pg} onChange={e=>setPg(e.target.value)}><option value="">Alle PG</option>{pgOptions.map(v=><option key={v}>{v}</option>)}</select></label>
               <label>HMV / Position / Begriff<input id="assistantTerm" value={term} onChange={e=>setTerm(e.target.value)} placeholder="z. B. leichtgewichts, Rolli, 18.50, AOK Bayern …"/></label>
               <div className="search-actions">
                 <button className="primary" type="submit" disabled={searchBusy}>
