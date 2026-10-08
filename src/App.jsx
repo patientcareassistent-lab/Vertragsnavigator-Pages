@@ -630,7 +630,7 @@ export default function App(){
                   </select></label>
                   <label>Verordnungsangabe<select value={advanced.prescription} onChange={e=>setA('prescription',e.target.value)}><option value="all">Alle</option><option value="vorhanden">vorhanden</option><option value="ohne">ohne Angabe</option></select></label>
 
-                  <label>Gültig am<input type="date" value={advanced.validOn} onChange={e=>setA('validOn',e.target.value)}/></label>
+                  <label>Vertragsstand am <span title="Stichtagsprüfung: Zeigt, welche Vertrags- und Positionsregelungen an diesem Datum gültig waren bzw. sind. Dies ist kein Zeitraumfilter von/bis." aria-label="Information zur Stichtagsprüfung">ⓘ</span><input type="date" value={advanced.validOn} onChange={e=>setA('validOn',e.target.value)}/><small style={{display:'block',fontWeight:400,color:'#52677e',marginTop:4}}>Vertragszustand zu einem bestimmten Stichtag prüfen.</small></label>
                   <label>Preis<select value={advanced.priceMode} onChange={e=>setA('priceMode',e.target.value)}><option value="all">Alle</option><option value="vorhanden">Preis vorhanden</option><option value="ohne">ohne Preis</option></select></label>
                   <label>Preis von €<input type="number" step="0.01" min="0" value={advanced.minPrice} onChange={e=>setA('minPrice',e.target.value)}/></label>
                   <label>Preis bis €<input type="number" step="0.01" min="0" value={advanced.maxPrice} onChange={e=>setA('maxPrice',e.target.value)}/></label>
