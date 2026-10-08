@@ -280,7 +280,7 @@ export default function App(){
           p_hmv_code_override:selected.code||advanced.hmv||null,
         }
         if(advanced.validOn)args.p_as_of=advanced.validOn
-        const {data,error}=await supabase.rpc('evaluate_position_supply',args)
+        const {data,error}=await supabase.rpc('evaluate_position_supply_v3',args)
         if(error)throw error
         if(!cancelled)setSupplyEval(Array.isArray(data)?(data[0]||null):data||null)
       }catch(e){
@@ -582,7 +582,10 @@ export default function App(){
   const supplyDecision=supplyEval?.decision||''
   const decisionLabel=supplyDecision==='GRUEN'?'GRÜN':supplyDecision==='ROT'?'ROT':'PRÜFEN'
   const decisionTone=supplyDecision==='GRUEN'?'ok':supplyDecision==='ROT'?'bad':'warn'
-  const supplyPathOk=supplyEval?.pq_decision==='GRUEN'&&Number(supplyEval?.green_scope_count||0)>0
+  const supplyPathOk=supplyEval?.pq_decision==='GRUEN'&&supplyEval?.accession_decision==='GRUEN'&&Number(supplyEval?.green_scope_count||0)>0
+  const supplyV3Actions=Array.isArray(supplyEval?.action_items)?supplyEval.action_items:[]
+  const supplyV3Blockers=Array.isArray(supplyEval?.hard_blockers)?supplyEval.hard_blockers:[]
+  const supplyV3Checks=Array.isArray(supplyEval?.manual_checks)?supplyEval.manual_checks:[]
   const supplyPathValue=!siteId?'Standort auswählen':
     supplyBusy?'PQ und Vertragsbeitritt werden geprüft …':
     supplyEval?
@@ -633,6 +636,7 @@ export default function App(){
               <label>Kostenträger<select value={payer} onChange={e=>{setPayer(e.target.value);setPayerDetail('');setError('')}}><option value="">Alle Kassen</option>{payerOptions.map(v=><option key={v}>{v}</option>)}</select></label>
               <label>Kasse / Region<select value={payerDetailOptions.includes(payerDetail)?payerDetail:''} onChange={e=>{setPayerDetail(e.target.value);setError('')}} disabled={!payer} aria-label="Kasse und Region des gewählten Kostenträgers"><option value="">{payer?'Alle Kassen / Regionen der Auswahl':'Zuerst Kostenträger wählen'}</option>{payerDetailOptions.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
               <label>Produktgruppe<select value={pg} onChange={e=>{setPg(e.target.value);setError('')}}><option value="">Alle PG</option>{pgOptions.map(v=><option key={v}>{v}</option>)}</select></label>
+              <label>Standort / IK<select value={siteId} onChange={e=>{setSiteId(e.target.value);setError('')}}><option value="">Standort wählen</option>{sites.map(s=><option key={s.site_id} value={s.site_id}>{s.branch||'Standort'}{s.ik?` · IK ${s.ik}`:''}</option>)}</select></label>
               <label>HMV / Position / Begriff<input id="assistantTerm" value={term} onChange={e=>{setTerm(e.target.value);setError('')}} placeholder="z. B. leichtgewichts, Rolli, 18.50, AOK Bayern …"/></label>
               <div className="search-actions">
                 <button className="primary" type="submit" disabled={searchBusy}>
@@ -647,7 +651,6 @@ export default function App(){
               <details className="advanced-search">
                 <summary>Erweiterte Suche <span>HMV · Position · Produktart · Vertrag · LEGS · LKZ · Genehmigung · Versorgungsform · Gültigkeit · PQ · Standort</span></summary>
                 <div className="advanced-grid">
-              <label>Standort<select value={siteId} onChange={e=>setSiteId(e.target.value)}><option value="">Standort wählen</option>{sites.map(s=><option key={s.site_id} value={s.site_id}>{s.branch||'Standort'}{s.ik?` · IK ${s.ik}`:''}</option>)}</select></label>
                   <label>HMV-/Produktartcode<input value={advanced.hmv} onChange={e=>setA('hmv',e.target.value)} placeholder="z. B. 18.50.03"/></label>
                   <label>Position / GPOS<input value={advanced.position} onChange={e=>setA('position',e.target.value)} placeholder="z. B. 1850032"/></label>
                   <label>Produktart<input value={advanced.productType} onChange={e=>setA('productType',e.target.value)} placeholder="z. B. Spezialrollstuhl"/></label>
@@ -683,11 +686,12 @@ export default function App(){
                 status={!siteId?'noch offen':supplyBusy?'prüfen':supplyPathOk?'PQ + Beitritt bestätigt':supplyEval?.decision==='ROT'?'nicht erfüllt':'prüfen'}
                 value={supplyPathValue}
                 ok={supplyPathOk}/>
-              <Check n="3" title="Genehmigung" status={selected?.genehmigung?'Vertragsangabe':'noch offen'} value={selected?.genehmigung||selected?.freigrenze||'Vertragsangabe fehlt'} ok={!!selected?.genehmigung}/>
-              <Check n="4" title="Verordnung" status={selected?.verordnung?'Vertragsangabe':'noch offen'} value={selected?.verordnung||'Vertragsangabe fehlt'} ok={!!selected?.verordnung}/>
-              <Check n="5" title="Dokumentation" status={relatedKnowledgeBusy?'wird geladen':relatedKnowledge.length?'Wissen vorhanden':'prüfen'} value={relatedKnowledgeBusy?'Vertragswissen wird nachgeladen …':relatedKnowledge.length?`${relatedKnowledge.length} freigegebene Wissenseinträge`:'Vertragswissen/Formularregeln'} ok={relatedKnowledge.length>0}/>
+              <Check n="3" title="Genehmigung" status={supplyEval?.authorization_decision==='GRUEN'?'geprüft':supplyEval?.authorization_decision==='ROT'?'nicht erfüllt':supplyEval?'prüfen':'noch offen'} value={supplyEval?.authorization_text||selected?.genehmigung||selected?.freigrenze||'Vertragsangabe fehlt'} ok={supplyEval?.authorization_decision==='GRUEN'}/>
+              <Check n="4" title="Verordnung" status={supplyEval?.prescription_decision==='GRUEN'?'geprüft':supplyEval?.prescription_decision==='ROT'?'nicht erfüllt':supplyEval?'prüfen':'noch offen'} value={supplyEval?.prescription_text||selected?.verordnung||'Vertragsangabe fehlt'} ok={supplyEval?.prescription_decision==='GRUEN'}/>
+              <Check n="5" title="Dokumentation / Quelle" status={supplyEval?.source_decision==='GRUEN'?'Quelle bestätigt':supplyEval?.source_decision==='ROT'?'Quellenmangel':'prüfen'} value={supplyEval?.source_text||(relatedKnowledgeBusy?'Vertragswissen wird geladen':relatedKnowledge.length?`${relatedKnowledge.length} Wissenseinträge`:'Quellennachweis prüfen')} ok={supplyEval?.source_decision==='GRUEN'}/>
               <Check n="6" title="Abrechnung" status={selected?.preis!=null?'Preis vorhanden':'noch offen'} value={selected?.preis!=null?String(selected.preis):'Preis/Versorgungsform'} ok={selected?.preis!=null}/>
             </div>
+            {selected&&siteId&&supplyEval&&<section className="supply-v3-audit" aria-label="Fachliche Begründung der Versorgungsentscheidung"><strong>{supplyEval.decision_label||'Prüfergebnis'} · V3-Versorgungsprüfung</strong>{supplyEval.decision_basis&&<p>{supplyEval.decision_basis}</p>}{supplyV3Blockers.length>0&&<p><b>Ausschlussgründe:</b> {supplyV3Blockers.join(' · ')}</p>}{supplyV3Checks.length>0&&<p><b>Manuell prüfen:</b> {supplyV3Checks.join(' · ')}</p>}{supplyV3Actions.length>0&&<p><b>Nächste Schritte:</b> {supplyV3Actions.join(' · ')}</p>}{supplyEval.validity_text&&<p><b>Vertrags-/PG-/IK-Gültigkeit:</b> {supplyEval.validity_text}</p>}</section>}
             {selected&&<PositionDetail
               position={selected}
               contract={selectedContract}
