@@ -11,6 +11,7 @@ import ContractPrecheck from './components/ContractPrecheck.jsx'
 import AdminDashboard from './components/AdminDashboard.jsx'
 import PayerFamilyReview from './components/PayerFamilyReview.jsx'
 import DevelopmentBacklog from './components/DevelopmentBacklog.jsx'
+import PGReviewQueue from './components/PGReviewQueue.jsx'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
@@ -190,7 +191,7 @@ export default function App(){
   const inAdminMode=isAdmin&&mode==='admin'
   const inFachMode=canFach&&mode!=='versorger'
   const backlogNav=['backlog',mode==='versorger'?'Fehler melden':'Änderungs- & Fehlerbacklog']
-  const navItems=inAdminMode?[...NAV,backlogNav,['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:[...NAV,backlogNav]
+  const navItems=inAdminMode?[...NAV,backlogNav,['pgReviews','PG-Prüfungen'],['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['missingSources','Fehlende Quellen']]:inFachMode?[...NAV,backlogNav,['pgReviews','PG-Prüfungen']]:[...NAV,backlogNav]
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
     if(!payer)return []
@@ -570,7 +571,7 @@ export default function App(){
     if(next==='admin'&&!isAdmin)return
     if(next==='fach'&&!canFach)return
     setMode(next)
-    const adminPages=['admin','payerReview','precheck','missingSources']
+    const adminPages=['admin','payerReview','precheck','missingSources','pgReviews']
     if(next==='admin')setActive('admin')
     else if(adminPages.includes(active))setActive('assistant')
   }
@@ -722,6 +723,11 @@ export default function App(){
         <section className="panel"><div className="sectionbar"><div><h2>Vertragskatalog mit Beitrittsampel</h2><p>Beitritt, Gültigkeit und Voraussetzungen je Vertrag auf einen Blick.</p></div><input className="compact" value={contractQuery} onChange={e=>setContractQuery(e.target.value)} placeholder="Vertrag durchsuchen …"/></div>
           <ContractTrafficLightPanel contracts={filteredContracts}/>
         </section>
+      </>}
+
+      {inFachMode&&active==='pgReviews'&&<>
+        <div className="page-head"><div><h1>PG-Änderungsprüfungen</h1><p>Alle geänderten Vertragsbestände fachlich je PG und Geschäftsbereich bewerten.</p></div><Badge tone="warn">Fachprüfung · dokumentiert</Badge></div>
+        <PGReviewQueue canReview={role==='fach'}/>
       </>}
 
       {inAdminMode&&active==='admin'&&<>
