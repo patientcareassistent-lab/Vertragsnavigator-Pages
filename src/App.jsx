@@ -16,6 +16,7 @@ import QuestionsQueue from './components/QuestionsQueue.jsx'
 import ContractExclusions from './components/ContractExclusions.jsx'
 import ContractNoticeBanner from './components/ContractNoticeBanner.jsx'
 import ContractMatrix from './components/ContractMatrix.jsx'
+import AddonCandidateReview from './components/AddonCandidateReview.jsx'
 import './components/VNFeatures.css'
 
 const NAV=[
@@ -197,7 +198,7 @@ export default function App(){
   const inAdminMode=isAdmin&&mode==='admin'
   const inFachMode=canFach&&mode!=='versorger'
   const backlogNav=['backlog',mode==='versorger'?'Fehler melden':'Änderungs- & Fehlerbacklog']
-  const navItems=inAdminMode?[...NAV,backlogNav,['pgReviews','PG-Prüfungen'],['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['contractExclusions','Verträge ausschließen'],['missingSources','Fehlende Quellen']]:inFachMode?[...NAV,backlogNav,['pgReviews','PG-Prüfungen']]:[...NAV,backlogNav]
+  const navItems=inAdminMode?[...NAV,backlogNav,['pgReviews','PG-Prüfungen'],['addonReview','Zusätze prüfen'],['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['contractExclusions','Verträge ausschließen'],['missingSources','Fehlende Quellen']]:inFachMode?[...NAV,backlogNav,['pgReviews','PG-Prüfungen'],['addonReview','Zusätze prüfen']]:[...NAV,backlogNav]
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
     if(!payer)return []
@@ -577,7 +578,7 @@ export default function App(){
     if(next==='admin'&&!isAdmin)return
     if(next==='fach'&&!canFach)return
     setMode(next)
-    const adminPages=['admin','payerReview','precheck','missingSources','pgReviews','contractExclusions']
+    const adminPages=['admin','payerReview','precheck','missingSources','pgReviews','addonReview','contractExclusions']
     if(next==='admin')setActive('admin')
     else if(adminPages.includes(active))setActive('assistant')
   }
@@ -735,6 +736,11 @@ export default function App(){
       {inFachMode&&active==='pgReviews'&&<>
         <div className="page-head"><div><h1>PG-Änderungsprüfungen</h1><p>Alle geänderten Vertragsbestände fachlich je PG und Geschäftsbereich bewerten.</p></div><Badge tone="warn">Fachprüfung · dokumentiert</Badge></div>
         <PGReviewQueue canReview={role==='fach'}/>
+      </>}
+
+      {inFachMode&&active==='addonReview'&&<>
+        <div className="page-head"><div><h1>Zusatzpositionen prüfen</h1><p>Quellenbasierte Zuordnungen und Ausschlüsse vor der fachlichen Nutzung bestätigen.</p></div><Badge tone="warn">Originalvertragsprüfung</Badge></div>
+        <AddonCandidateReview canReview={true}/>
       </>}
 
       {active==='matrix'&&<>
