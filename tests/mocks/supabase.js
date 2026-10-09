@@ -74,6 +74,7 @@ const dataFor = (table,head,filters={}) => {
     vn_position_catalog:[...positions,...matrixBarmer,...matrixAddonCatalog],
     vn_position_addons:verifiedMatrixAddons,
     vn_position_addon_candidates:[reviewerCandidate],
+    vn_addon_candidate_quality_v1:[{...reviewerCandidate,technically_consistent:true,technical_findings:[]}],
     vn_contract_questions:workQuestions,
     contract_change_reviews:pgWorkReviews,
     vn_contract_knowledge_approved:[],
@@ -119,7 +120,7 @@ export const supabase={
   },
   from:query,
   async rpc(name,args={}){
-    if(name==='vn_search_positions_v13'){
+    if(name==='vn_search_positions_v14'){
       const dataset=args.p_payer
         ? args.p_payer==='BARMER'?matrixBarmer:args.p_payer==='AOK'?[positions[0]]:[]
         : args.p_query==='UX-LIMIT'?paginationPositions:positions
