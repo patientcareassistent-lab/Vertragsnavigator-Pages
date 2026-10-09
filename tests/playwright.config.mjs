@@ -12,6 +12,7 @@ export default defineConfig({
     trace:'retain-on-failure'
   },
   webServer:{
+    cwd:process.cwd(),
     command:'npx vite --config vite.ux-test.config.js --host 127.0.0.1 --port 5174 --strictPort',
     url:'http://127.0.0.1:5174/Vertragsnavigator-Pages/',
     reuseExistingServer:!process.env.CI,
