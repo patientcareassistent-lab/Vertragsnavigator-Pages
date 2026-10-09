@@ -10,7 +10,7 @@ async function loadWork(page,url='./'){
   return errors
 }
 
-test('Versorger-Arbeitsvorrat zeigt nur zulässige Bereiche mit abrufbaren Zählern',async ({page})=>{
+test('Außendienst-Arbeitsvorrat zeigt nur zulässige Bereiche mit abrufbaren Zählern',async ({page})=>{
   const errors=await loadWork(page)
   await expect(page.getByRole('button',{name:'Vertragsfragen öffnen'})).toBeVisible()
   await expect(page.getByRole('button',{name:'Fehler / Änderungen melden öffnen'})).toBeVisible()
@@ -30,12 +30,12 @@ test('Versorger-Arbeitsvorrat zeigt nur zulässige Bereiche mit abrufbaren Zähl
   expect(errors).toEqual([])
 })
 
-test('PG-Administration findet Prüfqueues; Wechsel in Versorgermodus entfernt Bearbeitungszugänge',async ({page})=>{
+test('PG-Administration findet Prüfqueues; Wechsel in Außendienstmodus entfernt Bearbeitungszugänge',async ({page})=>{
   const errors=await loadWork(page,'./?uxRole=PG_ADMIN')
   await expect(page.getByRole('button',{name:'PG-Änderungsprüfungen öffnen'})).toBeVisible()
   await expect(page.getByRole('button',{name:'Zusatzpositionen prüfen öffnen'})).toBeVisible()
   await expect(page.locator('.work-queue-number')).toHaveCount(3)
-  await page.getByRole('button',{name:'Versorger',exact:true}).click()
+  await page.getByRole('button',{name:'Außendienst',exact:true}).click()
   await expect(page.getByRole('button',{name:'PG-Änderungsprüfungen öffnen'})).toHaveCount(0)
   await expect(page.getByRole('button',{name:'Zusatzpositionen prüfen öffnen'})).toHaveCount(0)
   expect(errors).toEqual([])
@@ -78,7 +78,7 @@ test('Sachbearbeiter im Innendienst erhält korrekten Modus ohne PG-Freigaberech
   page.on('pageerror',e=>errors.push(e.message))
   await page.goto('./?uxRole=INNENDIENST')
   await expect(page.locator('.mode-toggle').getByRole('button',{name:'Innendienst'})).toBeVisible()
-  await expect(page.locator('.mode-toggle').getByRole('button',{name:'Versorger'})).toHaveCount(0)
+  await expect(page.locator('.mode-toggle').getByRole('button',{name:'Außendienst'})).toHaveCount(0)
   await page.getByRole('button',{name:'Arbeitsvorrat',exact:true}).click()
   await expect(page.getByRole('heading',{name:'Arbeitsvorrat',exact:true})).toBeVisible()
   await expect(page.getByRole('button',{name:'PG-Änderungsprüfungen öffnen'})).toHaveCount(0)
@@ -87,5 +87,18 @@ test('Sachbearbeiter im Innendienst erhält korrekten Modus ohne PG-Freigaberech
   await page.locator('.nav-more-list').getByRole('button',{name:'Fehler / Änderung melden'}).click()
   await expect(page.getByRole('heading',{name:'Neue Meldung erfassen'})).toBeVisible()
   await expect(page.getByRole('radio',{name:'Änderungswunsch'})).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+
+test('Neue Außendienstrolle zeigt reduzierte Ansicht ohne Innendienst- oder PG-Rechte',async ({page})=>{
+  const errors=[]
+  page.on('pageerror',error=>errors.push(error.message))
+  await loadWork(page,'./?uxRole=AUSSENDIENST')
+  await expect(page.locator('.mode-toggle').getByRole('button',{name:'Außendienst',exact:true})).toBeVisible()
+  await expect(page.locator('.mode-toggle').getByRole('button',{name:'Innendienst'})).toHaveCount(0)
+  await expect(page.locator('.mode-toggle').getByRole('button',{name:'Administrator'})).toHaveCount(0)
+  await expect(page.getByRole('button',{name:'PG-Änderungsprüfungen öffnen'})).toHaveCount(0)
+  await expect(page.getByRole('button',{name:'Admin-Arbeitsvorrat öffnen'})).toHaveCount(0)
   expect(errors).toEqual([])
 })
