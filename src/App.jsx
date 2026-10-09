@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, BookOpenCheck, Bug, CheckCircle2, CircleHelp, History, LayoutDashboard, LoaderCircle, MessageSquareText, ShieldCheck, Upload, XCircle } from 'lucide-react'
 import { supabase, supabaseConfigured } from './lib/supabase.js'
 import { recordRuntimeEvent } from './lib/runtimeTelemetry.js'
+import ContractWitches from './components/ContractWitches.jsx'
 import ContractUpload from './components/ContractUpload.jsx'
 import ContractChanges from './components/ContractChanges.jsx'
 import PositionDetail from './components/PositionDetail.jsx'
@@ -860,6 +861,7 @@ export default function App(){
 
       {active==='data'&&<><div className="page-head"><div><h1>Datenstand</h1><p>Aktuell im Vertragsnavigator verfügbare strukturierte Daten.</p></div><Badge tone="info">VN 2.1</Badge></div><div className="metrics"><Metric label="Verträge" value={stats.contracts}/><Metric label="Positionen importiert" value={stats.positions}/><Metric label="Freigegebenes Wissen" value={stats.knowledge}/><Metric label="Sichtbare Vertragsfragen" value={stats.questions}/></div><section className="panel spaced"><h2>Prüflogik</h2><p>Produkt/Position → Vertrag → Standort/IK → PQ → Vertragsbeitritt → Genehmigung/eKVA → Verordnung → Dokumentation → Fristen → Abrechnung.</p><div className="note">Kein positiver Prüfschritt ersetzt einen anderen.</div></section></>}
     </main>
+    <ContractWitches />
   </div>
 }
 
