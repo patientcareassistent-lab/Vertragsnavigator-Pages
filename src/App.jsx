@@ -177,6 +177,8 @@ export default function App(){
   const [siteId,setSiteId]=useState('')
   const [advanced,setAdvanced]=useState({...EMPTY_ADVANCED})
   const [results,setResults]=useState([])
+  const [visibleResults,setVisibleResults]=useState(12)
+  const [hasSearched,setHasSearched]=useState(false)
   const [selected,setSelected]=useState(null)
   const [supplyEval,setSupplyEval]=useState(null)
   const [supplyBusy,setSupplyBusy]=useState(false)
@@ -304,6 +306,18 @@ export default function App(){
     evaluateSelected()
     return()=>{cancelled=true}
   },[selected?.position_row_id,siteId,advanced.validOn,advanced.hmv])
+
+  useEffect(()=>{
+    if(!selected)return
+    const timer=window.setTimeout(()=>{
+      const heading=document.getElementById('assistantDecisionHeading')
+      if(!heading)return
+      heading.focus({preventScroll:true})
+      const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      heading.scrollIntoView({behavior:reduced?'auto':'smooth',block:'start'})
+    },60)
+    return()=>window.clearTimeout(timer)
+  },[selected?.position_row_id])
 
   async function login(e){
     e.preventDefault();setAuthError('')
@@ -469,7 +483,7 @@ export default function App(){
   }
 
   async function runAssistant(e){
-    e.preventDefault();setSelected(null);setSupplyEval(null);setError('')
+    e.preventDefault();setSelected(null);setSupplyEval(null);setError('');setVisibleResults(12);setHasSearched(false)
 
     if(payerDetail&&(!payer||!payerDetailOptions.includes(payerDetail))){setError('Bitte eine zum Kostenträger passende Kasse / Region auswählen.');setResults([]);return}
 
@@ -501,6 +515,7 @@ export default function App(){
     const freeTextQuery=(!termIsHmv&&!termIsPosition&&rawTerm)?rawTerm:contractAliasQuery
     const rpcName='vn_search_positions_v13'
     setSearchBusy(true)
+    setHasSearched(true)
     try{
       const {data,error}=await supabase.rpc(rpcName,{
         p_payer:payer||null,
@@ -553,6 +568,8 @@ export default function App(){
     setSiteId('')
     setAdvanced({...EMPTY_ADVANCED})
     setResults([])
+    setVisibleResults(12)
+    setHasSearched(false)
     setSelected(null)
     setSupplyEval(null)
     setError('')
@@ -644,10 +661,10 @@ export default function App(){
       {error&&<div className="alert error">{error}</div>}
 
       {active==='assistant'&&<>
-        <div className="page-head"><div><h1>Versorgung prüfen</h1><p>Die wesentlichen Vertragsinformationen in einer Arbeitsansicht.</p></div><Badge tone="info">Vertragswissen zuerst</Badge></div>
-        <div className="grid">
+        <div className="page-head"><div><h1>Versorgung prüfen</h1><p>Positionssuche, Trefferwahl und Versorgungsprüfung in drei übersichtlichen Schritten.</p></div><Badge tone="info">Vertragswissen zuerst</Badge></div>
+        <div className="grid assistant-flow">
           <section className="panel assistant-hero span2">
-            <div className="assistant-top"><div className="assistant-title"><small>Vertragsassistent</small><h2>Darf ich versorgen?</h2><p>Position auswählen, Standort festlegen und die Prüfpunkte nacheinander bewerten.</p></div><div className={'decision '+decisionTone} role="status" aria-live="polite" aria-atomic="true"><small>Versorgungsprüfung</small><strong><DecisionIcon size={22} aria-hidden="true"/>{decisionLabel}</strong></div></div>
+            <div className="assistant-top"><div className="assistant-title"><small>Schritt 1 · Positionssuche</small><h2>Passende Vertragsposition finden</h2><p>Kostenträger, Produktgruppe oder Hilfsmittel eingeben, dann die passende Position auswählen.</p></div></div>
             <form className="check-form" onSubmit={runAssistant} aria-busy={searchBusy}>
               <label>Kostenträger<select value={payer} onChange={e=>{setPayer(e.target.value);setPayerDetail('');setError('')}}><option value="">Alle Kassen</option>{payerOptions.map(v=><option key={v}>{v}</option>)}</select></label>
               <label>Kasse / Region<select value={payerDetailOptions.includes(payerDetail)?payerDetail:''} onChange={e=>{setPayerDetail(e.target.value);setError('')}} disabled={!payer} aria-label="Kasse und Region des gewählten Kostenträgers"><option value="">{payer?'Alle Kassen / Regionen der Auswahl':'Zuerst Kostenträger wählen'}</option>{payerDetailOptions.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
@@ -694,6 +711,24 @@ export default function App(){
               </details>
             </form>
             <div className="search-flow-hint" aria-label="Ablauf der Versorgungsprüfung"><span><b>1</b> Positionen suchen</span><span aria-hidden="true">→</span><span><b>2</b> Treffer auswählen</span><span aria-hidden="true">→</span><span><b>3</b> Versorgung automatisch prüfen</span></div>
+          </section>
+          <section className="panel span2 assistant-results" id="assistantResults" aria-labelledby="assistantResultsHeading">
+            <div className="sectionbar"><div><h2 id="assistantResultsHeading">Schritt 2 · Treffer auswählen</h2><p>Passende Vertragsposition per Klick oder mit Tab und Enter auswählen. Das Prüfergebnis erscheint unter der Liste.</p></div><Badge>{results.length} Treffer</Badge></div>
+            {results.length>0&&!selected&&<div className="result-hint"><b>{results.length} passende Positionen · {resultContractCount} Vertragsvarianten</b><span>{payer==='AOK'&&!payerDetail&&!siteId?'AOK-Verträge sind regional. Bitte konkrete AOK/Region, Standort oder unten den passenden Vertrag auswählen.':'Bitte den passenden Vertrag bzw. die Position auswählen.'}</span></div>}
+            {results.length>=150&&<p className="result-limit-note" role="note">Maximal 150 Treffer geladen. Falls die gesuchte Position fehlt, bitte Kasse, Produktgruppe oder Suchbegriff eingrenzen.</p>}
+            <div className="tablewrap"><table><thead><tr><th>PG</th><th>HMV/Code</th><th>Position</th><th>Bezeichnung</th><th>Vertrag</th><th>Preis</th><th>Genehmigung</th></tr></thead><tbody>
+              {results.slice(0,visibleResults).map(r=><tr key={r.position_row_id} className={'selectable '+(selected?.position_row_id===r.position_row_id?'selected':'')} tabIndex={0} aria-selected={selected?.position_row_id===r.position_row_id} aria-label={'Position auswählen: '+(r.bezeichnung||r.produktart_bezeichnung||r.code||r.pos||'Unbekannte Position')} onClick={()=>choosePosition(r)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choosePosition(r)}}}><td>{r.pg||'—'}</td><td>{r.code||'—'}</td><td>{r.pos||'—'}</td><td><b>{r.bezeichnung||r.produktart_bezeichnung||'—'}</b></td><td>{displayCompanyName(r.contract||r.family||'—')}</td><td>{r.preis??'—'}</td><td>{r.genehmigung||r.freigrenze||'—'}</td></tr>)}
+              {!results.length&&<tr><td colSpan="7" className="empty">{hasSearched&&!searchBusy?'Keine passenden Positionen gefunden. Bitte die Suchkriterien anpassen.':'Kasse, PG, Suchbegriff oder erweiterte Kriterien wählen und auf „Positionen suchen“ klicken.'}</td></tr>}
+            </tbody></table></div>
+            {results.length>0&&<div className="assistant-result-footer"><span>{Math.min(visibleResults,results.length)} von {results.length} Treffern angezeigt</span>{visibleResults<results.length&&<button className="secondary" type="button" onClick={()=>setVisibleResults(v=>v+12)}>Weitere 12 Treffer anzeigen</button>}</div>}
+          </section>
+          {selected&&<section className="panel span2 assistant-evaluation" id="assistantEvaluation" aria-labelledby="assistantDecisionHeading">
+            <div className="assistant-evaluation-top"><div><small>Schritt 3 · Versorgungsprüfung</small><h2 id="assistantDecisionHeading" tabIndex={-1}>Ergebnis zur ausgewählten Position</h2><p><b>{selected.bezeichnung||selected.produktart_bezeichnung||selected.code||selected.pos||'Ausgewählte Position'}</b> · {displayCompanyName(selected.contract||selected.family||'Vertrag nicht benannt')}</p></div><div className={'decision '+decisionTone} role="status" aria-live="polite" aria-atomic="true"><small>Versorgungsprüfung</small><strong><DecisionIcon size={22} aria-hidden="true"/>{decisionLabel}</strong></div></div>
+            <div className="supply-status-strip" aria-label="Kurzübersicht der sechs Prüfbereiche">
+              {[['Vertrag','Position zugeordnet',true],['PQ / IK / Beitritt',!siteId?'Standort fehlt':supplyBusy?'Prüfung läuft':supplyPathOk?'Bestätigt':supplyEval?.pq_decision==='ROT'||supplyEval?.accession_decision==='ROT'?'Nicht erfüllt':'Zu prüfen',supplyPathOk],['Genehmigung',supplyEval?.authorization_decision==='GRUEN'?'Bestätigt':supplyEval?.authorization_decision==='ROT'?'Nicht erfüllt':'Zu prüfen',supplyEval?.authorization_decision==='GRUEN'],['Verordnung',supplyEval?.prescription_decision==='GRUEN'?'Bestätigt':supplyEval?.prescription_decision==='ROT'?'Nicht erfüllt':'Zu prüfen',supplyEval?.prescription_decision==='GRUEN'],['Quellen',supplyEval?.source_decision==='GRUEN'?'Bestätigt':supplyEval?.source_decision==='ROT'?'Quellenmangel':'Zu prüfen',supplyEval?.source_decision==='GRUEN'],['Abrechnung',selected?.preis!=null?'Preis dokumentiert':'Preis offen',false]].map(([name,status,ok])=><span className={'supply-mini '+(ok?'ok':/nicht erfüllt|quellenmangel/i.test(status)?'bad':'neutral')} key={name}><small>{name}</small><strong>{status}</strong></span>)}
+            </div>
+            <details className="supply-checks-details">
+              <summary>Alle sechs Prüfschritte und Vertragsangaben anzeigen</summary>
             <div className="checks" aria-label="Prüfschritte">
               <Check n="1" title="Vertrag"
                 status={selected?'Vertrag gefunden':results.length?(resultContractCount===1?'1 Vertrag gefunden':`${resultContractCount} Vertragsvarianten gefunden`):'noch offen'}
@@ -708,7 +743,10 @@ export default function App(){
               <Check n="5" title="Dokumentation / Quelle" status={supplyEval?.source_decision==='GRUEN'?'Quelle bestätigt':supplyEval?.source_decision==='ROT'?'Quellenmangel':supplyEval?'prüfen':'noch offen'} value={supplyEval?.source_text||(relatedKnowledgeBusy?'Vertragswissen wird geladen':relatedKnowledge.length?`${relatedKnowledge.length} Wissenseinträge`:'Quellennachweis prüfen')} ok={supplyEval?.source_decision==='GRUEN'}/>
               <Check n="6" title="Abrechnung" status={selected?.preis!=null?'Preis vorhanden':'noch offen'} value={selected?.preis!=null?String(selected.preis):'Preis/Versorgungsform'} ok={selected?.preis!=null}/>
             </div>
+
+            </details>
             {selected&&siteId&&supplyEval&&<section className="supply-v3-audit" aria-label="Fachliche Begründung der Versorgungsentscheidung"><strong>{supplyEval.decision_label||'Prüfergebnis'} · V3-Versorgungsprüfung</strong>{supplyEval.decision_basis&&<p>{supplyEval.decision_basis}</p>}{supplyV3Blockers.length>0&&<p><b>Ausschlussgründe:</b> {supplyV3Blockers.join(' · ')}</p>}{supplyV3Checks.length>0&&<p><b>Manuell prüfen:</b> {supplyV3Checks.join(' · ')}</p>}{supplyV3Actions.length>0&&<p><b>Nächste Schritte:</b> {supplyV3Actions.join(' · ')}</p>}{supplyEval.validity_text&&<p><b>Vertrags-/PG-/IK-Gültigkeit:</b> {supplyEval.validity_text}</p>}</section>}
+
             {selected&&<PositionDetail
               position={selected}
               contract={selectedContract}
@@ -717,14 +755,8 @@ export default function App(){
               knowledge={relatedKnowledge}
               canFach={inFachMode}
             />}
-          </section>
-          <section className="panel span2"><div className="sectionbar"><div><h2>Treffer</h2><p>Treffer anklicken oder mit Tab und Enter auswählen. Nach Positions- und Standortauswahl startet die Versorgungsprüfung automatisch.</p></div><Badge>{results.length}</Badge></div>
-            {results.length>0&&!selected&&<div className="result-hint"><b>{results.length} passende Positionen · {resultContractCount} Vertragsvarianten</b><span>{payer==='AOK'&&!payerDetail&&!siteId?'AOK-Verträge sind regional. Bitte konkrete AOK/Region, Standort oder unten den passenden Vertrag auswählen.':'Bitte den passenden Vertrag bzw. die Position auswählen.'}</span></div>}
-            <div className="tablewrap"><table><thead><tr><th>PG</th><th>HMV/Code</th><th>Position</th><th>Bezeichnung</th><th>Vertrag</th><th>Preis</th><th>Genehmigung</th></tr></thead><tbody>
-              {results.map(r=><tr key={r.position_row_id} className={'selectable '+(selected?.position_row_id===r.position_row_id?'selected':'')} tabIndex={0} aria-selected={selected?.position_row_id===r.position_row_id} aria-label={'Position auswählen: '+(r.bezeichnung||r.produktart_bezeichnung||r.code||r.pos||'Unbekannte Position')} onClick={()=>choosePosition(r)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choosePosition(r)}}}><td>{r.pg||'—'}</td><td>{r.code||'—'}</td><td>{r.pos||'—'}</td><td><b>{r.bezeichnung||r.produktart_bezeichnung||'—'}</b></td><td>{displayCompanyName(r.contract||r.family||'—')}</td><td>{r.preis??'—'}</td><td>{r.genehmigung||r.freigrenze||'—'}</td></tr>)}
-              {!results.length&&<tr><td colSpan="7" className="empty">Kasse, PG, Suchbegriff oder erweiterte Kriterien wählen und auf „Positionen suchen“ klicken.</td></tr>}
-            </tbody></table></div>
-          </section>
+
+          </section>}
         </div>
       </>}
 
