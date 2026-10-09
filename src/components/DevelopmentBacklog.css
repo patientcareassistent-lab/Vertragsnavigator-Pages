@@ -113,3 +113,8 @@
 .backlog-add-screenshot{display:grid;gap:6px;justify-items:start;font-weight:600}
 .backlog-screenshot-error{color:#b42318!important}
 @media(max-width:620px){.backlog-simple-create .backlog-simple-description textarea{min-height:190px}.backlog-screenshot-gallery img{max-width:150px}}
+
+.backlog-main.backlog-creating{grid-template-columns:minmax(0,1fr)}
+.backlog-main.backlog-creating .backlog-list{display:none}
+.backlog-main.backlog-creating .backlog-editor{width:100%;max-width:920px;margin:0 auto}
+.backlog-main.backlog-creating .backlog-editor-form{gap:20px}
