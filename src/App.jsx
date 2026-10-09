@@ -199,7 +199,7 @@ export default function App(){
   const displayName=candidateDisplayName&&!candidateDisplayName.includes('@')?candidateDisplayName:'Vertragsmanager'
   const inAdminMode=isAdmin&&mode==='admin'
   const inFachMode=canFach&&mode!=='versorger'
-  const backlogNav=['backlog',mode==='versorger'?'Fehler melden':'Änderungs- & Fehlerbacklog']
+  const backlogNav=['backlog',inAdminMode?'Tickets & Entwicklungs-Backlog':'Fehler / Änderung melden']
   const navItems=inAdminMode?[...NAV,backlogNav,['pgReviews','PG-Prüfungen'],['addonReview','Zusätze prüfen'],['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['contractExclusions','Verträge ausschließen'],['missingSources','Fehlende Quellen']]:inFachMode?[...NAV,backlogNav,['pgReviews','PG-Prüfungen'],['addonReview','Zusätze prüfen']]:[...NAV,backlogNav]
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
@@ -651,7 +651,7 @@ export default function App(){
       {inAdminMode&&<button className={active==='admin'?'active':''} onClick={()=>jump('admin')} title="Admin-Cockpit" aria-label="Admin-Cockpit"><LayoutDashboard size={19}/></button>}
       {inAdminMode&&<button className={active==='precheck'?'active':''} onClick={()=>jump('precheck')} title="Vertragsvorprüfung" aria-label="Vertragsvorprüfung"><ShieldCheck size={19}/></button>}
       <button className={active==='upload'?'active':''} onClick={()=>jump('upload')} title="Vertrag hochladen" aria-label="Vertrag hochladen"><Upload size={19}/></button>
-      <button className={active==='backlog'?'active':''} onClick={()=>jump('backlog')} title={inFachMode?'Änderungs- und Fehlerbacklog':'Fehler melden'} aria-label="Änderungs- und Fehlerbacklog"><Bug size={19}/></button>
+      <button className={active==='backlog'?'active':''} onClick={()=>jump('backlog')} title={inAdminMode?'Tickets und Entwicklungs-Backlog':'Fehler melden'} aria-label="Änderungs- und Fehlerbacklog"><Bug size={19}/></button>
       <button className={active==='changes'?'active':''} onClick={()=>jump('changes')} title="Änderungen" aria-label="Änderungen"><History size={19}/></button>
       <button className={active==='questions'?'active':''} onClick={()=>jump('questions','qText')} title="Vertragsfrage" aria-label="Vertragsfrage"><MessageSquareText size={19}/></button>
     </aside>
@@ -819,8 +819,8 @@ export default function App(){
       </>}
 
       {active==='backlog'&&<>
-        <div className="page-head"><div><h1>{inFachMode?'Änderungs- und Fehlerbacklog':'Fehler oder Änderungswunsch melden'}</h1><p>{inFachMode?'Projektentwicklung: offene Fehler, Änderungen, Datenqualitätsaufgaben und Abnahmetests.':'Meldung erfassen und deren Bearbeitungsstand verfolgen.'}</p></div><Badge tone="info">Entwicklungs-Backlog</Badge></div>
-        <DevelopmentBacklog userId={session.user.id} canManage={inFachMode} reportOnly={!inFachMode}/>
+        <div className="page-head"><div><h1>{inAdminMode?'Tickets und Entwicklungs-Backlog':'Fehler oder Änderungswunsch melden'}</h1><p>{inAdminMode?'Alle Anwender-Meldungen und interne Entwicklungsaufgaben an einem Ort.':'Eigene Meldungen erfassen und deren Bearbeitungsstand verfolgen.'}</p></div><Badge tone="info">Entwicklungs-Backlog</Badge></div>
+        <DevelopmentBacklog userId={session.user.id} canManage={inAdminMode} reportOnly={!inAdminMode}/>
       </>}
 
       {active==='knowledge'&&<>
