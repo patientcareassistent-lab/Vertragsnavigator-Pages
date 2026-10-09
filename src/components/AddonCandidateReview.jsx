@@ -20,8 +20,8 @@ export default function AddonCandidateReview({canReview=false}){
   async function reload(){
     setBusy('load');setError('')
     try{
-      const {data,error:dbError}=await supabase.from('vn_position_addon_candidates')
-        .select('candidate_id,contract_id,base_position_row_id,addon_position_row_id,suggested_relation_type,source_reference,source_page,original_condition,review_status,review_note,reviewed_at')
+      const {data,error:dbError}=await supabase.from('vn_addon_candidate_quality_v1')
+        .select('candidate_id,contract_id,base_position_row_id,addon_position_row_id,suggested_relation_type,source_reference,source_page,original_condition,review_status,review_note,reviewed_at,technically_consistent,technical_findings')
         .eq('review_status',filter).order('created_at',{ascending:false}).limit(100)
       if(dbError)throw dbError
       const candidates=data||[]
@@ -62,6 +62,7 @@ export default function AddonCandidateReview({canReview=false}){
   async function review(row,approved){
     const note=(notes[row.candidate_id]||'').trim()
     if(note.length<12){setError('Bitte eine fachliche Begründung (mindestens 12 Zeichen) und den Quellbezug dokumentieren.');return}
+    if(approved&&!row.technically_consistent){setError('Die technische Zuordnung ist noch nicht konsistent. Bitte zunächst die ausgewiesenen Abweichungen beheben.');return}
     if(approved&&!window.confirm('Die Originalquelle, alle Bedingungen und die Positionszuordnung selbst geprüft? Nur dann als verbindliche Vertragsregel veröffentlichen.'))return
     setBusy(row.candidate_id);setError('');setMessage('')
     try{
@@ -94,7 +95,8 @@ export default function AddonCandidateReview({canReview=false}){
             </div>
             <span className="badge">{STATUSES[row.review_status]||row.review_status}</span>
           </div>
-          <div className="addon-candidate-classification"><span>Zuordnungsvorschlag</span><strong>{TYPES[row.suggested_relation_type]||row.suggested_relation_type}</strong><span>Keine Freigabe</span></div>
+          <div className="addon-candidate-classification"><span>Zuordnungsvorschlag</span><strong>{TYPES[row.suggested_relation_type]||row.suggested_relation_type}</strong><span>{STATUSES[row.review_status]||row.review_status}</span></div>
+          <div className="addon-review-note" role="status"><b>Technische Datenprüfung:</b> {row.technically_consistent?'Grundposition, Zusatzposition, Vertragsstatus und Quellenpfad konsistent. Fachliche Vertragsfreigabe weiterhin erforderlich.':(row.technical_findings||[]).join('; ')||'Technische Zuordnung nicht bestätigt.'}</div>
           <p className="addon-candidate-rule">{row.original_condition}</p>
           <div className="addon-source">
             <FileCheck2 size={18} aria-hidden="true"/>
@@ -105,7 +107,7 @@ export default function AddonCandidateReview({canReview=false}){
           {row.review_status==='PENDING'&&canReview&&<div className="formstack addon-review-form">
             <label>Eigenständiger fachlicher Prüfvermerk<textarea rows={3} placeholder="Originalseite, Kombinierbarkeit, Inklusivleistungen, Genehmigung und Konditionen persönlich kontrolliert; Begründung…" value={notes[row.candidate_id]||''} onChange={e=>setNotes(x=>({...x,[row.candidate_id]:e.target.value}))}/></label>
             <div className="addon-review-actions">
-              <button type="button" className="primary" disabled={!!busy} onClick={()=>review(row,true)}><ShieldCheck size={15}/> Nach Quellenprüfung freigeben</button>
+              <button type="button" className="primary" disabled={!!busy||!row.technically_consistent} onClick={()=>review(row,true)}><ShieldCheck size={15}/> Nach Quellenprüfung freigeben</button>
               <button type="button" className="secondary" disabled={!!busy} onClick={()=>review(row,false)}>Kandidat ablehnen</button>
             </div>
           </div>}
