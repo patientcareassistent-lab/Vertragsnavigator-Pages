@@ -17,13 +17,14 @@ import ContractExclusions from './components/ContractExclusions.jsx'
 import ContractNoticeBanner from './components/ContractNoticeBanner.jsx'
 import ContractMatrix from './components/ContractMatrix.jsx'
 import AddonCandidateReview from './components/AddonCandidateReview.jsx'
+import WorkQueueOverview from './components/WorkQueueOverview.jsx'
 import './components/VNFeatures.css'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
   ['contracts','Verträge'],
   ['matrix','Vertragsmatrix'],
-  ['data','Datenstand'],
+  ['work','Arbeitsvorrat'],
 ]
 
 const EMPTY_ADVANCED={
@@ -200,7 +201,9 @@ export default function App(){
   const inAdminMode=isAdmin&&mode==='admin'
   const inFachMode=canFach&&mode!=='versorger'
   const backlogNav=['backlog',inAdminMode?'Tickets & Entwicklungs-Backlog':'Fehler / Änderung melden']
-  const navItems=inAdminMode?[...NAV,backlogNav,['pgReviews','PG-Prüfungen'],['addonReview','Zusätze prüfen'],['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['contractExclusions','Verträge ausschließen'],['missingSources','Fehlende Quellen']]:inFachMode?[...NAV,backlogNav,['pgReviews','PG-Prüfungen'],['addonReview','Zusätze prüfen']]:[...NAV,backlogNav]
+  const navItems=NAV
+  const secondaryNav=[['knowledge','Vertragswissen'],['upload','Vertrag hochladen'],['changes','Änderungen'],['questions','Vertragsfragen'],backlogNav,['data','Datenstand'],...(inFachMode?[['pgReviews','PG-Prüfungen'],['addonReview','Zusätze prüfen']]:[]),...(inAdminMode?[['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['contractExclusions','Verträge ausschließen'],['missingSources','Fehlende Quellen']]:[])]
+  const activeSecondary=secondaryNav.find(([id])=>active===id)?.[1]||''
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
     if(!payer)return []
@@ -399,8 +402,8 @@ export default function App(){
     setKnowledgeLoaded(true)
   }
 
-  async function loadQuestions(){
-    if(questionsLoaded)return
+  async function loadQuestions(force=false){
+    if(questionsLoaded&&!force)return
     const {data,error:e}=await supabase.from('vn_contract_questions')
       .select('*')
       .order('created_at',{ascending:false})
@@ -641,7 +644,13 @@ export default function App(){
         <div className="userbar"><span>{displayName}</span>{displayName.trim().toLocaleLowerCase()!=='sachbearbeiter'&&<Badge>{modeLabel}</Badge>}<button className="secondary" onClick={()=>supabase.auth.signOut()}>Abmelden</button></div>
       </div>
       <div className="navwrap"><nav className="nav">
-        {navItems.map(([id,label])=><button key={id} className={active===id?'active':''} onClick={()=>setActive(id)}>{label}</button>)}
+        {navItems.map(([id,label])=><button key={id} type="button" aria-current={active===id?'page':undefined} className={active===id?'active':''} onClick={()=>setActive(id)}>{label}</button>)}
+        <details className={'nav-more '+(activeSecondary?'nav-more-active':'')} key={mode}>
+          <summary>Weitere Bereiche{activeSecondary&&<span className="nav-more-current"> · {activeSecondary}</span>}</summary>
+          <div className="nav-more-list" aria-label="Weitere Arbeitsbereiche">
+            {secondaryNav.map(([id,label])=><button key={id} type="button" aria-current={active===id?'page':undefined} className={active===id?'active':''} onClick={e=>{setActive(id);e.currentTarget.closest('details').open=false}}>{label}</button>)}
+          </div>
+        </details>
         <div className="mode-toggle"><button className={mode==='versorger'?'active':''} onClick={()=>switchMode('versorger')}>Versorger</button>{canFach&&<button className={mode==='fach'?'active':''} onClick={()=>switchMode('fach')}>Innendienst</button>}{isAdmin&&<button className={mode==='admin'?'active':''} onClick={()=>switchMode('admin')}>Administrator</button>}</div>
       </nav></div>
     </header>
@@ -760,6 +769,11 @@ export default function App(){
         </div>
       </>}
 
+      {active==='work'&&<>
+        <div className="page-head"><div><h1>Arbeitsvorrat</h1><p>Aufgaben und Prüflisten für den aktuellen Zugriffsmodus: {modeLabel}.</p></div><Badge tone="info">Rollenbezogen</Badge></div>
+        <WorkQueueOverview canFach={canFach} inFachMode={inFachMode} inAdminMode={inAdminMode} onNavigate={view=>setActive(view)}/>
+      </>}
+
       {active==='contracts'&&<>
         <div className="page-head"><div><h1>Verträge</h1><p>Vertragskatalog und zugehörige Positionen durchsuchen.</p></div><Badge>{filteredContracts.length} Verträge</Badge></div>
         {Date.now()<=new Date(COMPANY_NOTICE_VISIBLE_UNTIL).getTime()&&<section className="company-change-notice">
@@ -835,7 +849,7 @@ export default function App(){
         <div className="page-head"><div><h1>Vertragsfragen</h1><p>Nur ungeklärte Vertragsfälle als neue Frage anlegen und in der Prüfqueue verfolgen.</p></div><Badge>{questionsLoaded?questions.length:questionCount} sichtbar</Badge></div>
         <div className="grid">
           <section className="panel"><h2>Neue Vertragsfrage</h2><form className="formstack" onSubmit={submitQuestion}><label>Vertragsfrage<textarea id="qText" rows="5" value={questionForm.question_text} onChange={e=>setQ('question_text',e.target.value)} required/></label><div className="formgrid"><label>Kostenträger<input value={questionForm.payer} onChange={e=>setQ('payer',e.target.value)}/></label><label>PG<input value={questionForm.pg} onChange={e=>setQ('pg',e.target.value)}/></label></div><label>Vertrag<select value={questionForm.contract_id} onChange={e=>setQ('contract_id',e.target.value)}><option value="">Nicht zugeordnet</option>{contracts.map(r=><option key={r.contract_id} value={r.contract_id}>{r.contract_name||r.contract_id}</option>)}</select></label><div className="formgrid"><label>HMV / Produktart<input value={questionForm.hmv_code} onChange={e=>setQ('hmv_code',e.target.value)}/></label><label>Position / GPOS<input value={questionForm.position_code} onChange={e=>setQ('position_code',e.target.value)}/></label></div>{questionMessage&&<div className={'alert '+(questionMessage.startsWith('Vertragsfrage wurde')?'success':'error')}>{questionMessage}</div>}<button className="primary" type="submit">Vertragsfrage anlegen</button></form></section>
-          <QuestionsQueue questions={questions} loaded={questionsLoaded} canAnswer={inAdminMode} canAcknowledge={role==='fach'&&inFachMode} onChanged={updated=>{if(updated?.question_id){setQuestions(items=>items.map(q=>q.question_id===updated.question_id?updated:q));setQuestionCount(count=>count+(updated.status==='CLOSED'?-1:0))}}}/>
+          <QuestionsQueue questions={questions} loaded={questionsLoaded} onRefresh={()=>loadQuestions(true)} canAnswer={inAdminMode} canAcknowledge={role==='fach'&&inFachMode} onChanged={updated=>{if(updated?.question_id){setQuestions(items=>items.map(q=>q.question_id===updated.question_id?updated:q));setQuestionCount(count=>count+(updated.status==='CLOSED'?-1:0))}}}/>
         </div>
       </>}
 

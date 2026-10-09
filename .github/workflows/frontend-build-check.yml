@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [feat/ux-phase1-readability-workflow-20261009, feat/ux-phase2-versorger-flow-20261009, feat/ux-phase3-row-aligned-matrix-20261009, feat/pg24-source-review-pilot-20261009]
+    branches: [feat/ux-phase1-readability-workflow-20261009, feat/ux-phase2-versorger-flow-20261009, feat/ux-phase3-row-aligned-matrix-20261009, feat/pg24-source-review-pilot-20261009, feat/ux-phase4-navigation-workqueues-20261009]
 
 permissions:
   contents: read

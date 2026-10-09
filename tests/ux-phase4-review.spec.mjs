@@ -4,8 +4,9 @@ async function openReviewer(page){
   const errors=[]
   page.on('pageerror',e=>errors.push(e.message))
   await page.goto('./?uxReviewer=1')
-  await expect(page.getByRole('button',{name:'Zusätze prüfen'})).toBeVisible()
-  await page.getByRole('button',{name:'Zusätze prüfen'}).click()
+  await page.locator('.nav-more > summary').click()
+  await expect(page.locator('.nav-more-list').getByRole('button',{name:'Zusätze prüfen'})).toBeVisible()
+  await page.locator('.nav-more-list').getByRole('button',{name:'Zusätze prüfen'}).click()
   await expect(page.getByRole('heading',{name:'Zusatzpositionen und Kombinationsregeln'})).toBeVisible()
   await expect(page.locator('.addon-candidate-card')).toHaveCount(1)
   return errors

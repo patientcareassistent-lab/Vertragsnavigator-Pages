@@ -44,7 +44,8 @@ const paginationPositions=Array.from({length:17},(_,i)=>({
   pos:'UX-'+String(i+1).padStart(3,'0'),
   bezeichnung:'Position für Paginierung '+(i+1)
 }))
-const profile = {active:true,role:new URLSearchParams(window.location.search).has('uxReviewer')?'PG_ADMIN':'VERSORGER',display_name:'UX Test'}
+const uxParams=new URLSearchParams(window.location.search)
+const profile = {active:true,role:uxParams.get('uxRole')|| (uxParams.has('uxReviewer')?'PG_ADMIN':'VERSORGER'),display_name:'UX Test'}
 const reviewerCandidate={
   candidate_id:11,contract_id:'ux-fixture-contract',
   base_position_row_id:'ux-fixture-green',
@@ -58,6 +59,13 @@ const reviewerCandidate={
   reviewed_at:null,
   created_at:'2026-10-09T10:00:00Z'
 }
+const workQuestions=[
+  {question_id:'ux-question-a',question_text:'Welche Begründung ist laut Vertrag erforderlich?',payer:'AOK',pg:'18',hmv_code:'18.50.03',position_code:'1850032',status:'OPEN',answer_text:null,created_at:'2026-10-08T10:00:00Z'},
+  {question_id:'ux-question-b',question_text:'Abgeschlossene Frage zu KVA?',payer:'BARMER',pg:'18',hmv_code:'18.50.04',position_code:'BM-200',status:'CLOSED',answer_text:'Antwort im Testfall',created_at:'2026-10-07T10:00:00Z'}
+]
+const pgWorkReviews=[
+  {review_id:'ux-review-1',status:'NEW',pg:'18',cluster_code:'REHA',created_at:'2026-10-08T10:00:00Z',contract_id:'ux-fixture-contract'}
+]
 const session = {user:{id:'ux-fixture-user',user_metadata:{display_name:'UX Test'}}}
 const sites = [{site_id:'ux-fixture-site',branch:'Testfiliale',ik:'999999999',active:true}]
 const dataFor = (table,head,filters={}) => {
@@ -66,9 +74,10 @@ const dataFor = (table,head,filters={}) => {
     vn_position_catalog:[...positions,...matrixBarmer,...matrixAddonCatalog],
     vn_position_addons:verifiedMatrixAddons,
     vn_position_addon_candidates:[reviewerCandidate],
+    vn_contract_questions:workQuestions,
+    contract_change_reviews:pgWorkReviews,
     vn_contract_knowledge_approved:[],
     vn_contract_questions_open_p2:[],
-    vn_contract_questions:[],
     vn_site_directory:sites,
     vn_site_eligibility:[],
     contract_user_notifications:[],

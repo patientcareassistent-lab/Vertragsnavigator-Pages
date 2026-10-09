@@ -1,0 +1,65 @@
+/* Phase 4: role-aware navigation and work queues. */
+.app .nav {overflow:visible;flex-wrap:wrap;gap:4px;min-height:54px}
+.app .nav>button {border-radius:8px 8px 0 0;font-size:13px;min-height:49px}
+.app .nav>button:focus-visible,.app .nav-more summary:focus-visible,.app .nav-more-list button:focus-visible,
+.app .work-queue-card button:focus-visible {outline:3px solid #0877ad;outline-offset:2px}
+.app .nav-more {position:relative;align-self:center;flex:none;margin-left:5px}
+.app .nav-more>summary {cursor:pointer;display:flex;align-items:center;white-space:nowrap;padding:10px 13px;border:1px solid #e3e9ee;border-radius:8px;background:#f8fafc;color:#344054;font-size:13px;font-weight:700}
+.app .nav-more[open]>summary,.app .nav-more-active>summary {background:#edf4fb;color:var(--blue);border-color:#bbd1e5}
+.app .nav-more-current {display:inline-block;max-width:200px;overflow:hidden;text-overflow:ellipsis;color:#0b3b6f}
+.app .nav-more-list {position:absolute;right:0;top:calc(100% + 5px);z-index:55;min-width:250px;max-width:min(350px,calc(100vw - 28px));max-height:min(65vh,520px);overflow:auto;display:grid;padding:7px;border-radius:12px;border:1px solid #dbe3eb;background:#fff;box-shadow:0 12px 36px rgba(0,25,55,.18)}
+.app .nav-more-list button {width:100%;border:0;background:#fff;color:#344054;text-align:left;font-size:13px;font-weight:650;padding:11px 12px;border-radius:8px}
+.app .nav-more-list button:hover,.app .nav-more-list button.active {background:#edf4fb;color:var(--blue)}
+.app .nav-more-list button.active {box-shadow:inset 3px 0 0 var(--pink)}
+.app .mode-toggle {margin-left:auto}
+.app .work-queue-overview {display:grid;gap:16px}
+.app .work-queue-intro .sectionbar {align-items:flex-start;flex-wrap:wrap}
+.app .work-queue-intro .sectionbar button {display:inline-flex;align-items:center;gap:7px}
+.app .work-queue-intro p {font-size:13px;line-height:1.55}
+.app .work-queue-meta {color:#617184;font-size:12px;margin:10px 0 0}
+.app .work-queue-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.app .work-queue-card {display:flex;flex-direction:column;gap:8px;min-width:0;min-height:190px}
+.app .work-queue-card-title {display:flex;align-items:center;gap:9px;min-width:0}
+.app .work-queue-card-title svg {flex:none;color:var(--blue)}
+.app .work-queue-card-title h3 {font-size:16px;color:var(--blue);line-height:1.35;min-width:0;margin:0;overflow-wrap:anywhere}
+.app .work-queue-card .work-queue-number {margin-left:auto;border-radius:9px;background:#ecf4fc;border:1px solid #d0e3f4;color:#0b3b6f;font-size:15px;font-weight:800;padding:5px 8px;flex:none}
+.app .work-queue-card p {font-size:13px;line-height:1.55;flex:1;color:#546274;margin:0}
+.app .work-queue-card button {display:inline-flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;font-size:13px;padding:10px 12px;min-height:42px}
+.app .work-queue-count-warning {font-size:12px;color:#995504;line-height:1.4}
+.app .work-queue-disclaimer {margin:0;color:#697586;font-size:12px;line-height:1.5}
+.app .question-queue-filters {display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:13px 0}
+.app .question-queue-filters label {flex:1 1 180px;min-width:150px}
+.app .question-queue-filters input,.app .question-queue-filters select {min-height:42px}
+.app .question-queue-count {font-size:12px;color:#566579}
+@media(max-width:1200px){.app .work-queue-grid {grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){
+  .app .nav {padding:7px 16px}
+  .app .nav>button {font-size:12px;padding:12px 11px}
+  .app .nav-more>summary {font-size:12px}
+}
+@media(max-width:720px){
+  .app .nav {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:9px 12px;align-items:stretch}
+  .app .nav>button {border:1px solid #e0e6ed;border-radius:9px;white-space:normal;text-align:center;min-height:44px;padding:9px 7px}
+  .app .nav>button.active {border:1px solid #e9a6bb;background:#fff2f7;color:var(--blue);box-shadow:inset 0 -3px var(--pink)}
+  .app .nav-more {grid-column:1/-1;margin:0}
+  .app .nav-more>summary {justify-content:center;min-height:44px;white-space:normal;text-align:center}
+  .app .nav-more-list {left:0;right:0;min-width:0;max-width:100%;top:calc(100% + 3px)}
+  .app .nav-more-current {max-width:160px}
+  .app .mode-toggle {grid-column:1/-1;margin:0;display:flex;justify-content:center;min-width:0;flex-wrap:wrap}
+  .app .mode-toggle button {flex:1 1 auto;min-height:36px;font-size:12px}
+  .app .work-queue-grid {grid-template-columns:1fr}
+  .app .work-queue-card {min-height:0;padding:15px}
+  .app .work-queue-card p {min-height:0}
+}
+
+/* On narrow handsets the brand and account controls must wrap instead of widening the page. */
+@media(max-width:720px){
+  .app .masthead {padding:10px 12px;gap:9px;flex-wrap:wrap}
+  .app .brand-small {flex:1 1 210px;min-width:0}
+  .app .brand-small>div:last-child {min-width:0}
+  .app .brand-small strong {font-size:16px;overflow-wrap:anywhere}
+  .app .brand-small small {overflow-wrap:anywhere}
+  .app .userbar {margin-left:auto;min-width:0;flex:0 1 auto;flex-wrap:wrap;justify-content:flex-end}
+  .app .navwrap,.app .nav,.app .content,.app .work-queue-overview,.app .work-queue-grid,.app .work-queue-card {min-width:0;max-width:100%}
+  .app .work-queue-card button {white-space:normal;min-width:0;overflow-wrap:anywhere}
+}
