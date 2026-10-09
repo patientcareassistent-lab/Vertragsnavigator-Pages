@@ -193,10 +193,10 @@ export default function App(){
 
   // Die serverseitig gepflegte VN-Rolle ist maßgeblich, nicht veränderbare User-Metadaten.
   const databaseRole=String(userProfile?.role||'').toUpperCase()
-  const role=databaseRole==='ADMIN'?'admin':databaseRole==='PG_ADMIN'?'fach':databaseRole==='INNENDIENST'?'innendienst':'versorger'
+  const role=databaseRole==='ADMIN'?'admin':databaseRole==='PG_ADMIN'?'fach':databaseRole==='INNENDIENST'?'innendienst':databaseRole==='AUSSENDIENST'?'aussendienst':'versorger'
   const canFach=['fach','admin'].includes(role)
   const isAdmin=role==='admin'
-  const modeLabel=mode==='admin'?'Administrator':mode==='fach'||mode==='innendienst'?'Innendienst':'Versorger'
+  const modeLabel=mode==='admin'?'Administrator':mode==='fach'||mode==='innendienst'?'Innendienst':'Außendienst'
   const candidateDisplayName=String(userProfile?.display_name||session?.user?.user_metadata?.display_name||session?.user?.user_metadata?.full_name||session?.user?.user_metadata?.username||'').trim()
   const displayName=candidateDisplayName&&!candidateDisplayName.includes('@')?candidateDisplayName:'Vertragsmanager'
   const inAdminMode=isAdmin&&mode==='admin'
@@ -654,7 +654,7 @@ export default function App(){
             {secondaryNav.map(([id,label])=><button key={id} type="button" aria-current={active===id?'page':undefined} className={active===id?'active':''} onClick={e=>{setActive(id);e.currentTarget.closest('details').open=false}}>{label}</button>)}
           </div>
         </details>
-        <div className="mode-toggle">{role==='innendienst'?<button className="active" aria-current="true" onClick={()=>switchMode('innendienst')}>Innendienst</button>:<><button className={mode==='versorger'?'active':''} onClick={()=>switchMode('versorger')}>Versorger</button>{canFach&&<button className={mode==='fach'?'active':''} onClick={()=>switchMode('fach')}>Innendienst</button>}{isAdmin&&<button className={mode==='admin'?'active':''} onClick={()=>switchMode('admin')}>Administrator</button>}</>}</div>
+        <div className="mode-toggle">{role==='innendienst'?<button className="active" aria-current="true" onClick={()=>switchMode('innendienst')}>Innendienst</button>:<><button className={mode==='versorger'?'active':''} onClick={()=>switchMode('versorger')}>Außendienst</button>{canFach&&<button className={mode==='fach'?'active':''} onClick={()=>switchMode('fach')}>Innendienst</button>}{isAdmin&&<button className={mode==='admin'?'active':''} onClick={()=>switchMode('admin')}>Administrator</button>}</>}</div>
       </nav></div>
     </header>
 
