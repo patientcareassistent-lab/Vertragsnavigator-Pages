@@ -21,7 +21,7 @@ test('Freigabequeue zeigt Originalposition, Belegstelle und ungeprüfte Regeln v
   await expect(card).toContainText('vertraege/Test/Anlage 1.pdf')
   await expect(card).toContainText('Fachliche Vertragsfreigabe weiterhin erforderlich')
   await expect(card).toContainText('inklusive')
-  await expect(card.locator('.addon-review-note')).toContainText('Hinweis aus Datenvorbereitung')
+  await expect(card.locator('.addon-review-note').filter({hasText:'Hinweis aus Datenvorbereitung'})).toHaveCount(1)
   await expect(card.locator('.addon-candidate-ids')).not.toHaveAttribute('open','')
   await card.locator('.addon-candidate-ids summary').click()
   await expect(card.locator('.addon-candidate-ids')).toContainText('ux-fixture-green')
