@@ -42,6 +42,7 @@ function fmtPercent(value){return Number(value||0).toLocaleString('de-DE',{minim
 
 export default function AdminDashboard({onNavigate}){
   const [metrics,setMetrics]=useState(null)
+  const [ticketCount,setTicketCount]=useState(0)
   const [actions,setActions]=useState([])
   const [ops,setOps]=useState(null)
   const [quality,setQuality]=useState([])
@@ -57,7 +58,7 @@ export default function AdminDashboard({onNavigate}){
         const {error:refreshError}=await supabase.rpc('vn_admin_refresh_p4_quality')
         if(refreshError)throw refreshError
       }
-      const [mr,ar,or,qr,aer,rer]=await Promise.all([
+      const [mr,ar,or,qr,aer,rer,tr]=await Promise.all([
         supabase.from('vn_admin_dashboard_p2').select('*').single(),
         supabase.from('vn_admin_action_queue_p2')
           .select('*')
@@ -73,9 +74,11 @@ export default function AdminDashboard({onNavigate}){
           .select('*')
           .order('occurred_at',{ascending:false})
           .limit(12),
+        supabase.from('vn_development_backlog').select('id',{count:'exact',head:true}).in('status',['OFFEN','IN_ARBEIT','BLOCKIERT','TESTEN']),
       ])
-      const first=[mr,ar,or,qr,aer,rer].find(r=>r.error)?.error
+      const first=[mr,ar,or,qr,aer,rer,tr].find(r=>r.error)?.error
       if(first)throw first
+      setTicketCount(tr.count||0)
       setMetrics(mr.data||null)
       setActions(ar.data||[])
       setOps(or.data||null)
@@ -120,6 +123,7 @@ export default function AdminDashboard({onNavigate}){
     ['Hohe Prüfqueue',metrics?.review_queue_high||0,'data'],
     ['Vertragsfragen offen',metrics?.questions_open||0,'questions'],
     ['Aktive Verträge',metrics?.contracts_active||0,'contracts'],
+    ['Offene Tickets',ticketCount,'backlog'],
   ]
 
   return <div className="admin-dashboard">
