@@ -118,3 +118,37 @@
 .backlog-main.backlog-creating .backlog-list{display:none}
 .backlog-main.backlog-creating .backlog-editor{width:100%;max-width:920px;margin:0 auto}
 .backlog-main.backlog-creating .backlog-editor-form{gap:20px}
+
+
+/* Reporter UX: a task-first ticket form instead of the administrative dashboard. */
+.backlog-report-mode{gap:16px}
+.backlog-report-intro{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px;padding:20px 22px;background:#fff;border:1px solid #d6e0eb;border-radius:14px;box-shadow:0 3px 10px rgba(13,45,80,.035)}
+.backlog-report-heading{display:flex;align-items:flex-start;gap:14px;min-width:0;flex:1 1 280px}
+.backlog-report-icon{width:43px;height:43px;display:grid;place-items:center;flex:none;background:#ecf4fc;color:#123f72;border-radius:11px}
+.backlog-report-heading strong{font-size:18px;line-height:1.35;color:var(--blue)}
+.backlog-report-heading p{color:#536579;font-size:13px;line-height:1.55;margin:6px 0 0;max-width:600px}
+.backlog-report-switch{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.backlog-report-switch button{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:9px;background:#fff;border:1px solid #cedae5;color:#284b6e;padding:11px 15px;min-height:43px;font-size:13px;font-weight:750;cursor:pointer}
+.backlog-report-switch button.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.backlog-report-switch button:focus-visible,.backlog-kind-choice input:focus-visible+span{outline:3px solid #0877ad;outline-offset:2px}
+.backlog-report-mode .backlog-main.backlog-creating .backlog-editor{max-width:1050px}
+.backlog-report-mode .backlog-editor{padding:0 21px 22px}
+.backlog-report-mode .backlog-editor-header h2{font-size:20px}
+.backlog-report-mode .backlog-editor-form{gap:16px}
+.backlog-report-mode .backlog-simple-description{font-size:15px!important}
+.backlog-report-mode .backlog-simple-create .backlog-simple-description textarea{font-size:15px;min-height:190px;padding:15px;line-height:1.6}
+.backlog-report-mode .backlog-screenshot-field{background:#f9fbfd;border-color:#b6c9dc;padding:16px}
+.backlog-report-mode .backlog-screenshot-field label{font-size:14px}
+.backlog-report-mode .backlog-save{font-size:14px;padding:13px;min-height:46px}
+.backlog-report-mode .backlog-filters{grid-template-columns:minmax(220px,2fr) minmax(170px,1fr)}
+.backlog-report-mode .backlog-table td:nth-child(2) b{font-size:13px}
+.backlog-report-mode .backlog-table td:nth-child(2) small{font-size:12px}
+.backlog-report-mode .backlog-empty{text-align:center;min-height:155px;font-size:13px;line-height:1.5}
+.backlog-report-priority-note{margin:0;color:#5a6a7d;font-size:12px;line-height:1.5}
+.backlog-kind-choice{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0;padding:0;border:0;min-width:0}
+.backlog-kind-choice legend{font-size:14px;font-weight:750;color:#344054;padding:0 0 9px}
+.backlog-kind-choice label{display:flex;align-items:center;gap:8px;cursor:pointer;padding:12px 17px;border-radius:10px;border:1px solid #d3dfe9;background:#fff;color:#304d68;font-size:14px!important;font-weight:700;min-height:46px}
+.backlog-kind-choice label.selected{border-color:#0b3b6f;background:#edf5fd;color:#0b3b6f;box-shadow:inset 0 0 0 1px #0b3b6f}
+.backlog-kind-choice input{accent-color:#0b3b6f}
+.backlog-report-mode .backlog-footnote{font-size:12px}
+@media(max-width:720px){.backlog-report-intro{padding:16px}.backlog-report-switch{width:100%}.backlog-report-switch button{flex:1 1 140px}.backlog-report-mode .backlog-filters{grid-template-columns:1fr}.backlog-report-mode .backlog-editor{padding:0 14px 17px}}
