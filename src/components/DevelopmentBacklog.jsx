@@ -21,6 +21,7 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
   const [rows,setRows]=useState([])
   const [runtimeRollups,setRuntimeRollups]=useState({})
   const [chatSources,setChatSources]=useState([])
+  const [reporters,setReporters]=useState({})
   const [busy,setBusy]=useState(true)
   const [saving,setSaving]=useState(false)
   const [error,setError]=useState('')
@@ -44,6 +45,12 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
         .select('*').order('updated_at',{ascending:false}).limit(500)
       if(dbError)throw dbError
       setRows(data||[])
+      if(canManage){
+        const {data:userRows,error:userError}=await supabase.from('vn_users')
+          .select('auth_user_id,display_name,role').eq('active',true).limit(1000)
+        if(userError)throw userError
+        setReporters(Object.fromEntries((userRows||[]).map(u=>[u.auth_user_id,u])))
+      }else setReporters({})
       if(canManage){
         const {data:rollups,error:rollupError}=await supabase.from('vn_backlog_runtime_rollup')
           .select('reference_code,event_count,first_seen_at,last_seen_at').limit(500)
@@ -90,6 +97,8 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
 
   const selected=rows.find(r=>r.id===selectedId)||null
   const selectedChatSources=chatSources.filter(s=>s.backlog_id===selectedId)
+  const reporterName=row=>!row?.created_by?'System / Import':!canManage&&row.created_by===userId?'Sie':reporters[row.created_by]?.display_name||'Benutzer nicht zugeordnet'
+  const reporterRole=row=>row?.reporter_role||(!row?.created_by?'SYSTEM':'Unbekannt')
 
   async function openRow(row){
     setCreating(false);setSelectedId(row.id);setDraft(fromRow(row))
@@ -126,7 +135,7 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
       acceptance_criteria:canManage?draft.acceptance_criteria.trim():'',
       status:creating?'OFFEN':draft.status,
       owner_name:canManage?draft.owner_name.trim():'',
-      source_reference:creating?'Mitarbeiter-Livetest (VN 2.1)':draft.source_reference.trim(),
+      source_reference:creating?'Direktmeldung aus Vertragsnavigator':draft.source_reference.trim(),
       version_target:canManage?draft.version_target.trim():'',
       due_date:canManage&&draft.due_date?draft.due_date:null,
       resolution_note:canManage?draft.resolution_note.trim():'',
@@ -159,12 +168,12 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
   const showEditor=creating||selected
   return <div className="backlog">
     {canManage&&<div className="backlog-workqueues" role="group" aria-label="Backlog-Arbeitsvorrat">
-      <button type="button" className={workQueue==='LIVE'?'active':''} onClick={()=>{setWorkQueue('LIVE');setSelectedId(null);setCreating(false);setStatusFilter('AKTIV');setQuery('')}}>Mitarbeiter-Livetest</button>
+      <button type="button" className={workQueue==='LIVE'?'active':''} onClick={()=>{setWorkQueue('LIVE');setSelectedId(null);setCreating(false);setStatusFilter('AKTIV');setQuery('')}}>Live-Meldungen</button>
       <button type="button" className={workQueue==='INTERNAL'?'active':''} onClick={()=>{setWorkQueue('INTERNAL');setSelectedId(null);setCreating(false);setStatusFilter('AKTIV');setQuery('')}}>Interne Vorbereitungsfälle ({historicalOpen} offen)</button>
     </div>}
     {canManage&&workQueue==='INTERNAL'&&<div className="backlog-internal-note">Dieser Bestand enthält offene fachliche Prüfungen und dokumentierte Entwicklungsabschlüsse aus der Vorbereitung. Er wird nicht durch die leere Live-Test-Ansicht gelöscht oder automatisch freigegeben.</div>}
     <div className="backlog-summary">
-      <div><small>{reportOnly?'Eigene Meldungen':workQueue==='LIVE'?'Live-Test-Meldungen':'Interne Vorbereitungsaufgaben'}</small><strong>{totals.all}</strong></div>
+      <div><small>{reportOnly?'Eigene Meldungen':workQueue==='LIVE'?'Meldungen aus der Anwendung':'Interne Vorbereitungsaufgaben'}</small><strong>{totals.all}</strong></div>
       <div><small>Offen / in Bearbeitung</small><strong>{totals.open}</strong></div>
       <div><small>Dringend (P0)</small><strong>{totals.urgent}</strong></div>
       <div><small>Im Test</small><strong>{totals.testing}</strong></div>
@@ -190,12 +199,13 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
       <section className="backlog-list" aria-label="Änderungs- und Fehlerliste">
         <div className="backlog-resultbar"><strong>{visible.length} Einträge</strong><small>Sortierung: Status und Priorität</small></div>
         {busy?<div className="backlog-loading"><LoaderCircle size={20} className="spin"/> Einträge werden geladen …</div>:
-          visible.length===0?<div className="backlog-empty">{workQueue==='LIVE'?'Noch keine Meldungen aus dem Mitarbeiter-Livetest erfasst.':'Keine Einträge für die aktuelle Filterung gefunden.'}</div>:
-          <div className="backlog-tablewrap"><table className="backlog-table"><thead><tr><th>Prio / ID</th><th>Änderung oder Fehler</th><th>Status</th><th>Verantwortlich</th><th>Stand</th></tr></thead><tbody>
+          visible.length===0?<div className="backlog-empty">{workQueue==='LIVE'?'Noch keine Meldungen aus der Anwendung erfasst.':'Keine Einträge für die aktuelle Filterung gefunden.'}</div>:
+          <div className="backlog-tablewrap"><table className="backlog-table"><thead><tr><th>Prio / ID</th><th>Änderung oder Fehler</th><th>Status</th><th>Gemeldet von</th><th>Verantwortlich</th><th>Stand</th></tr></thead><tbody>
             {visible.map(row=><tr key={row.id} className={selectedId===row.id?'backlog-selected':''} onClick={()=>openRow(row)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openRow(row)}}} tabIndex={0} aria-label={code(row)+': '+row.title}>
               <td><PriorityPill priority={row.priority}/><small className="backlog-code">{code(row)}</small></td>
               <td><b>{row.title}</b><small>{KIND[row.kind]||row.kind} · {row.area}</small>{runtimeRollups[row.reference_code]&&<small className="backlog-auto-meta">Automatisch erfasst · {Number(runtimeRollups[row.reference_code].event_count).toLocaleString('de-DE')} Vorkommen · zuletzt {prettyDateTime(runtimeRollups[row.reference_code].last_seen_at)}</small>}{chatSources.some(s=>s.backlog_id===row.id)&&<small className="backlog-chat-meta">ChatGPT · {chatSources.filter(s=>s.backlog_id===row.id).length} Quellenverweis(e)</small>}</td>
               <td><StatusPill status={row.status}/></td>
+              <td><b className="backlog-reporter">{reporterName(row)}</b><small className="backlog-reporter-role">{reporterRole(row)}</small></td>
               <td>{row.owner_name||<span className="backlog-muted">Nicht zugewiesen</span>}</td>
               <td>{prettyDate(row.updated_at)}</td>
             </tr>)}
@@ -221,10 +231,11 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
               <label>Zielversion<input value={draft.version_target} onChange={e=>change('version_target',e.target.value)} placeholder="z. B. VN 2.2"/></label>
               <label>Fällig bis<input type="date" value={draft.due_date||''} onChange={e=>change('due_date',e.target.value)}/></label>
             </div>
-            <label>Quelle / Referenz<input value={draft.source_reference} disabled={creating} onChange={e=>change('source_reference',e.target.value)} placeholder="Projektchat, Audit, Ticket"/></label>
+            <label>Quelle / Referenz<input value={draft.source_reference} disabled={creating} readOnly={!creating} onChange={e=>change('source_reference',e.target.value)} placeholder="Projektchat, Audit, Ticket"/></label>
             <label>Bearbeitungs- / Erledigungsvermerk<textarea rows={2} value={draft.resolution_note} onChange={e=>change('resolution_note',e.target.value)} placeholder="Maßnahme, Testergebnis, Deployment-Nachweis"/></label>
           </>}
-          {!creating&&selected&&<div className="backlog-details-meta"><span><CalendarClock size={14}/> Erfasst: {prettyDateTime(selected.created_at)}</span><span>Aktualisiert: {prettyDateTime(selected.updated_at)}</span>{selected.completed_at&&<span><CheckCircle2 size={14}/> Erledigt: {prettyDate(selected.completed_at)}</span>}{runtimeRollups[selected.reference_code]&&<span>Automatische Meldungen: {runtimeRollups[selected.reference_code].event_count} · zuletzt {prettyDateTime(runtimeRollups[selected.reference_code].last_seen_at)}</span>}</div>}
+          {!creating&&selected&&<div className="backlog-details-meta"><span>Gemeldet von: {reporterName(selected)} ({reporterRole(selected)})</span><span><CalendarClock size={14}/> Erfasst: {prettyDateTime(selected.created_at)}</span><span>Aktualisiert: {prettyDateTime(selected.updated_at)}</span>{selected.completed_at&&<span><CheckCircle2 size={14}/> Erledigt: {prettyDate(selected.completed_at)}</span>}{runtimeRollups[selected.reference_code]&&<span>Automatische Meldungen: {runtimeRollups[selected.reference_code].event_count} · zuletzt {prettyDateTime(runtimeRollups[selected.reference_code].last_seen_at)}</span>}</div>}
+          {!creating&&!canManage&&selected?.resolution_note&&<label>Rückmeldung / Erledigungsvermerk<textarea value={selected.resolution_note} rows={3} readOnly /></label>}
           {(creating||canManage)&&<button className="primary backlog-save" type="submit" disabled={saving}>{saving?<LoaderCircle className="spin" size={16}/>:<Save size={16}/>} {saving?'Speichern …':creating?'Meldung speichern':'Änderungen speichern'}</button>}
           {!creating&&!canManage&&<div className="backlog-readonly">Die Meldung ist gespeichert. Den Status verwaltet der Innendienst.</div>}
         </form>
