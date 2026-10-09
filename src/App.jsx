@@ -18,7 +18,6 @@ import ContractNoticeBanner from './components/ContractNoticeBanner.jsx'
 import ContractMatrix from './components/ContractMatrix.jsx'
 import AddonCandidateReview from './components/AddonCandidateReview.jsx'
 import './components/VNFeatures.css'
-import './ux-phase1.css'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
@@ -653,7 +652,7 @@ export default function App(){
               <label>Kostenträger<select value={payer} onChange={e=>{setPayer(e.target.value);setPayerDetail('');setError('')}}><option value="">Alle Kassen</option>{payerOptions.map(v=><option key={v}>{v}</option>)}</select></label>
               <label>Kasse / Region<select value={payerDetailOptions.includes(payerDetail)?payerDetail:''} onChange={e=>{setPayerDetail(e.target.value);setError('')}} disabled={!payer} aria-label="Kasse und Region des gewählten Kostenträgers"><option value="">{payer?'Alle Kassen / Regionen der Auswahl':'Zuerst Kostenträger wählen'}</option>{payerDetailOptions.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
               <label>Produktgruppe<select value={pg} onChange={e=>{setPg(e.target.value);setError('')}}><option value="">Alle PG</option>{pgOptions.map(v=><option key={v}>{v}</option>)}</select></label>
-              <label>Standort / IK<select value={siteId} onChange={e=>{setSiteId(e.target.value);setError('')}}><option value="">Standort wählen</option>{sites.map(s=><option key={s.site_id} value={s.site_id}>{s.branch||'Standort'}{s.ik?` · IK ${s.ik}`:''}</option>)}</select></label>
+              <label>Standort / IK<select value={siteId} onChange={e=>{setSupplyEval(null);setSiteId(e.target.value);setError('')}}><option value="">Standort wählen</option>{sites.map(s=><option key={s.site_id} value={s.site_id}>{s.branch||'Standort'}{s.ik?` · IK ${s.ik}`:''}</option>)}</select></label>
               <label>HMV / Position / Begriff<input id="assistantTerm" value={term} onChange={e=>{setTerm(e.target.value);setError('')}} placeholder="z. B. leichtgewichts, Rolli, 18.50, AOK Bayern …"/></label>
               <div className="search-actions">
                 <button className="primary" type="submit" disabled={searchBusy}>
@@ -668,7 +667,7 @@ export default function App(){
               <details className="advanced-search">
                 <summary>Erweiterte Suche <span>HMV · Position · Produktart · Vertrag · LEGS · LKZ · Genehmigung · Versorgungsform · Gültigkeit · PQ · Standort</span></summary>
                 <div className="advanced-grid">
-                  <label>HMV-/Produktartcode<input value={advanced.hmv} onChange={e=>setA('hmv',e.target.value)} placeholder="z. B. 18.50.03"/></label>
+                  <label>HMV-/Produktartcode<input value={advanced.hmv} onChange={e=>{setSupplyEval(null);setA('hmv',e.target.value)}} placeholder="z. B. 18.50.03"/></label>
                   <label>Position / GPOS<input value={advanced.position} onChange={e=>setA('position',e.target.value)} placeholder="z. B. 1850032"/></label>
                   <label>Produktart<input value={advanced.productType} onChange={e=>setA('productType',e.target.value)} placeholder="z. B. Spezialrollstuhl"/></label>
                   <label className="wide2">Vertrag<input value={advanced.contract} onChange={e=>setA('contract',e.target.value)} placeholder="Vertragsname / Region"/></label>
@@ -683,7 +682,7 @@ export default function App(){
                   </select></label>
                   <label>Verordnungsangabe<select value={advanced.prescription} onChange={e=>setA('prescription',e.target.value)}><option value="all">Alle</option><option value="vorhanden">vorhanden</option><option value="ohne">ohne Angabe</option></select></label>
 
-                  <label>Vertragsstand am <span title="Stichtagsprüfung: Zeigt, welche Vertrags- und Positionsregelungen an diesem Datum gültig waren bzw. sind. Dies ist kein Zeitraumfilter von/bis." aria-label="Information zur Stichtagsprüfung">ⓘ</span><input type="date" value={advanced.validOn} onChange={e=>setA('validOn',e.target.value)}/><small style={{display:'block',fontWeight:400,color:'#52677e',marginTop:4}}>Vertragszustand zu einem bestimmten Stichtag prüfen.</small></label>
+                  <label>Vertragsstand am <span title="Stichtagsprüfung: Zeigt, welche Vertrags- und Positionsregelungen an diesem Datum gültig waren bzw. sind. Dies ist kein Zeitraumfilter von/bis." aria-label="Information zur Stichtagsprüfung">ⓘ</span><input type="date" value={advanced.validOn} onChange={e=>{setSupplyEval(null);setA('validOn',e.target.value)}}/><small style={{display:'block',fontWeight:400,color:'#52677e',marginTop:4}}>Vertragszustand zu einem bestimmten Stichtag prüfen.</small></label>
                   <label>Preis<select value={advanced.priceMode} onChange={e=>setA('priceMode',e.target.value)}><option value="all">Alle</option><option value="vorhanden">Preis vorhanden</option><option value="ohne">ohne Preis</option></select></label>
                   <label>Preis von €<input type="number" step="0.01" min="0" value={advanced.minPrice} onChange={e=>setA('minPrice',e.target.value)}/></label>
                   <label>Preis bis €<input type="number" step="0.01" min="0" value={advanced.maxPrice} onChange={e=>setA('maxPrice',e.target.value)}/></label>
@@ -706,7 +705,7 @@ export default function App(){
                 ok={supplyPathOk}/>
               <Check n="3" title="Genehmigung" status={supplyEval?.authorization_decision==='GRUEN'?'geprüft':supplyEval?.authorization_decision==='ROT'?'nicht erfüllt':supplyEval?'prüfen':'noch offen'} value={supplyEval?.authorization_text||selected?.genehmigung||selected?.freigrenze||'Vertragsangabe fehlt'} ok={supplyEval?.authorization_decision==='GRUEN'}/>
               <Check n="4" title="Verordnung" status={supplyEval?.prescription_decision==='GRUEN'?'geprüft':supplyEval?.prescription_decision==='ROT'?'nicht erfüllt':supplyEval?'prüfen':'noch offen'} value={supplyEval?.prescription_text||selected?.verordnung||'Vertragsangabe fehlt'} ok={supplyEval?.prescription_decision==='GRUEN'}/>
-              <Check n="5" title="Dokumentation / Quelle" status={supplyEval?.source_decision==='GRUEN'?'Quelle bestätigt':supplyEval?.source_decision==='ROT'?'Quellenmangel':'prüfen'} value={supplyEval?.source_text||(relatedKnowledgeBusy?'Vertragswissen wird geladen':relatedKnowledge.length?`${relatedKnowledge.length} Wissenseinträge`:'Quellennachweis prüfen')} ok={supplyEval?.source_decision==='GRUEN'}/>
+              <Check n="5" title="Dokumentation / Quelle" status={supplyEval?.source_decision==='GRUEN'?'Quelle bestätigt':supplyEval?.source_decision==='ROT'?'Quellenmangel':supplyEval?'prüfen':'noch offen'} value={supplyEval?.source_text||(relatedKnowledgeBusy?'Vertragswissen wird geladen':relatedKnowledge.length?`${relatedKnowledge.length} Wissenseinträge`:'Quellennachweis prüfen')} ok={supplyEval?.source_decision==='GRUEN'}/>
               <Check n="6" title="Abrechnung" status={selected?.preis!=null?'Preis vorhanden':'noch offen'} value={selected?.preis!=null?String(selected.preis):'Preis/Versorgungsform'} ok={selected?.preis!=null}/>
             </div>
             {selected&&siteId&&supplyEval&&<section className="supply-v3-audit" aria-label="Fachliche Begründung der Versorgungsentscheidung"><strong>{supplyEval.decision_label||'Prüfergebnis'} · V3-Versorgungsprüfung</strong>{supplyEval.decision_basis&&<p>{supplyEval.decision_basis}</p>}{supplyV3Blockers.length>0&&<p><b>Ausschlussgründe:</b> {supplyV3Blockers.join(' · ')}</p>}{supplyV3Checks.length>0&&<p><b>Manuell prüfen:</b> {supplyV3Checks.join(' · ')}</p>}{supplyV3Actions.length>0&&<p><b>Nächste Schritte:</b> {supplyV3Actions.join(' · ')}</p>}{supplyEval.validity_text&&<p><b>Vertrags-/PG-/IK-Gültigkeit:</b> {supplyEval.validity_text}</p>}</section>}
@@ -723,7 +722,7 @@ export default function App(){
             {results.length>0&&!selected&&<div className="result-hint"><b>{results.length} passende Positionen · {resultContractCount} Vertragsvarianten</b><span>{payer==='AOK'&&!payerDetail&&!siteId?'AOK-Verträge sind regional. Bitte konkrete AOK/Region, Standort oder unten den passenden Vertrag auswählen.':'Bitte den passenden Vertrag bzw. die Position auswählen.'}</span></div>}
             <div className="tablewrap"><table><thead><tr><th>PG</th><th>HMV/Code</th><th>Position</th><th>Bezeichnung</th><th>Vertrag</th><th>Preis</th><th>Genehmigung</th></tr></thead><tbody>
               {results.map(r=><tr key={r.position_row_id} className={'selectable '+(selected?.position_row_id===r.position_row_id?'selected':'')} tabIndex={0} aria-selected={selected?.position_row_id===r.position_row_id} aria-label={'Position auswählen: '+(r.bezeichnung||r.produktart_bezeichnung||r.code||r.pos||'Unbekannte Position')} onClick={()=>choosePosition(r)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choosePosition(r)}}}><td>{r.pg||'—'}</td><td>{r.code||'—'}</td><td>{r.pos||'—'}</td><td><b>{r.bezeichnung||r.produktart_bezeichnung||'—'}</b></td><td>{displayCompanyName(r.contract||r.family||'—')}</td><td>{r.preis??'—'}</td><td>{r.genehmigung||r.freigrenze||'—'}</td></tr>)}
-              {!results.length&&<tr><td colSpan="7" className="empty">Kasse, PG, Suchbegriff oder erweiterte Kriterien wählen und auf „Prüfen“ klicken.</td></tr>}
+              {!results.length&&<tr><td colSpan="7" className="empty">Kasse, PG, Suchbegriff oder erweiterte Kriterien wählen und auf „Positionen suchen“ klicken.</td></tr>}
             </tbody></table></div>
           </section>
         </div>
