@@ -1,0 +1,168 @@
+/* VN 2.1 · UX phase 2: stepwise assistant flow; presentation only. */
+.app .content .assistant-flow {align-items:start}
+.app .content .assistant-flow>section {min-width:0}
+.app .content .assistant-hero {background:linear-gradient(135deg,#fff 0%,#f7fbfe 100%)}
+.app .content .assistant-title h2 {margin-bottom:7px}
+.app .content .assistant-title p {max-width:72ch}
+.app .content .assistant-results {border-color:#d8e3ec}
+.app .content .assistant-results .sectionbar {align-items:flex-start}
+.app .content .assistant-results .sectionbar>div {min-width:0}
+.app .content .assistant-results .sectionbar .badge {flex:none;white-space:nowrap}
+.app .content .assistant-results .tablewrap {margin-top:12px}
+.app .content .assistant-results table {min-width:860px}
+.app .content .assistant-result-footer {
+  display:flex;
+  gap:12px;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  margin-top:12px;
+  font-size:13px;
+  color:#475467;
+}
+.app .content .assistant-result-footer .secondary {padding:8px 13px}
+.app .content .result-limit-note {
+  margin:8px 0;
+  padding:9px 12px;
+  border:1px solid #edc98a;
+  border-radius:8px;
+  background:#fffaf1;
+  color:#8c500a;
+  font-size:13px;
+}
+.app .content .assistant-evaluation {
+  border:1px solid #ccdce7;
+  background:#fff;
+  scroll-margin-top:12px;
+}
+.app .content .assistant-evaluation-top {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  padding-bottom:15px;
+  border-bottom:1px solid #e8edf1;
+}
+.app .content .assistant-evaluation-top>div:first-child {min-width:0}
+.app .content .assistant-evaluation-top small {
+  display:block;
+  font-size:12px;
+  font-weight:750;
+  color:#667085;
+  margin-bottom:5px;
+}
+.app .content .assistant-evaluation-top h2 {
+  color:var(--blue);
+  font-size:20px;
+  line-height:1.25;
+  margin:0 0 6px;
+}
+.app .content .assistant-evaluation-top h2:focus {outline:0}
+.app .content .assistant-evaluation-top p {
+  overflow-wrap:anywhere;
+  font-size:14px;
+  color:#475467;
+  margin:0;
+}
+.app .content .assistant-evaluation-top .decision {
+  flex:none;
+  min-width:235px;
+  max-width:345px;
+}
+.app .content .supply-status-strip {
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:8px;
+  margin-top:14px;
+}
+.app .content .supply-mini {
+  display:block;
+  padding:10px 11px;
+  min-width:0;
+  border-radius:9px;
+  border:1px solid #e0e6ee;
+  background:#fafbfc;
+  color:#344054;
+}
+.app .content .supply-mini small {
+  display:block;
+  font-size:11px;
+  margin:0 0 6px;
+  line-height:1.3;
+  color:#667085;
+}
+.app .content .supply-mini strong {
+  display:block;
+  font-size:13px;
+  line-height:1.4;
+  overflow-wrap:anywhere;
+}
+.app .content .supply-mini.ok {border-color:#badac8;background:#f5fcf8;color:#05603a}
+.app .content .supply-mini.bad {border-color:#efc6c1;background:#fff8f8;color:#a42218}
+.app .content .supply-checks-details {
+  margin-top:12px;
+  border:1px solid #dce4eb;
+  border-radius:10px;
+  background:#fff;
+  overflow:hidden;
+}
+.app .content .supply-checks-details>summary,
+.app .content .position-more-details>summary {
+  display:list-item;
+  cursor:pointer;
+  padding:13px 16px;
+  font-size:14px;
+  font-weight:700;
+  line-height:1.4;
+  color:var(--blue);
+  background:#f7f9fc;
+}
+.app .content .supply-checks-details>summary:hover,
+.app .content .position-more-details>summary:hover {background:#eef5fb}
+.app .content .supply-checks-details>summary:focus-visible,
+.app .content .position-more-details>summary:focus-visible {
+  outline:3px solid var(--blue);
+  outline-offset:-3px;
+}
+.app .content .supply-checks-details .checks {
+  margin:0;
+  padding:13px;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+.app .content .assistant-evaluation .supply-v3-audit {margin-top:13px}
+.app .content .assistant-evaluation .position-detail {margin-top:14px}
+.app .content .position-quickfacts {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  padding:15px;
+  background:#fff;
+}
+.app .content .position-quickfacts .position-field {
+  padding:11px;
+  border:1px solid #e3e9ee;
+  background:#f9fbfc;
+}
+.app .content .position-quickfacts .position-field strong {font-size:14px}
+.app .content .position-more-details {
+  border-top:1px solid #e2e9ef;
+  background:#fff;
+}
+.app .content .position-more-details>summary {padding:14px 18px}
+.app .content .position-more-details .technical-detail {margin:12px 15px}
+@media(max-width:1150px) {
+  .app .content .supply-status-strip {grid-template-columns:repeat(3,minmax(0,1fr))}
+  .app .content .supply-checks-details .checks {grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px) {
+  .app .content .assistant-results .sectionbar {flex-direction:column;align-items:flex-start}
+  .app .content .assistant-evaluation-top {flex-direction:column}
+  .app .content .assistant-evaluation-top .decision {min-width:0;max-width:none;width:100%}
+  .app .content .supply-status-strip {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .app .content .supply-checks-details .checks {grid-template-columns:1fr}
+  .app .content .position-quickfacts {grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:440px) {
+  .app .content .position-quickfacts {grid-template-columns:1fr}
+  .app .content .assistant-result-footer>button {width:100%}
+}
