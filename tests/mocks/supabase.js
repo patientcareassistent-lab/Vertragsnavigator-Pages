@@ -44,7 +44,20 @@ const paginationPositions=Array.from({length:17},(_,i)=>({
   pos:'UX-'+String(i+1).padStart(3,'0'),
   bezeichnung:'Position für Paginierung '+(i+1)
 }))
-const profile = {active:true,role:'VERSORGER',display_name:'UX Test'}
+const profile = {active:true,role:new URLSearchParams(window.location.search).has('uxReviewer')?'PG_ADMIN':'VERSORGER',display_name:'UX Test'}
+const reviewerCandidate={
+  candidate_id:11,contract_id:'ux-fixture-contract',
+  base_position_row_id:'ux-fixture-green',
+  addon_position_row_id:'ux-addon-aok',
+  suggested_relation_type:'OPTIONAL',
+  source_reference:'vertraege/Test/Anlage 1.pdf',
+  source_page:'4, 6',
+  original_condition:'Ein Test-/Diagnoseschaft ist inklusive; ein weiterer nur nach gesonderter Begründung beantragbar.',
+  review_status:'PENDING',
+  review_note:'Importhinweis; fachlich noch nicht freigegeben',
+  reviewed_at:null,
+  created_at:'2026-10-09T10:00:00Z'
+}
 const session = {user:{id:'ux-fixture-user',user_metadata:{display_name:'UX Test'}}}
 const sites = [{site_id:'ux-fixture-site',branch:'Testfiliale',ik:'999999999',active:true}]
 const dataFor = (table,head,filters={}) => {
@@ -52,6 +65,7 @@ const dataFor = (table,head,filters={}) => {
     vn_contract_read_model_p2:[contract,barmerContract],
     vn_position_catalog:[...positions,...matrixBarmer,...matrixAddonCatalog],
     vn_position_addons:verifiedMatrixAddons,
+    vn_position_addon_candidates:[reviewerCandidate],
     vn_contract_knowledge_approved:[],
     vn_contract_questions_open_p2:[],
     vn_contract_questions:[],
@@ -64,6 +78,7 @@ const dataFor = (table,head,filters={}) => {
     vn_development_backlog:[],
   }
   let rows=datasets[table]||[]
+  if(filters.eqColumn)rows=rows.filter(x=>String(x[filters.eqColumn])===String(filters.eqValue))
   if(filters.inValues)rows=rows.filter(x=>filters.inValues.includes(x[filters.inField]))
   if(filters.notVerified)rows=rows.filter(x=>x.verified_at!=null)
   if(filters.limit!=null)rows=rows.slice(0,filters.limit)
@@ -75,7 +90,7 @@ function query(table){
   const current=()=>dataFor(table,head,filters)
   const q={
     select(_cols,options){head=Boolean(options?.head);return q},
-    eq(){return q},neq(){return q},gte(){return q},lte(){return q},
+    eq(col,val){filters.eqColumn=col;filters.eqValue=val;return q},neq(){return q},gte(){return q},lte(){return q},
     gt(){return q},lt(){return q},in(col,values){filters.inField=col;filters.inValues=values;return q},not(col,operator,value){if(col==='verified_at'&&operator==='is'&&value===null)filters.notVerified=true;return q},is(){return q},
     or(){return q},contains(){return q},order(){return q},
     limit(n){filters.limit=n;return q},range(){return q},filter(){return q},
@@ -124,6 +139,6 @@ export const supabase={
     }
     return {data:[],error:null}
   },
-  functions:{async invoke(){return {data:{},error:null}}},
+  functions:{async invoke(name){return name==='vn2-source-link'?{data:{available:false},error:null}:{data:{},error:null}}},
   storage:{from(){return {download:async()=>({data:null,error:null})}}}
 }
