@@ -17,13 +17,14 @@ import ContractExclusions from './components/ContractExclusions.jsx'
 import ContractNoticeBanner from './components/ContractNoticeBanner.jsx'
 import ContractMatrix from './components/ContractMatrix.jsx'
 import AddonCandidateReview from './components/AddonCandidateReview.jsx'
+import WorkQueueOverview from './components/WorkQueueOverview.jsx'
 import './components/VNFeatures.css'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
   ['contracts','Verträge'],
   ['matrix','Vertragsmatrix'],
-  ['data','Datenstand'],
+  ['work','Arbeitsvorrat'],
 ]
 
 const EMPTY_ADVANCED={
@@ -200,7 +201,9 @@ export default function App(){
   const inAdminMode=isAdmin&&mode==='admin'
   const inFachMode=canFach&&mode!=='versorger'
   const backlogNav=['backlog',inAdminMode?'Tickets & Entwicklungs-Backlog':'Fehler / Änderung melden']
-  const navItems=inAdminMode?[...NAV,backlogNav,['pgReviews','PG-Prüfungen'],['addonReview','Zusätze prüfen'],['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['contractExclusions','Verträge ausschließen'],['missingSources','Fehlende Quellen']]:inFachMode?[...NAV,backlogNav,['pgReviews','PG-Prüfungen'],['addonReview','Zusätze prüfen']]:[...NAV,backlogNav]
+  const navItems=NAV
+  const secondaryNav=[['knowledge','Vertragswissen'],['upload','Vertrag hochladen'],['changes','Änderungen'],['questions','Vertragsfragen'],backlogNav,['data','Datenstand'],...(inFachMode?[['pgReviews','PG-Prüfungen'],['addonReview','Zusätze prüfen']]:[]),...(inAdminMode?[['admin','Admin-Cockpit'],['payerReview','Kassenfamilien'],['precheck','Vertragsvorprüfung'],['contractExclusions','Verträge ausschließen'],['missingSources','Fehlende Quellen']]:[])]
+  const activeSecondary=secondaryNav.find(([id])=>active===id)?.[1]||''
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
     if(!payer)return []
@@ -641,7 +644,13 @@ export default function App(){
         <div className="userbar"><span>{displayName}</span>{displayName.trim().toLocaleLowerCase()!=='sachbearbeiter'&&<Badge>{modeLabel}</Badge>}<button className="secondary" onClick={()=>supabase.auth.signOut()}>Abmelden</button></div>
       </div>
       <div className="navwrap"><nav className="nav">
-        {navItems.map(([id,label])=><button key={id} className={active===id?'active':''} onClick={()=>setActive(id)}>{label}</button>)}
+        {navItems.map(([id,label])=><button key={id} type="button" aria-current={active===id?'page':undefined} className={active===id?'active':''} onClick={()=>setActive(id)}>{label}</button>)}
+        <details className={'nav-more '+(activeSecondary?'nav-more-active':'')} key={mode}>
+          <summary>Weitere Bereiche{activeSecondary&&<span className="nav-more-current"> · {activeSecondary}</span>}</summary>
+          <div className="nav-more-list" aria-label="Weitere Arbeitsbereiche">
+            {secondaryNav.map(([id,label])=><button key={id} type="button" aria-current={active===id?'page':undefined} className={active===id?'active':''} onClick={e=>{setActive(id);e.currentTarget.closest('details').open=false}}>{label}</button>)}
+          </div>
+        </details>
         <div className="mode-toggle"><button className={mode==='versorger'?'active':''} onClick={()=>switchMode('versorger')}>Versorger</button>{canFach&&<button className={mode==='fach'?'active':''} onClick={()=>switchMode('fach')}>Innendienst</button>}{isAdmin&&<button className={mode==='admin'?'active':''} onClick={()=>switchMode('admin')}>Administrator</button>}</div>
       </nav></div>
     </header>
@@ -758,6 +767,11 @@ export default function App(){
 
           </section>}
         </div>
+      </>}
+
+      {active==='work'&&<>
+        <div className="page-head"><div><h1>Arbeitsvorrat</h1><p>Aufgaben und Prüflisten für den aktuellen Zugriffsmodus: {modeLabel}.</p></div><Badge tone="info">Rollenbezogen</Badge></div>
+        <WorkQueueOverview canFach={canFach} inFachMode={inFachMode} inAdminMode={inAdminMode} onNavigate={view=>setActive(view)}/>
       </>}
 
       {active==='contracts'&&<>
