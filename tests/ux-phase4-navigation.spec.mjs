@@ -71,3 +71,21 @@ for(const width of [390,768,1440]){
     await expect(page.getByRole('heading',{name:'Zusatzpositionen prüfen'})).toBeVisible()
   })
 }
+
+
+test('Sachbearbeiter im Innendienst erhält korrekten Modus ohne PG-Freigaberechte',async ({page})=>{
+  const errors=[]
+  page.on('pageerror',e=>errors.push(e.message))
+  await page.goto('./?uxRole=INNENDIENST')
+  await expect(page.locator('.mode-toggle').getByRole('button',{name:'Innendienst'})).toBeVisible()
+  await expect(page.locator('.mode-toggle').getByRole('button',{name:'Versorger'})).toHaveCount(0)
+  await page.getByRole('button',{name:'Arbeitsvorrat',exact:true}).click()
+  await expect(page.getByRole('heading',{name:'Arbeitsvorrat',exact:true})).toBeVisible()
+  await expect(page.getByRole('button',{name:'PG-Änderungsprüfungen öffnen'})).toHaveCount(0)
+  await expect(page.getByRole('button',{name:'Zusatzpositionen prüfen öffnen'})).toHaveCount(0)
+  await page.locator('.nav-more > summary').click()
+  await page.locator('.nav-more-list').getByRole('button',{name:'Fehler / Änderung melden'}).click()
+  await expect(page.getByRole('heading',{name:'Neue Meldung erfassen'})).toBeVisible()
+  await expect(page.getByRole('radio',{name:'Änderungswunsch'})).toBeVisible()
+  expect(errors).toEqual([])
+})
