@@ -1,0 +1,33 @@
+/* Optional Easter Egg; independent of contractual decisions and Supabase. */
+.vn-hx-widget{position:fixed;right:18px;bottom:17px;width:min(402px,calc(100vw - 28px));z-index:35;display:flex;flex-direction:column;align-items:flex-end;pointer-events:none;font-family:Arial,Helvetica,sans-serif}
+.vn-hx-widget button{pointer-events:auto}
+.vn-hx-stage{width:100%;margin-bottom:8px;pointer-events:auto;filter:drop-shadow(0 8px 18px rgba(23,41,53,.12))}
+.vn-hx-cast{display:flex;align-items:flex-end;justify-content:space-between;height:113px;overflow:visible;padding:0 10px}
+.vn-hx-flight{width:46%;display:flex;justify-content:center}
+.vn-hx-flight-left{animation:vn-hx-arrive-left 950ms cubic-bezier(.18,.7,.21,1) both}
+.vn-hx-flight-right{animation:vn-hx-arrive-right 1050ms cubic-bezier(.18,.7,.21,1) both}
+.vn-hx-character{display:flex;flex-direction:column;align-items:center;opacity:.84}
+.vn-hx-speaking{opacity:1}
+.vn-hx-hover{animation:vn-hx-bob 3s ease-in-out infinite}
+.vn-hx-flight-right .vn-hx-hover{animation-delay:-1.5s}
+.vn-hx-character svg{width:118px;height:85px;overflow:visible}
+.vn-hx-character-name{background:#fff;border:1px solid #e6d6e7;border-radius:999px;padding:2px 9px;font-size:11px;color:#5a4268;font-weight:700;white-space:nowrap}
+.vn-hx-speaking .vn-hx-character-name{background:#fff2fb;border-color:#d8a6d1;color:#5e2863}
+.vn-hx-bubble{background:#fff;border:1px solid #d4d6e0;border-radius:16px;padding:12px 14px 10px;min-height:133px;box-shadow:0 3px 14px rgba(15,29,44,.12)}
+.vn-hx-bubble-head,.vn-hx-bubble-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.vn-hx-bubble-head strong{font-size:13px;color:#74346e}
+.vn-hx-bubble-head button{border:0;background:transparent;color:#556172;font-size:22px;line-height:1;min-width:30px;min-height:30px;border-radius:6px}
+.vn-hx-bubble p{font-size:14px;line-height:1.45;color:#243143;min-height:50px;margin:7px 0 10px;overflow-wrap:anywhere}
+.vn-hx-cursor{display:inline-block;color:#8a4788;animation:vn-hx-blink 850ms step-end infinite}
+.vn-hx-bubble-bottom small{font-size:10px;color:#697386}
+.vn-hx-bubble-bottom button{border:1px solid #e4d5e2;background:#fcf7fc;color:#6d3469;border-radius:7px;padding:5px 7px;font-size:11px;font-weight:700}
+.vn-hx-bubble-bottom button:hover,.vn-hx-bubble-head button:hover{background:#f6eafa}
+.vn-hx-launcher{pointer-events:auto;border:1px solid #d3c2d9;background:#fff;color:#5e3769;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:700;box-shadow:0 3px 14px rgba(15,29,44,.13)}
+.vn-hx-launcher:hover{background:#fbf0fa}
+.vn-hx-launcher:focus-visible,.vn-hx-bubble button:focus-visible{outline:3px solid #a16bc0;outline-offset:3px}
+@keyframes vn-hx-arrive-left{from{transform:translate(-70vw,18px) rotate(-9deg);opacity:0}to{transform:translate(0,0) rotate(0);opacity:1}}
+@keyframes vn-hx-arrive-right{from{transform:translate(70vw,22px) rotate(10deg);opacity:0}to{transform:translate(0,0) rotate(0);opacity:1}}
+@keyframes vn-hx-bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-8px) rotate(2deg)}}
+@keyframes vn-hx-blink{50%{opacity:0}}
+@media(max-width:520px){.vn-hx-widget{right:9px;bottom:10px;width:min(350px,calc(100vw - 18px))}.vn-hx-cast{height:101px}.vn-hx-character svg{width:100px;height:73px}.vn-hx-bubble{padding:10px}.vn-hx-bubble p{font-size:13px}.vn-hx-bubble-bottom small{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.vn-hx-widget *{animation:none!important;transition:none!important}}
