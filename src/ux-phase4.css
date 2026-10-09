@@ -51,3 +51,15 @@
   .app .work-queue-card {min-height:0;padding:15px}
   .app .work-queue-card p {min-height:0}
 }
+
+/* On narrow handsets the brand and account controls must wrap instead of widening the page. */
+@media(max-width:720px){
+  .app .masthead {padding:10px 12px;gap:9px;flex-wrap:wrap}
+  .app .brand-small {flex:1 1 210px;min-width:0}
+  .app .brand-small>div:last-child {min-width:0}
+  .app .brand-small strong {font-size:16px;overflow-wrap:anywhere}
+  .app .brand-small small {overflow-wrap:anywhere}
+  .app .userbar {margin-left:auto;min-width:0;flex:0 1 auto;flex-wrap:wrap;justify-content:flex-end}
+  .app .navwrap,.app .nav,.app .content,.app .work-queue-overview,.app .work-queue-grid,.app .work-queue-card {min-width:0;max-width:100%}
+  .app .work-queue-card button {white-space:normal;min-width:0;overflow-wrap:anywhere}
+}
