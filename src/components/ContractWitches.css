@@ -100,3 +100,8 @@
   .vn-hx-widget *,.vn-hx-widget *::before,.vn-hx-widget *::after{animation:none!important;transition:none!important}
   .vn-hx-card-actions button:hover{transform:none}
 }
+
+/* Offline/pre-asset fallback for duo scenes: both figures side by side. */
+.vn-hx-fallback-duo{width:230px;max-width:95%;display:flex;justify-content:center;align-items:flex-end;gap:0}
+.vn-hx-fallback-duo .vn-witch-vector{width:50%;flex:1 1 50%;height:100%}
+@media(max-width:520px){.vn-hx-fallback-duo{width:170px}}
