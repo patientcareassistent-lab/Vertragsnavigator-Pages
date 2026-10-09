@@ -1,0 +1,186 @@
+/* VN 2.1 · UX phase 1: readability, clear workflow and accessible states.
+   Additive overrides: keep the original layout and business logic intact. */
+:root {
+  --ux-body: 15px;
+  --ux-control: 14px;
+  --ux-label: 13px;
+  --ux-meta: 12px;
+  --ux-table: 14px;
+}
+.app {font-size:var(--ux-body);line-height:1.5}
+.app .brand-small small,.app .userbar {font-size:12px}
+.app .nav>button {font-size:14px}
+.app .mode-toggle button {font-size:13px}
+.app .quick-rail button:focus-visible,
+.app .nav button:focus-visible,
+.app .mode-toggle button:focus-visible {
+  outline:3px solid var(--blue);
+  outline-offset:2px;
+}
+.app .content {font-size:var(--ux-body)}
+.app .content label {font-size:var(--ux-label);line-height:1.4}
+.app .content input:not([type="checkbox"]):not([type="radio"]),
+.app .content select,
+.app .content textarea {
+  font-size:var(--ux-control);
+  line-height:1.4;
+  min-height:42px;
+}
+.app .content :is(.primary,.secondary) {font-size:14px;line-height:1.3;min-height:40px}
+.app .content :is(.primary,.secondary):focus-visible,
+.app .content :is(input,select,textarea):focus-visible,
+.app .content summary:focus-visible {
+  outline:3px solid var(--blue);
+  outline-offset:2px;
+}
+.app .content small {font-size:var(--ux-meta);line-height:1.4}
+.app .content :is(.page-head p,.panel p,.sectionbar p,.lead,.note,.empty-panel) {
+  font-size:14px;
+  line-height:1.55;
+}
+.app .content .page-head h1 {font-size:27px;line-height:1.2}
+.app .content .badge {font-size:12px;line-height:1.25}
+.app .content :is(table,.backlog-table) {font-size:var(--ux-table)}
+.app .content th {font-size:12px;line-height:1.35}
+.app .content td {font-size:var(--ux-table);line-height:1.45}
+.app .content .tablewrap td {padding:12px}
+.app .content :is(.tiny,.detail-only,.backlog-muted,.backlog-code) {font-size:12px}
+.app .content :is(.knowledge-card p,.knowledge-card footer,.question-row small) {
+  font-size:13px;
+}
+.app .content .check {min-height:108px;padding:13px}
+.app .content .check small {font-size:12px}
+.app .content .check strong {
+  display:flex;
+  align-items:flex-start;
+  gap:7px;
+  font-size:14px;
+  line-height:1.4;
+  overflow-wrap:anywhere;
+}
+.app .content .check strong svg {flex:none;margin-top:2px}
+.app .content .check .value {font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.app .content .check.state-ok {border-color:#badbc9;background:#f7fcf9}
+.app .content .check.state-ok strong {color:var(--ok)}
+.app .content .check.state-warn {border-color:#f2d6a3;background:#fffcf6}
+.app .content .check.state-warn strong {color:var(--warn)}
+.app .content .check.state-bad {border-color:#edc4c0;background:#fffafa}
+.app .content .check.state-bad strong {color:var(--bad)}
+.app .content .check.state-idle strong {color:#475467}
+.app .content .decision {
+  min-width:240px;
+  max-width:360px;
+  padding:13px 17px;
+  text-align:left;
+}
+.app .content .decision small {font-size:12px;color:#52616a}
+.app .content .decision strong {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:19px;
+  line-height:1.25;
+  margin-top:7px;
+  overflow-wrap:anywhere;
+}
+.app .content .decision strong svg {flex:none}
+.app .content .decision.idle {border-color:#d7e1e8;background:#f7f9fb}
+.app .content .decision.idle strong {color:#475467}
+.app .content .decision.warn {border-color:#e8c17f}
+.app .content .decision.warn strong {color:#945500}
+.app .content .decision.bad strong {color:var(--bad)}
+.app .content .decision.ok strong {color:var(--ok)}
+.app .content .search-flow-hint {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:9px;
+  margin-top:13px;
+  color:#475467;
+  font-size:13px;
+}
+.app .content .search-flow-hint span {display:inline-flex;align-items:center;gap:6px}
+.app .content .search-flow-hint b {
+  display:inline-grid;
+  place-items:center;
+  width:22px;
+  height:22px;
+  border:1px solid #d5dce3;
+  border-radius:50%;
+  background:#fff;
+  color:var(--blue);
+  font-size:12px;
+}
+.app .content .result-hint b {font-size:14px}
+.app .content .result-hint span {font-size:13px}
+.app .content tr.selectable:focus-visible {
+  outline:3px solid var(--blue);
+  outline-offset:-3px;
+  background:#eef5ff;
+}
+.app .content tr.selectable[aria-selected="true"] {
+  background:#fff0f5;
+  box-shadow:inset 3px 0 0 var(--pink);
+}
+.app .content .position-detail-head small,
+.app .content .position-field small,
+.app .content .source-row small,
+.app .content .version-row small,
+.app .content .technical-detail summary,
+.app .content .position-subhead p {font-size:12px;line-height:1.45}
+.app .content .position-detail-head p,
+.app .content .position-field strong,
+.app .content .source-row b,
+.app .content .version-row b {font-size:13px;line-height:1.45}
+.app .content .position-detail-group h4,
+.app .content .position-documents h4,
+.app .content .position-versions h4 {font-size:15px}
+.app .content .matrix-payer-column h3 {font-size:16px}
+.app .content .matrix-position-main b {font-size:15px}
+.app .content .matrix-position-main small,
+.app .content .matrix-contract-name {font-size:12px}
+.app .content .matrix-position-main strong {font-size:16px}
+.app .content .matrix-extra,.app .content .matrix-addon p {font-size:13px}
+.app .content .backlog-toolbar-heading strong {font-size:17px}
+.app .content .backlog-filters label,
+.app .content .backlog-editor-form label {font-size:13px}
+.app .content .backlog-table td:nth-child(2) b {font-size:14px}
+.app .content .backlog-table td:nth-child(2) small,
+.app .content .backlog-summary small,
+.app .content .backlog-editor-header small,
+.app .content .backlog-event p {font-size:12px}
+.app .content .backlog-status,
+.app .content .backlog-priority,
+.app .content .backlog-code {font-size:12px}
+.app .content .backlog-editor-form input,
+.app .content .backlog-editor-form select,
+.app .content .backlog-editor-form textarea,
+.app .content .backlog-filters input,
+.app .content .backlog-filters select {font-size:14px}
+.app .content .backlog-table tbody tr:focus-visible {
+  outline:3px solid var(--blue);
+  outline-offset:-3px;
+}
+.app .content .precheck-guide-index button>b,
+.app .content .precheck-context strong,
+.app .content .precheck-list-main b,
+.app .content .admin-action-copy b,
+.app .content .payer-review-head b,
+.app .content .quality-copy b {font-size:13px}
+.app .content .precheck-guide-index button>small,
+.app .content .precheck-context small,
+.app .content .admin-action-copy small,
+.app .content .payer-review-head small,
+.app .content .quality-copy small,
+.app .content .upload-kpis small,
+.app .content .change-title small {font-size:12px}
+@media (max-width:900px) {
+  .app .content .decision {max-width:none;min-width:0}
+  .app .content .search-flow-hint {gap:7px}
+}
+@media (max-width:760px) {
+  .app .content .decision {margin-top:12px}
+  .app .content .page-head h1 {font-size:23px}
+  .app .content .search-flow-hint {font-size:12px}
+  .app .content .tablewrap {overflow-x:auto}
+}
