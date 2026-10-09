@@ -23,7 +23,7 @@ test('Suche, Tastaturbedienung und Klartext der Versorgungsprüfung',async ({pag
   const errors=[]
   page.on('pageerror',error=>errors.push(String(error.message)))
   await openAssistant(page)
-  await expect(page.locator('.decision')).toContainText('Position auswählen')
+  await expect(page.locator('#assistantEvaluation')).toHaveCount(0) // Phase 2: Entscheidung erst nach Trefferwahl
   await search(page)
 
   const green=page.locator('tr.selectable').filter({hasText:selector.green})
