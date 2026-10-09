@@ -186,7 +186,8 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
     e.preventDefault()
     setError('');setMessage('')
     const description=draft.description.trim()
-    const title=creating?(description.replace(/\s+/g,' ').slice(0,180).trim()||'Meldung'):draft.title.trim()
+    const heading=description.replace(/\s+/g,' ').slice(0,180).trim()
+    const title=creating?(heading.length>=5?heading:'Meldung'):draft.title.trim()
     if(title.length<5){setError('Bitte einen Titel mit mindestens fünf Zeichen eingeben.');return}
     if(!description){setError('Bitte die Meldung im Textfeld beschreiben.');return}
     if(!creating&&!canManage){setError('Änderungen dürfen nur durch Innendienst oder Administration erfolgen.');return}
