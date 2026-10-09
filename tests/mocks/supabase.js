@@ -24,6 +24,12 @@ const positions = [
     versorgungsform:'Kauf / Neulieferung'
   }
 ]
+const paginationPositions=Array.from({length:17},(_,i)=>({
+  ...positions[0],
+  position_row_id:'ux-page-'+i,
+  pos:'UX-'+String(i+1).padStart(3,'0'),
+  bezeichnung:'Position für Paginierung '+(i+1)
+}))
 const profile = {active:true,role:'VERSORGER',display_name:'UX Test'}
 const session = {user:{id:'ux-fixture-user',user_metadata:{display_name:'UX Test'}}}
 const sites = [{site_id:'ux-fixture-site',branch:'Testfiliale',ik:'999999999',active:true}]
@@ -70,7 +76,7 @@ export const supabase={
   from:query,
   async rpc(name,args={}){
     if(name==='vn_search_positions_v13')
-      return {data:positions.filter(p=>!args.p_pg||args.p_pg===p.pg),error:null}
+      return {data:(args.p_query==='UX-LIMIT'?paginationPositions:positions).filter(p=>!args.p_pg||args.p_pg===p.pg),error:null}
     if(name==='evaluate_position_supply_v3'){
       const green=args.p_position_row_id==='ux-fixture-green'
       return {data:{
