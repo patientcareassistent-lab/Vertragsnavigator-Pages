@@ -1,0 +1,31 @@
+/* Source-backed, manual PG-level verification queue. */
+.app .content .addon-review-filter {max-width:270px;margin:15px 0}
+.app .content .addon-candidate-card {display:grid;gap:10px}
+.app .content .addon-candidate-card .knowledge-head {align-items:flex-start;gap:12px}
+.app .content .addon-candidate-card .knowledge-head b {font-size:15px;line-height:1.4;color:#123d60}
+.app .content .addon-candidate-card .knowledge-head small {display:block;margin-top:6px;font-size:13px;line-height:1.5}
+.app .content .addon-candidate-classification {display:flex;flex-wrap:wrap;align-items:center;gap:7px;font-size:12px;color:#58687c}
+.app .content .addon-candidate-classification strong {background:#fff6e7;color:#935700;padding:5px 8px;border:1px solid #e5cc9e;border-radius:7px}
+.app .content .addon-candidate-rule {margin:0;color:#344054;font-size:14px;line-height:1.6;white-space:pre-line}
+.app .content .addon-source {
+  display:flex;align-items:flex-start;gap:10px;padding:11px 12px;
+  background:#f7fafc;border:1px solid #dce6ee;border-radius:9px;
+}
+.app .content .addon-source>svg {flex:none;margin-top:4px;color:var(--blue)}
+.app .content .addon-source>div {flex:1;min-width:0}
+.app .content .addon-source strong {display:block;color:var(--blue);font-size:13px;line-height:1.4}
+.app .content .addon-source span {display:block;overflow-wrap:anywhere;color:#516273;font-size:12px;line-height:1.5;margin-top:4px}
+.app .content .addon-source>button {display:flex;align-items:center;gap:6px;flex:none;font-size:12px}
+.app .content .addon-candidate-ids {border-top:1px solid #edf0f4;padding-top:6px}
+.app .content .addon-candidate-ids summary {cursor:pointer;font-size:12px;color:#516273;font-weight:700}
+.app .content .addon-candidate-ids small {display:block;margin-top:6px;overflow-wrap:anywhere}
+.app .content .addon-review-form {border-top:1px solid #dce6ee;padding-top:13px;gap:9px}
+.app .content .addon-review-form label {font-size:13px}
+.app .content .addon-review-actions {display:flex;flex-wrap:wrap;gap:9px}
+.app .content .addon-review-actions button {display:inline-flex;align-items:center;gap:7px;min-height:40px}
+.app .content .addon-review-note {border-top:1px solid #edf0f4;padding-top:8px;font-size:13px;line-height:1.55}
+@media(max-width:640px){
+  .app .content .addon-source {flex-wrap:wrap}
+  .app .content .addon-source>button {width:100%;justify-content:center}
+  .app .content .addon-review-actions button {flex:1 1 100%;justify-content:center}
+}
