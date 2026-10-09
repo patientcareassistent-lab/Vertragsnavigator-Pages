@@ -93,7 +93,7 @@ export default function ContractMatrix({contracts=[]}){
       const term=query.trim()
       const looksLikeHmv=/^\d{2}\.\d{2}/.test(term)
       const groups=await Promise.all(pairs.map(async(pair)=>{
-        const {data,error:dbError}=await supabase.rpc('vn_search_positions_v13',{
+        const {data,error:dbError}=await supabase.rpc('vn_search_positions_v14',{
           p_payer:pair.family,
           p_payer_detail:pair.detail||null,
           p_pg:pg.trim()||null,
