@@ -516,7 +516,7 @@ export default function App(){
     const companyContractQuery=canonicalCompanyQuery(advanced.contract)
     const contractAliasQuery=companyContractQuery.toLowerCase()==='valuny'&&!term.trim()?companyContractQuery:null
     const freeTextQuery=(!termIsHmv&&!termIsPosition&&rawTerm)?rawTerm:contractAliasQuery
-    const rpcName='vn_search_positions_v13'
+    const rpcName='vn_search_positions_v14'
     setSearchBusy(true)
     setHasSearched(true)
     try{
