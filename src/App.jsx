@@ -402,8 +402,8 @@ export default function App(){
     setKnowledgeLoaded(true)
   }
 
-  async function loadQuestions(){
-    if(questionsLoaded)return
+  async function loadQuestions(force=false){
+    if(questionsLoaded&&!force)return
     const {data,error:e}=await supabase.from('vn_contract_questions')
       .select('*')
       .order('created_at',{ascending:false})
@@ -849,7 +849,7 @@ export default function App(){
         <div className="page-head"><div><h1>Vertragsfragen</h1><p>Nur ungeklärte Vertragsfälle als neue Frage anlegen und in der Prüfqueue verfolgen.</p></div><Badge>{questionsLoaded?questions.length:questionCount} sichtbar</Badge></div>
         <div className="grid">
           <section className="panel"><h2>Neue Vertragsfrage</h2><form className="formstack" onSubmit={submitQuestion}><label>Vertragsfrage<textarea id="qText" rows="5" value={questionForm.question_text} onChange={e=>setQ('question_text',e.target.value)} required/></label><div className="formgrid"><label>Kostenträger<input value={questionForm.payer} onChange={e=>setQ('payer',e.target.value)}/></label><label>PG<input value={questionForm.pg} onChange={e=>setQ('pg',e.target.value)}/></label></div><label>Vertrag<select value={questionForm.contract_id} onChange={e=>setQ('contract_id',e.target.value)}><option value="">Nicht zugeordnet</option>{contracts.map(r=><option key={r.contract_id} value={r.contract_id}>{r.contract_name||r.contract_id}</option>)}</select></label><div className="formgrid"><label>HMV / Produktart<input value={questionForm.hmv_code} onChange={e=>setQ('hmv_code',e.target.value)}/></label><label>Position / GPOS<input value={questionForm.position_code} onChange={e=>setQ('position_code',e.target.value)}/></label></div>{questionMessage&&<div className={'alert '+(questionMessage.startsWith('Vertragsfrage wurde')?'success':'error')}>{questionMessage}</div>}<button className="primary" type="submit">Vertragsfrage anlegen</button></form></section>
-          <QuestionsQueue questions={questions} loaded={questionsLoaded} canAnswer={inAdminMode} canAcknowledge={role==='fach'&&inFachMode} onChanged={updated=>{if(updated?.question_id){setQuestions(items=>items.map(q=>q.question_id===updated.question_id?updated:q));setQuestionCount(count=>count+(updated.status==='CLOSED'?-1:0))}}}/>
+          <QuestionsQueue questions={questions} loaded={questionsLoaded} onRefresh={()=>loadQuestions(true)} canAnswer={inAdminMode} canAcknowledge={role==='fach'&&inFachMode} onChanged={updated=>{if(updated?.question_id){setQuestions(items=>items.map(q=>q.question_id===updated.question_id?updated:q));setQuestionCount(count=>count+(updated.status==='CLOSED'?-1:0))}}}/>
         </div>
       </>}
 
