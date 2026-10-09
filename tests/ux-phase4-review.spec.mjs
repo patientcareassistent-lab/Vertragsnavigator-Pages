@@ -19,7 +19,7 @@ test('Freigabequeue zeigt Originalposition, Belegstelle und ungeprüfte Regeln v
   await expect(card).toContainText('1850032')
   await expect(card).toContainText('Seiten 4, 6')
   await expect(card).toContainText('vertraege/Test/Anlage 1.pdf')
-  await expect(card).toContainText('Keine Freigabe')
+  await expect(card).toContainText('Fachliche Vertragsfreigabe weiterhin erforderlich')
   await expect(card).toContainText('inklusive')
   await expect(card.locator('.addon-review-note')).toContainText('Hinweis aus Datenvorbereitung')
   await expect(card.locator('.addon-candidate-ids')).not.toHaveAttribute('open','')
