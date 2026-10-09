@@ -1,28 +1,28 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  WITCH_JOKES, WITCH_WISDOM, getDailyWisdom, localDateKey,
+  createShuffledJokeBag, restoreJokeBag, nextRandomDelay,
+} from './witchRotation.js'
 import './ContractWitches.css'
 
-// Purely fictional jokes: never use this content as contract knowledge or as a decision source.
-export const CONTRACT_WITCH_JOKES = [
-  'Chuck Norris beantragt keine Genehmigung. Die Genehmigung beantragt Chuck Norris.',
-  'Wenn Chuck Norris einen Vertragsbeitritt prüft, tritt der Vertrag freiwillig bei.',
-  'Chuck Norris kennt alle LEGS. Auch die, die noch nicht erfunden wurden.',
-  'Das Hilfsmittelverzeichnis sucht bei Chuck Norris nach seiner Nummer.',
-  'Chuck Norris wartet nicht auf den eKVA. Der eKVA wartet auf Chuck Norris.',
-  'Chuck Norris hat keine Fristen. Termine tragen sich selbst in seinen Kalender ein.',
-  'Bei Chuck Norris wird jede Vertragsversion automatisch zur Vorversion.',
-  'Chuck Norris liest keine Fußnoten. Die Fußnoten stellen sich freiwillig vor.',
-  'Chuck Norris fragt nicht nach der PQ. Die PQ fragt nach Chuck Norris.',
-  'Chuck Norris muss Vertragsanlagen nicht suchen. Sie heften sich selbst an.',
-  'Wenn Chuck Norris eine Genehmigungsfreigrenze überschreitet, entschuldigt sich die Freigrenze.',
-  'Eine Krankenkasse wollte Chuck Norris eine Rückfrage schicken. Jetzt hat sie selbst eine offene Frage.',
-  'Chuck Norris kennt den Unterschied zwischen Vertragsposition und HMV-Code. Beide kennen seinen Namen.',
-  'Bei Chuck Norris ist selbst die Prüfliste fertig, bevor man sie öffnet.',
-]
-
-const STORAGE_KEY = 'vn:contract-witches:enabled'
+// All messages are fictional humor; no Supabase access, legal conclusions or contract claims.
+const ENABLED_KEY = 'vn:contract-witches:enabled'
+const DAILY_SEEN_KEY = 'vn:contract-witches:daily-seen-v2'
+const JOKE_BAG_KEY = 'vn:contract-witches:remaining-jokes-v2'
+const LAST_JOKE_KEY = 'vn:contract-witches:last-joke-v2'
 const FIRST_APPEARANCE_MS = 12000
-const NEXT_APPEARANCE_MS = 43000
-const SPEECH_DURATION_MS = 15000
+const SPEECH_DURATION_MS = 17000
+export const CONTRACT_WITCH_JOKES = WITCH_JOKES.map(entry => entry.text)
+export const CONTRACT_WITCH_WISDOM = WITCH_WISDOM.map(entry => entry.text)
+
+function readStorage(key) {
+  try { return window.localStorage.getItem(key) }
+  catch { return null }
+}
+function writeStorage(key, value) {
+  try { window.localStorage.setItem(key, value) }
+  catch { /* Browser privacy settings must not break the widget. */ }
+}
 
 function WitchOnBroom({ variant, speaking }) {
   const isPurple = variant === 'paragrafina'
@@ -62,81 +62,128 @@ function WitchOnBroom({ variant, speaking }) {
 }
 
 export default function ContractWitches() {
-  const [enabled, setEnabled] = useState(() => {
-    try { return window.localStorage.getItem(STORAGE_KEY) !== 'off' }
-    catch { return true }
-  })
-  const [scene, setScene] = useState({ index: 0, show: false })
+  const [enabled, setEnabled] = useState(() => readStorage(ENABLED_KEY) !== 'off')
+  const [scene, setScene] = useState({ visible: false, entry: null, kind: 'joke', speaker: 'Julie', sequence: 0 })
   const [typed, setTyped] = useState(0)
+  const remainingJokes = useRef(null)
+  const lastJokeIndex = useRef(null)
+
+  const takeJoke = useCallback(() => {
+    if (lastJokeIndex.current === null) {
+      const previous = Number(readStorage(LAST_JOKE_KEY))
+      lastJokeIndex.current = Number.isInteger(previous) && previous >= 0 && previous < WITCH_JOKES.length ? previous : -1
+    }
+    if (remainingJokes.current === null) {
+      let recovered
+      try { recovered = JSON.parse(readStorage(JOKE_BAG_KEY) || 'null') }
+      catch { recovered = null }
+      remainingJokes.current = restoreJokeBag(recovered)
+    }
+    if (remainingJokes.current.length === 0) {
+      remainingJokes.current = createShuffledJokeBag(lastJokeIndex.current)
+    }
+    const index = remainingJokes.current.pop()
+    lastJokeIndex.current = index
+    writeStorage(LAST_JOKE_KEY, String(index))
+    writeStorage(JOKE_BAG_KEY, JSON.stringify(remainingJokes.current))
+    return WITCH_JOKES[index]
+  }, [])
+
+  const displayEntry = useCallback((entry, kind) => {
+    setScene(previous => ({
+      entry, kind, visible: true, sequence: previous.sequence + 1,
+      speaker: previous.speaker === 'Caro' ? 'Julie' : 'Caro',
+    }))
+  }, [])
+
+  const showJoke = useCallback(() => displayEntry(takeJoke(), 'joke'), [takeJoke, displayEntry])
+
+  const showWisdom = useCallback(() => {
+    const date = localDateKey()
+    writeStorage(DAILY_SEEN_KEY, date)
+    displayEntry(getDailyWisdom(), 'wisdom')
+  }, [displayEntry])
+
+  const showAutomatic = useCallback(() => {
+    if (document.visibilityState === 'hidden') return
+    if (readStorage(DAILY_SEEN_KEY) !== localDateKey()) showWisdom()
+    else showJoke()
+  }, [showJoke, showWisdom])
 
   useEffect(() => {
     if (!enabled) return undefined
-    const first = window.setTimeout(() => setScene(s => ({ ...s, show: true })), FIRST_APPEARANCE_MS)
-    const repeat = window.setInterval(
-      () => setScene(s => ({ index: (s.index + 1) % CONTRACT_WITCH_JOKES.length, show: true })),
-      NEXT_APPEARANCE_MS,
-    )
-    return () => { window.clearTimeout(first); window.clearInterval(repeat) }
-  }, [enabled])
-
-  useEffect(() => {
-    if (!scene.show) return undefined
-    const timeout = window.setTimeout(() => setScene(s => ({ ...s, show: false })), SPEECH_DURATION_MS)
+    let timeout
+    const schedule = delay => {
+      timeout = window.setTimeout(() => {
+        showAutomatic()
+        schedule(nextRandomDelay())
+      }, delay)
+    }
+    schedule(FIRST_APPEARANCE_MS)
     return () => window.clearTimeout(timeout)
-  }, [scene.show, scene.index])
+  }, [enabled, showAutomatic])
 
   useEffect(() => {
-    if (!scene.show) return undefined
-    const joke = CONTRACT_WITCH_JOKES[scene.index]
+    if (!scene.visible) return undefined
+    const timeout = window.setTimeout(
+      () => setScene(previous => ({ ...previous, visible: false })),
+      SPEECH_DURATION_MS,
+    )
+    return () => window.clearTimeout(timeout)
+  }, [scene.visible, scene.sequence])
+
+  useEffect(() => {
+    if (!scene.visible || !scene.entry) return undefined
+    const message = scene.entry.text
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      setTyped(joke.length)
+      setTyped(message.length)
       return undefined
     }
     setTyped(0)
-    const timer = window.setInterval(
-      () => setTyped(n => Math.min(joke.length, n + 2)),
-      35,
-    )
+    const timer = window.setInterval(() => {
+      setTyped(previous => {
+        if (previous + 2 >= message.length) {
+          window.clearInterval(timer)
+          return message.length
+        }
+        return previous + 2
+      })
+    }, 35)
     return () => window.clearInterval(timer)
-  }, [scene.show, scene.index])
+  }, [scene.visible, scene.sequence, scene.entry])
 
-  const switchEnabled = () => {
+  const toggleEnabled = () => {
     const next = !enabled
     setEnabled(next)
-    setScene(s => ({ ...s, show: next }))
-    try { window.localStorage.setItem(STORAGE_KEY, next ? 'on' : 'off') }
-    catch { /* Still works if browser storage is disabled. */ }
+    setScene(previous => ({ ...previous, visible: false }))
+    writeStorage(ENABLED_KEY, next ? 'on' : 'off')
   }
 
-  const nextJoke = () => setScene(s => ({
-    index: (s.index + 1) % CONTRACT_WITCH_JOKES.length,
-    show: true,
-  }))
-
-  const joke = CONTRACT_WITCH_JOKES[scene.index]
-  const speaker = scene.index % 2 === 0 ? 'Caro' : 'Julie'
-
+  const kindLabel = scene.kind === 'wisdom' ? 'Weisheit des Tages' : scene.entry?.category || 'Vertragswitz'
   return (
-    <aside className="vn-hx-widget" aria-label="Vertragshexen – humorvolle Einlage">
-      {enabled && scene.show && (
+    <aside className="vn-hx-widget" aria-label="Caro und Julie – humorvolle Vertragshexen">
+      {enabled && scene.visible && scene.entry && (
         <div className="vn-hx-stage">
           <div className="vn-hx-cast" aria-hidden="true">
             <div className="vn-hx-flight vn-hx-flight-left">
-              <WitchOnBroom variant="paragrafina" speaking={speaker === 'Caro'} />
+              <WitchOnBroom variant="paragrafina" speaking={scene.speaker === 'Caro'} />
             </div>
             <div className="vn-hx-flight vn-hx-flight-right">
-              <WitchOnBroom variant="klausulina" speaking={speaker === 'Julie'} />
+              <WitchOnBroom variant="klausulina" speaking={scene.speaker === 'Julie'} />
             </div>
           </div>
-          <div className="vn-hx-bubble" role="group" aria-label={`${speaker} sagt: ${joke} Nur Spaß, keine Vertragsauskunft.`}>
+          <div className="vn-hx-bubble" role="group" aria-label={`${scene.speaker}: ${kindLabel}. ${scene.entry.text} Humor, keine Vertragsauskunft.`}>
             <div className="vn-hx-bubble-head">
-              <strong>{speaker} schreibt …</strong>
-              <button type="button" onClick={() => setScene(s => ({ ...s, show: false }))} aria-label="Spruch ausblenden" title="Spruch ausblenden">×</button>
+              <strong>{scene.speaker} · {kindLabel}</strong>
+              <button type="button" onClick={() => setScene(previous => ({ ...previous, visible: false }))} aria-label="Spruch ausblenden" title="Spruch ausblenden">×</button>
             </div>
-            <p aria-hidden="true">{joke.slice(0, typed)}<span className="vn-hx-cursor" aria-hidden="true">▍</span></p>
+            <p aria-hidden="true">{scene.entry.text.slice(0, typed)}<span className="vn-hx-cursor" aria-hidden="true">▍</span></p>
             <div className="vn-hx-bubble-bottom">
-              <small>Hexenhumor · keine Vertragsauskunft</small>
-              <button type="button" onClick={nextJoke}>Nächster Spruch ›</button>
+              <small>Nur Humor · keine Vertragsauskunft</small>
+              <div className="vn-hx-actions">
+                <button type="button" onClick={showWisdom} aria-label="Weisheit des Tages anzeigen">Tagesweisheit</button>
+                <button type="button" onClick={showJoke}>Nächster Witz ›</button>
+              </div>
             </div>
           </div>
         </div>
@@ -145,10 +192,10 @@ export default function ContractWitches() {
         className="vn-hx-launcher"
         type="button"
         aria-pressed={enabled}
-        onClick={switchEnabled}
-        title={enabled ? 'Vertragshexen dauerhaft ausschalten' : 'Vertragshexen einschalten'}
+        onClick={toggleEnabled}
+        title={enabled ? 'Caro und Julie dauerhaft ausschalten' : 'Caro und Julie einschalten'}
       >
-        <span aria-hidden="true">✦</span> {enabled ? 'Vertragshexen: an' : 'Vertragshexen: aus'}
+        <span aria-hidden="true">✦</span> {enabled ? 'Caro & Julie: an' : 'Caro & Julie: aus'}
       </button>
     </aside>
   )
