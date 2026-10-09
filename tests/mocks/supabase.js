@@ -24,6 +24,20 @@ const positions = [
     versorgungsform:'Kauf / Neulieferung'
   }
 ]
+const barmerContract={contract_id:'ux-matrix-barmer',contract_name:'BARMER · Musterversorgung',payer_families:['BARMER'],product_groups:['18']}
+const matrixBarmer=[
+  {...positions[0],position_row_id:'ux-matrix-barmer-base',contract_id:'ux-matrix-barmer',family:'BARMER',contract:'BARMER · Musterversorgung',bezeichnung:'Vergleichsrollstuhl anderer Kasse',pos:'BM-100',genehmigung:'Kostenvoranschlag'},
+  {...positions[1],position_row_id:'ux-matrix-barmer-unmatched',contract_id:'ux-matrix-barmer',family:'BARMER',contract:'BARMER · Musterversorgung',bezeichnung:'Nicht zugeordnete Rollstuhlposition',code:'18.75.01.0',pos:'BM-200'}
+]
+const matrixAddonCatalog=[
+  {position_row_id:'ux-addon-aok',code:'18.99.01.1',pos:'AO-01',bezeichnung:'Zusatz – Halterung',genehmigung:'Genehmigungsfrei'},
+  {position_row_id:'ux-addon-barmer',code:'18.99.01.1',pos:'BM-01',bezeichnung:'Zusatz – alternative Halterung',genehmigung:'Genehmigung erforderlich'}
+]
+const verifiedMatrixAddons=[
+  {base_position_row_id:'ux-fixture-green',addon_position_row_id:'ux-addon-aok',relation_type:'REQUIRED',justification:'Medizinische Begründung erforderlich',conditions:'Nur mit ärztlicher Begründung',source_id:'fixture-aok',source_page:'12',verified_at:'2026-10-08T10:00:00Z'},
+  {base_position_row_id:'ux-matrix-barmer-base',addon_position_row_id:'ux-addon-barmer',relation_type:'OPTIONAL',justification:'Vertragsbezug bestätigt',conditions:'Nur nach Prüfung',source_id:'fixture-barmer',source_page:'8',verified_at:'2026-10-08T10:00:00Z'},
+  {base_position_row_id:'ux-matrix-barmer-unmatched',addon_position_row_id:'ux-addon-barmer',relation_type:'OPTIONAL',justification:'Nicht geprüft',conditions:'',source_id:'fixture-no-verification',source_page:'8',verified_at:null}
+]
 const paginationPositions=Array.from({length:17},(_,i)=>({
   ...positions[0],
   position_row_id:'ux-page-'+i,
@@ -33,10 +47,11 @@ const paginationPositions=Array.from({length:17},(_,i)=>({
 const profile = {active:true,role:'VERSORGER',display_name:'UX Test'}
 const session = {user:{id:'ux-fixture-user',user_metadata:{display_name:'UX Test'}}}
 const sites = [{site_id:'ux-fixture-site',branch:'Testfiliale',ik:'999999999',active:true}]
-const dataFor = (table,head) => {
+const dataFor = (table,head,filters={}) => {
   const datasets={
-    vn_contract_read_model_p2:[contract],
-    vn_position_catalog:positions,
+    vn_contract_read_model_p2:[contract,barmerContract],
+    vn_position_catalog:[...positions,...matrixBarmer,...matrixAddonCatalog],
+    vn_position_addons:verifiedMatrixAddons,
     vn_contract_knowledge_approved:[],
     vn_contract_questions_open_p2:[],
     vn_contract_questions:[],
@@ -48,22 +63,27 @@ const dataFor = (table,head) => {
     vn_contract_validity_scope:[],
     vn_development_backlog:[],
   }
-  const rows=datasets[table]||[]
+  let rows=datasets[table]||[]
+  if(filters.inValues)rows=rows.filter(x=>filters.inValues.includes(x[filters.inField]))
+  if(filters.notVerified)rows=rows.filter(x=>x.verified_at!=null)
+  if(filters.limit!=null)rows=rows.slice(0,filters.limit)
   return {data:head?null:rows,error:null,count:rows.length}
 }
 function query(table){
   let head=false
+  const filters={}
+  const current=()=>dataFor(table,head,filters)
   const q={
     select(_cols,options){head=Boolean(options?.head);return q},
     eq(){return q},neq(){return q},gte(){return q},lte(){return q},
-    gt(){return q},lt(){return q},in(){return q},is(){return q},
+    gt(){return q},lt(){return q},in(col,values){filters.inField=col;filters.inValues=values;return q},not(col,operator,value){if(col==='verified_at'&&operator==='is'&&value===null)filters.notVerified=true;return q},is(){return q},
     or(){return q},contains(){return q},order(){return q},
-    limit(){return q},range(){return q},filter(){return q},
+    limit(n){filters.limit=n;return q},range(){return q},filter(){return q},
     insert(){return Promise.resolve({data:null,error:null})},
     update(){return q},upsert(){return q},delete(){return q},
-    single(){return Promise.resolve(table==='vn_users'?{data:profile,error:null}:dataFor(table,head))},
-    maybeSingle(){return Promise.resolve(table==='vn_users'?{data:profile,error:null}:{data:dataFor(table,head).data?.[0]||null,error:null})},
-    then(resolve,reject){return Promise.resolve(dataFor(table,head)).then(resolve,reject)}
+    single(){return Promise.resolve(table==='vn_users'?{data:profile,error:null}:current())},
+    maybeSingle(){return Promise.resolve(table==='vn_users'?{data:profile,error:null}:{data:current().data?.[0]||null,error:null})},
+    then(resolve,reject){return Promise.resolve(current()).then(resolve,reject)}
   }
   return q
 }
@@ -75,8 +95,12 @@ export const supabase={
   },
   from:query,
   async rpc(name,args={}){
-    if(name==='vn_search_positions_v13')
-      return {data:(args.p_query==='UX-LIMIT'?paginationPositions:positions).filter(p=>!args.p_pg||args.p_pg===p.pg),error:null}
+    if(name==='vn_search_positions_v13'){
+      const dataset=args.p_payer
+        ? args.p_payer==='BARMER'?matrixBarmer:args.p_payer==='AOK'?[positions[0]]:[]
+        : args.p_query==='UX-LIMIT'?paginationPositions:positions
+      return {data:dataset.filter(p=>!args.p_pg||args.p_pg===p.pg),error:null}
+    }
     if(name==='evaluate_position_supply_v3'){
       const green=args.p_position_row_id==='ux-fixture-green'
       return {data:{
