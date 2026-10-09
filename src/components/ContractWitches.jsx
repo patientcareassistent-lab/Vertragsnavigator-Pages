@@ -85,7 +85,11 @@ function CharacterImage({ name, image, className = '' }) {
   const [failed, setFailed] = useState(false)
   useEffect(() => setFailed(false), [image])
   const base = import.meta.env.BASE_URL || '/'
-  if (failed) return <span className={'vn-hx-fallback ' + className}><VectorWitch name={name}/></span>
+  if (failed) return (
+    <span className={'vn-hx-fallback ' + (name === 'Caro und Julie' ? 'vn-hx-fallback-duo ' : '') + className}>
+      {name === 'Caro und Julie' ? <><VectorWitch name="Caro"/><VectorWitch name="Julie"/></> : <VectorWitch name={name}/>}
+    </span>
+  )
   return (
     <img
       className={'vn-hx-character-image ' + className}
