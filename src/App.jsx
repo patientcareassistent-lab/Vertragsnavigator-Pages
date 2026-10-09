@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { BookOpenCheck, Bug, History, LayoutDashboard, LoaderCircle, MessageSquareText, ShieldCheck, Upload } from 'lucide-react'
+import { AlertTriangle, BookOpenCheck, Bug, CheckCircle2, CircleHelp, History, LayoutDashboard, LoaderCircle, MessageSquareText, ShieldCheck, Upload, XCircle } from 'lucide-react'
 import { supabase, supabaseConfigured } from './lib/supabase.js'
 import { recordRuntimeEvent } from './lib/runtimeTelemetry.js'
 import ContractUpload from './components/ContractUpload.jsx'
@@ -18,6 +18,7 @@ import ContractNoticeBanner from './components/ContractNoticeBanner.jsx'
 import ContractMatrix from './components/ContractMatrix.jsx'
 import AddonCandidateReview from './components/AddonCandidateReview.jsx'
 import './components/VNFeatures.css'
+import './ux-phase1.css'
 
 const NAV=[
   ['assistant','Versorgung prüfen'],
@@ -462,6 +463,12 @@ export default function App(){
     return()=>{cancelled=true}
   },[selected?.position_row_id,selected?.contract_id,siteId])
 
+  function choosePosition(row){
+    setSupplyEval(null)
+    setError('')
+    setSelected(row)
+  }
+
   async function runAssistant(e){
     e.preventDefault();setSelected(null);setSupplyEval(null);setError('')
 
@@ -588,8 +595,9 @@ export default function App(){
   const selectedContract=selected?contracts.find(c=>String(c.contract_id)===String(selected.contract_id)):null
   const resultContractCount=new Set(results.map(r=>r.contract_id||r.contract||r.family).filter(Boolean)).size
   const supplyDecision=supplyEval?.decision||''
-  const decisionLabel=supplyDecision==='GRUEN'?'GRÜN':supplyDecision==='ROT'?'ROT':'PRÜFEN'
-  const decisionTone=supplyDecision==='GRUEN'?'ok':supplyDecision==='ROT'?'bad':'warn'
+  const decisionTone=!selected||!siteId||supplyBusy||!supplyEval?'idle':supplyDecision==='GRUEN'?'ok':supplyDecision==='ROT'?'bad':'warn'
+  const decisionLabel=!selected?'Position auswählen':!siteId?'Standort auswählen':supplyBusy?'Prüfung läuft':supplyDecision==='GRUEN'?'Versorgung möglich':supplyDecision==='ROT'?'Versorgung nicht möglich':supplyEval?'Prüfung erforderlich':'Prüfung steht aus'
+  const DecisionIcon=decisionTone==='ok'?CheckCircle2:decisionTone==='bad'?XCircle:decisionTone==='warn'?AlertTriangle:CircleHelp
   const supplyPathOk=supplyEval?.pq_decision==='GRUEN'&&supplyEval?.accession_decision==='GRUEN'&&Number(supplyEval?.green_scope_count||0)>0
   const supplyV3Actions=Array.isArray(supplyEval?.action_items)?supplyEval.action_items:[]
   const supplyV3Blockers=Array.isArray(supplyEval?.hard_blockers)?supplyEval.hard_blockers:[]
@@ -640,7 +648,7 @@ export default function App(){
         <div className="page-head"><div><h1>Versorgung prüfen</h1><p>Die wesentlichen Vertragsinformationen in einer Arbeitsansicht.</p></div><Badge tone="info">Vertragswissen zuerst</Badge></div>
         <div className="grid">
           <section className="panel assistant-hero span2">
-            <div className="assistant-top"><div className="assistant-title"><small>Vertragsassistent</small><h2>Darf ich versorgen?</h2><p>Position auswählen, Standort festlegen und die Prüfpunkte nacheinander bewerten.</p></div><div className={'decision '+decisionTone}><small>Ergebnis</small><strong>{decisionLabel}</strong></div></div>
+            <div className="assistant-top"><div className="assistant-title"><small>Vertragsassistent</small><h2>Darf ich versorgen?</h2><p>Position auswählen, Standort festlegen und die Prüfpunkte nacheinander bewerten.</p></div><div className={'decision '+decisionTone} role="status" aria-live="polite" aria-atomic="true"><small>Versorgungsprüfung</small><strong><DecisionIcon size={22} aria-hidden="true"/>{decisionLabel}</strong></div></div>
             <form className="check-form" onSubmit={runAssistant} aria-busy={searchBusy}>
               <label>Kostenträger<select value={payer} onChange={e=>{setPayer(e.target.value);setPayerDetail('');setError('')}}><option value="">Alle Kassen</option>{payerOptions.map(v=><option key={v}>{v}</option>)}</select></label>
               <label>Kasse / Region<select value={payerDetailOptions.includes(payerDetail)?payerDetail:''} onChange={e=>{setPayerDetail(e.target.value);setError('')}} disabled={!payer} aria-label="Kasse und Region des gewählten Kostenträgers"><option value="">{payer?'Alle Kassen / Regionen der Auswahl':'Zuerst Kostenträger wählen'}</option>{payerDetailOptions.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
@@ -649,7 +657,7 @@ export default function App(){
               <label>HMV / Position / Begriff<input id="assistantTerm" value={term} onChange={e=>{setTerm(e.target.value);setError('')}} placeholder="z. B. leichtgewichts, Rolli, 18.50, AOK Bayern …"/></label>
               <div className="search-actions">
                 <button className="primary" type="submit" disabled={searchBusy}>
-                  {searchBusy?<><LoaderCircle className="spin" size={16}/> Suche …</>:'Prüfen'}
+                  {searchBusy?<><LoaderCircle className="spin" size={16}/> Suche …</>:'Positionen suchen'}
                 </button>
                 <button className="secondary" type="button" onClick={resetAssistantSearch} disabled={searchBusy}>Zurücksetzen</button>
               </div>
@@ -686,7 +694,8 @@ export default function App(){
                 </div>
               </details>
             </form>
-            <div className="checks">
+            <div className="search-flow-hint" aria-label="Ablauf der Versorgungsprüfung"><span><b>1</b> Positionen suchen</span><span aria-hidden="true">→</span><span><b>2</b> Treffer auswählen</span><span aria-hidden="true">→</span><span><b>3</b> Versorgung automatisch prüfen</span></div>
+            <div className="checks" aria-label="Prüfschritte">
               <Check n="1" title="Vertrag"
                 status={selected?'Vertrag gefunden':results.length?(resultContractCount===1?'1 Vertrag gefunden':`${resultContractCount} Vertragsvarianten gefunden`):'noch offen'}
                 value={selected?(selected.contract||selected.family||'Vertrag vorhanden'):results.length?(siteId?'Passende Position auswählen':'Standort/Region wählen oder Position auswählen'):'Position suchen'}
@@ -710,10 +719,10 @@ export default function App(){
               canFach={inFachMode}
             />}
           </section>
-          <section className="panel span2"><div className="sectionbar"><div><h2>Treffer</h2><p>Eine Position anklicken, um sie zu übernehmen.</p></div><Badge>{results.length}</Badge></div>
+          <section className="panel span2"><div className="sectionbar"><div><h2>Treffer</h2><p>Treffer anklicken oder mit Tab und Enter auswählen. Nach Positions- und Standortauswahl startet die Versorgungsprüfung automatisch.</p></div><Badge>{results.length}</Badge></div>
             {results.length>0&&!selected&&<div className="result-hint"><b>{results.length} passende Positionen · {resultContractCount} Vertragsvarianten</b><span>{payer==='AOK'&&!payerDetail&&!siteId?'AOK-Verträge sind regional. Bitte konkrete AOK/Region, Standort oder unten den passenden Vertrag auswählen.':'Bitte den passenden Vertrag bzw. die Position auswählen.'}</span></div>}
             <div className="tablewrap"><table><thead><tr><th>PG</th><th>HMV/Code</th><th>Position</th><th>Bezeichnung</th><th>Vertrag</th><th>Preis</th><th>Genehmigung</th></tr></thead><tbody>
-              {results.map(r=><tr key={r.position_row_id} className={'selectable '+(selected?.position_row_id===r.position_row_id?'selected':'')} onClick={()=>setSelected(r)}><td>{r.pg||'—'}</td><td>{r.code||'—'}</td><td>{r.pos||'—'}</td><td><b>{r.bezeichnung||r.produktart_bezeichnung||'—'}</b></td><td>{displayCompanyName(r.contract||r.family||'—')}</td><td>{r.preis??'—'}</td><td>{r.genehmigung||r.freigrenze||'—'}</td></tr>)}
+              {results.map(r=><tr key={r.position_row_id} className={'selectable '+(selected?.position_row_id===r.position_row_id?'selected':'')} tabIndex={0} aria-selected={selected?.position_row_id===r.position_row_id} aria-label={'Position auswählen: '+(r.bezeichnung||r.produktart_bezeichnung||r.code||r.pos||'Unbekannte Position')} onClick={()=>choosePosition(r)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choosePosition(r)}}}><td>{r.pg||'—'}</td><td>{r.code||'—'}</td><td>{r.pos||'—'}</td><td><b>{r.bezeichnung||r.produktart_bezeichnung||'—'}</b></td><td>{displayCompanyName(r.contract||r.family||'—')}</td><td>{r.preis??'—'}</td><td>{r.genehmigung||r.freigrenze||'—'}</td></tr>)}
               {!results.length&&<tr><td colSpan="7" className="empty">Kasse, PG, Suchbegriff oder erweiterte Kriterien wählen und auf „Prüfen“ klicken.</td></tr>}
             </tbody></table></div>
           </section>
@@ -809,5 +818,11 @@ export default function App(){
   </div>
 }
 
-function Check({n,title,status,value,ok}){return <article className="check"><small>{n} · {title}</small><strong className={ok?'oktext':''}>{status}</strong><div className="value">{value}</div></article>}
+function Check({n,title,status,value,ok}){
+  const failed=/nicht erfüllt|nicht vorhanden|Quellenmangel/i.test(String(status))
+  const needsReview=/prüfen/i.test(String(status))
+  const tone=ok?'ok':failed?'bad':needsReview?'warn':'idle'
+  const Icon=ok?CheckCircle2:failed?XCircle:needsReview?AlertTriangle:CircleHelp
+  return <article className={'check state-'+tone}><small>{n} · {title}</small><strong><Icon size={16} aria-hidden="true"/>{status}</strong><div className="value">{value}</div></article>
+}
 function Metric({label,value}){return <article className="metric"><span>{label}</span><strong>{Number(value||0).toLocaleString('de-DE')}</strong></article>}
