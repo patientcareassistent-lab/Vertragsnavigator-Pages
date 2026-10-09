@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir:'.',
-  testMatch:'ux-phase1.spec.mjs',
+  testMatch:'ux-phase*.spec.mjs',
   timeout:45_000,
   expect:{timeout:10_000},
   reporter:[['list']],
