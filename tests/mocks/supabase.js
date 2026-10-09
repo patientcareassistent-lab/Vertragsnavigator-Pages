@@ -78,7 +78,6 @@ const dataFor = (table,head,filters={}) => {
     contract_change_reviews:pgWorkReviews,
     vn_contract_knowledge_approved:[],
     vn_contract_questions_open_p2:[],
-    vn_contract_questions:[],
     vn_site_directory:sites,
     vn_site_eligibility:[],
     contract_user_notifications:[],
