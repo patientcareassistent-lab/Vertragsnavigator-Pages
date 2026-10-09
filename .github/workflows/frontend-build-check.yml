@@ -1,0 +1,49 @@
+name: Frontend Build Check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [feat/ux-phase1-readability-workflow-20261009]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build production bundle
+        run: npm run build
+
+  ux-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install application and browser test dependencies
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save --no-package-lock --no-audit --no-fund @playwright/test@1.55.0
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run UX browser smoke tests
+        run: npx playwright test --config tests/playwright.config.mjs
+      - name: Upload screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ux-phase1-browser-evidence
+          path: |
+            test-artifacts/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
