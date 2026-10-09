@@ -239,30 +239,30 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
       <button type="button" className={workQueue==='INTERNAL'?'active':''} onClick={()=>{setWorkQueue('INTERNAL');setSelectedId(null);setCreating(false);setStatusFilter('AKTIV');setQuery('')}}>Interne Vorbereitungsfälle ({historicalOpen} offen)</button>
     </div>}
     {canManage&&workQueue==='INTERNAL'&&<div className="backlog-internal-note">Dieser Bestand enthält offene fachliche Prüfungen und dokumentierte Entwicklungsabschlüsse aus der Vorbereitung. Er wird nicht durch die leere Live-Test-Ansicht gelöscht oder automatisch freigegeben.</div>}
-    <div className="backlog-summary">
+    {!creating&&<div className="backlog-summary">
       <div><small>{reportOnly?'Eigene Meldungen':workQueue==='LIVE'?'Meldungen aus der Anwendung':'Interne Vorbereitungsaufgaben'}</small><strong>{totals.all}</strong></div>
       <div><small>Offen / in Bearbeitung</small><strong>{totals.open}</strong></div>
       <div><small>Dringend (P0)</small><strong>{totals.urgent}</strong></div>
       <div><small>Im Test</small><strong>{totals.testing}</strong></div>
       <div><small>Erledigt</small><strong>{totals.done}</strong></div>
-    </div>
-    <div className="backlog-toolbar">
+    </div>}
+    {!creating&&<div className="backlog-toolbar">
       <div className="backlog-toolbar-heading"><ClipboardList size={20}/><div><strong>Entwicklungs-Backlog</strong><small>Fehler und Änderungswünsche · getrennt vom Vertragsänderungsprotokoll</small></div></div>
       <div className="backlog-toolbar-actions">
         <button type="button" className="secondary" onClick={reload} disabled={busy||saving}><RefreshCw size={15}/> Aktualisieren</button>
         <button type="button" className="primary" onClick={startNew}><Plus size={16}/> {reportOnly?'Meldung erfassen':'Neuer Eintrag'}</button>
       </div>
-    </div>
+    </div>}
     {error&&<div className="alert error" role="alert">{error}</div>}
     {message&&<div className="alert success" role="status">{message}</div>}
-    <div className="backlog-filters">
+    {!creating&&<div className="backlog-filters">
       <label className="backlog-query"><span>Suche</span><div className="backlog-searchbox"><Search size={15}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ID, Fehler, Stichwort, Bereich …" aria-label="Backlog durchsuchen"/></div></label>
       <label><span>Status</span><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="AKTIV">Aktive Einträge</option><option value="ALLE">Alle Status</option><option value="OFFEN">Offen</option><option value="IN_ARBEIT">In Arbeit</option><option value="BLOCKIERT">Blockiert</option><option value="TESTEN">Testen</option><option value="ABGESCHLOSSEN">Abgeschlossen</option></select></label>
       <label><span>Art</span><select value={kindFilter} onChange={e=>setKindFilter(e.target.value)}><option value="ALLE">Alle Arten</option>{Object.entries(KIND).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
       <label><span>Priorität</span><select value={priorityFilter} onChange={e=>setPriorityFilter(e.target.value)}><option value="ALLE">Alle Prioritäten</option>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</select></label>
       {canManage&&<label><span>Herkunft</span><select value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)}><option value="ALLE">Alle Quellen</option><option value="AUTOMATISCH">Laufzeitfehler</option><option value="CHAT">Aus Projektchats</option><option value="MANUELL">Nur manuell</option></select></label>}
-    </div>
-    <div className={'backlog-main '+(showEditor?'backlog-detail-open':'')}>
+    </div>}
+    <div className={'backlog-main '+(showEditor?'backlog-detail-open':'')+(creating?' backlog-creating':'')}>
       <section className="backlog-list" aria-label="Änderungs- und Fehlerliste">
         <div className="backlog-resultbar"><strong>{visible.length} Einträge</strong><small>Sortierung: Status und Priorität</small></div>
         {busy?<div className="backlog-loading"><LoaderCircle size={20} className="spin"/> Einträge werden geladen …</div>:
