@@ -37,7 +37,7 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
   const [workQueue,setWorkQueue]=useState('LIVE')
   const [selectedId,setSelectedId]=useState(null)
   const [draft,setDraft]=useState({...emptyDraft})
-  const [creating,setCreating]=useState(false)
+  const [creating,setCreating]=useState(reportOnly)
   const [history,setHistory]=useState([])
   const [historyBusy,setHistoryBusy]=useState(false)
   const [screenshot,setScreenshot]=useState(null)
@@ -74,6 +74,12 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
   }
 
   useEffect(()=>{if(userId)reload()},[userId,canManage])
+  useEffect(()=>{
+    setCreating(reportOnly)
+    setSelectedId(null)
+    setError('')
+    setMessage('')
+  },[reportOnly])
   useEffect(()=>{
     if(!screenshot){setScreenshotPreview('');return}
     const url=URL.createObjectURL(screenshot)
@@ -176,7 +182,7 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
   }
 
   function startNew(){
-    setCreating(true);setSelectedId(null);setDraft({...emptyDraft,priority:''})
+    setCreating(true);setSelectedId(null);setDraft({...emptyDraft,priority:canManage?'':'P2'})
     setError('');setMessage('');setHistory([]);setScreenshot(null);setTicketScreenshots([]);setScreenshotError('')
   }
 
@@ -194,8 +200,8 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
     if(!creating&&draft.status==='ERLEDIGT'&&draft.resolution_note.trim().length<5){setError('Für den Abschluss ist ein kurzer Erledigungsvermerk erforderlich.');return}
     setSaving(true)
     const payload={
-      kind:creating?'FEHLER':canManage?draft.kind:(draft.kind==='AENDERUNG'?'AENDERUNG':'FEHLER'),
-      priority:draft.priority||null,
+      kind:creating?(draft.kind==='AENDERUNG'?'AENDERUNG':'FEHLER'):canManage?draft.kind:(draft.kind==='AENDERUNG'?'AENDERUNG':'FEHLER'),
+      priority:canManage?(draft.priority||null):'P2',
       area:creating?'Allgemein':draft.area.trim()||'Allgemein',
       title,description,
       acceptance_criteria:canManage?draft.acceptance_criteria.trim():'',
@@ -234,20 +240,30 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
   }
 
   const showEditor=creating||selected
-  return <div className="backlog">
+  return <div className={'backlog'+(reportOnly?' backlog-report-mode':'')}>
+    {reportOnly&&<section className="backlog-report-intro" aria-label="Fehler und Änderungswünsche">
+      <div className="backlog-report-heading">
+        <span className="backlog-report-icon"><Bug size={23} aria-hidden="true"/></span>
+        <div><strong>Fehler und Änderungswünsche</strong><p>Neue Meldung erstellen oder den Bearbeitungsstand Ihrer bisherigen Meldungen verfolgen.</p></div>
+      </div>
+      <div className="backlog-report-switch" role="group" aria-label="Meldungen verwalten">
+        <button type="button" className={creating?'active':''} aria-pressed={creating} onClick={startNew}><Plus size={16}/> Neue Meldung</button>
+        <button type="button" className={!creating?'active':''} aria-pressed={!creating} onClick={()=>{setCreating(false);setSelectedId(null);setError('');setMessage('')}}><ClipboardList size={16}/> Meine Meldungen{!busy?' ('+rows.length+')':''}</button>
+      </div>
+    </section>}
     {canManage&&<div className="backlog-workqueues" role="group" aria-label="Backlog-Arbeitsvorrat">
       <button type="button" className={workQueue==='LIVE'?'active':''} onClick={()=>{setWorkQueue('LIVE');setSelectedId(null);setCreating(false);setStatusFilter('AKTIV');setQuery('')}}>Live-Meldungen</button>
       <button type="button" className={workQueue==='INTERNAL'?'active':''} onClick={()=>{setWorkQueue('INTERNAL');setSelectedId(null);setCreating(false);setStatusFilter('AKTIV');setQuery('')}}>Interne Vorbereitungsfälle ({historicalOpen} offen)</button>
     </div>}
     {canManage&&workQueue==='INTERNAL'&&<div className="backlog-internal-note">Dieser Bestand enthält offene fachliche Prüfungen und dokumentierte Entwicklungsabschlüsse aus der Vorbereitung. Er wird nicht durch die leere Live-Test-Ansicht gelöscht oder automatisch freigegeben.</div>}
-    {!creating&&<div className="backlog-summary">
+    {!creating&&!reportOnly&&<div className="backlog-summary">
       <div><small>{reportOnly?'Eigene Meldungen':workQueue==='LIVE'?'Meldungen aus der Anwendung':'Interne Vorbereitungsaufgaben'}</small><strong>{totals.all}</strong></div>
       <div><small>Offen / in Bearbeitung</small><strong>{totals.open}</strong></div>
       <div><small>Dringend (P0)</small><strong>{totals.urgent}</strong></div>
       <div><small>Im Test</small><strong>{totals.testing}</strong></div>
       <div><small>Erledigt</small><strong>{totals.done}</strong></div>
     </div>}
-    {!creating&&<div className="backlog-toolbar">
+    {!creating&&!reportOnly&&<div className="backlog-toolbar">
       <div className="backlog-toolbar-heading"><ClipboardList size={20}/><div><strong>Entwicklungs-Backlog</strong><small>Fehler und Änderungswünsche · getrennt vom Vertragsänderungsprotokoll</small></div></div>
       <div className="backlog-toolbar-actions">
         <button type="button" className="secondary" onClick={reload} disabled={busy||saving}><RefreshCw size={15}/> Aktualisieren</button>
@@ -256,18 +272,18 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
     </div>}
     {error&&<div className="alert error" role="alert">{error}</div>}
     {message&&<div className="alert success" role="status">{message}</div>}
-    {!creating&&<div className="backlog-filters">
+    {!creating&&(!reportOnly||rows.length>0)&&<div className="backlog-filters">
       <label className="backlog-query"><span>Suche</span><div className="backlog-searchbox"><Search size={15}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ID, Fehler, Stichwort, Bereich …" aria-label="Backlog durchsuchen"/></div></label>
       <label><span>Status</span><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="AKTIV">Aktive Einträge</option><option value="ALLE">Alle Status</option><option value="OFFEN">Offen</option><option value="IN_ARBEIT">In Arbeit</option><option value="BLOCKIERT">Blockiert</option><option value="TESTEN">Testen</option><option value="ABGESCHLOSSEN">Abgeschlossen</option></select></label>
-      <label><span>Art</span><select value={kindFilter} onChange={e=>setKindFilter(e.target.value)}><option value="ALLE">Alle Arten</option>{Object.entries(KIND).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
-      <label><span>Priorität</span><select value={priorityFilter} onChange={e=>setPriorityFilter(e.target.value)}><option value="ALLE">Alle Prioritäten</option>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</select></label>
+      {!reportOnly&&<label><span>Art</span><select value={kindFilter} onChange={e=>setKindFilter(e.target.value)}><option value="ALLE">Alle Arten</option>{Object.entries(KIND).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>}
+      {!reportOnly&&<label><span>Priorität</span><select value={priorityFilter} onChange={e=>setPriorityFilter(e.target.value)}><option value="ALLE">Alle Prioritäten</option>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</select></label>}
       {canManage&&<label><span>Herkunft</span><select value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)}><option value="ALLE">Alle Quellen</option><option value="AUTOMATISCH">Laufzeitfehler</option><option value="CHAT">Aus Projektchats</option><option value="MANUELL">Nur manuell</option></select></label>}
     </div>}
     <div className={'backlog-main '+(showEditor?'backlog-detail-open':'')+(creating?' backlog-creating':'')}>
       <section className="backlog-list" aria-label="Änderungs- und Fehlerliste">
-        <div className="backlog-resultbar"><strong>{visible.length} Einträge</strong><small>Sortierung: Status und Priorität</small></div>
+        <div className="backlog-resultbar"><strong>{reportOnly?'Meine Meldungen · ':''}{visible.length} {visible.length===1?'Eintrag':'Einträge'}</strong><small>Sortierung: Status und Priorität</small></div>
         {busy?<div className="backlog-loading"><LoaderCircle size={20} className="spin"/> Einträge werden geladen …</div>:
-          visible.length===0?<div className="backlog-empty">{workQueue==='LIVE'?'Noch keine Meldungen aus der Anwendung erfasst.':'Keine Einträge für die aktuelle Filterung gefunden.'}</div>:
+          visible.length===0?<div className="backlog-empty">{reportOnly?(rows.length?'Keine eigenen Meldungen entsprechen der Filterung.':'Sie haben noch keine Meldung eingereicht. Über „Neue Meldung“ können Sie einen Fehler oder Änderungswunsch melden.'):(workQueue==='LIVE'?'Noch keine Meldungen aus der Anwendung erfasst.':'Keine Einträge für die aktuelle Filterung gefunden.')}</div>:
           <div className="backlog-tablewrap"><table className="backlog-table"><thead><tr><th>Prio / ID</th><th>Änderung oder Fehler</th><th>Status</th><th>Gemeldet von</th><th>Verantwortlich</th><th>Stand</th></tr></thead><tbody>
             {visible.map(row=><tr key={row.id} className={selectedId===row.id?'backlog-selected':''} onClick={()=>openRow(row)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openRow(row)}}} tabIndex={0} aria-label={code(row)+': '+row.title}>
               <td><PriorityPill priority={row.priority}/><small className="backlog-code">{code(row)}</small></td>
@@ -280,10 +296,15 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
           </tbody></table></div>}
       </section>
       {showEditor&&<section className="backlog-editor" aria-label={creating?'Neuen Eintrag erfassen':'Eintrag bearbeiten'}>
-        <div className="backlog-editor-header"><div><small>{creating?'Neuer Eintrag':code(selected)}</small><h2>{creating?'Fehler oder Änderung erfassen':'Eintrag im Detail'}</h2></div><button className="backlog-close" type="button" aria-label="Detail schließen" onClick={()=>{setCreating(false);setSelectedId(null);setError('');setMessage('')}}><X size={18}/></button></div>
+        <div className="backlog-editor-header"><div><small>{creating?'Neuer Eintrag':code(selected)}</small><h2>{creating?'Neue Meldung erfassen':reportOnly?'Meine Meldung':'Eintrag im Detail'}</h2></div><button className="backlog-close" type="button" aria-label="Detail schließen" onClick={()=>{setCreating(false);setSelectedId(null);setError('');setMessage('')}}><X size={18}/></button></div>
         <form onSubmit={save} className="backlog-editor-form">
           {creating?<div className="backlog-simple-create">
-            <label className="backlog-simple-description">Was möchten Sie melden?
+            <fieldset className="backlog-kind-choice">
+              <legend>Was möchten Sie melden?</legend>
+              <label className={draft.kind==='FEHLER'?'selected':''}><input type="radio" name="backlog-kind" value="FEHLER" checked={draft.kind==='FEHLER'} onChange={()=>change('kind','FEHLER')}/><Bug size={17} aria-hidden="true"/> Fehler</label>
+              <label className={draft.kind==='AENDERUNG'?'selected':''}><input type="radio" name="backlog-kind" value="AENDERUNG" checked={draft.kind==='AENDERUNG'} onChange={()=>change('kind','AENDERUNG')}/><Plus size={17} aria-hidden="true"/> Änderungswunsch</label>
+            </fieldset>
+            <label className="backlog-simple-description">Beschreibung
               <textarea rows={9} required maxLength={10000} value={draft.description}
                 onChange={e=>change('description',e.target.value)}
                 onPaste={e=>{const image=Array.from(e.clipboardData?.items||[]).find(i=>SCREENSHOT_TYPES[i.type]);if(image){e.preventDefault();selectScreenshot(image.getAsFile())}}}
@@ -299,12 +320,13 @@ export default function DevelopmentBacklog({userId,canManage=false,reportOnly=fa
               {screenshotPreview&&<div className="backlog-screenshot-preview"><img src={screenshotPreview} alt="Screenshot-Vorschau"/><button type="button" className="secondary" onClick={()=>setScreenshot(null)}>Screenshot entfernen</button></div>}
             </div>
             {screenshotError&&<div className="alert error" role="alert">{screenshotError}</div>}
-            <label className="backlog-simple-priority">Priorität (optional)
+            {canManage&&<label className="backlog-simple-priority">Priorität (optional)
               <select value={draft.priority||''} onChange={e=>change('priority',e.target.value)}>
                 <option value="">Keine Angabe</option>
                 {PRIORITIES.map(p=><option key={p} value={p}>{p}</option>)}
               </select>
-            </label>
+            </label>}
+            {!canManage&&<p className="backlog-report-priority-note">Die Priorität und weitere Bearbeitung werden vom zuständigen Team festgelegt.</p>}
           </div>:<>
           <div className="backlog-formgrid">
             <label>Art<select value={draft.kind} disabled={!creating&&!canManage} onChange={e=>change('kind',e.target.value)}>
