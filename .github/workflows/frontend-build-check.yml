@@ -17,6 +17,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Verify contract witches sayings and rotation
+        run: node --test tests/contract-witches.test.mjs
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Build production bundle
