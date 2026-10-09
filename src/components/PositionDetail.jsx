@@ -163,6 +163,16 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
       </div>
     </div>
 
+    <div className="position-quickfacts" aria-label="Wesentliche Vertragsangaben">
+      <Field label="Produktgruppe" value={text(position.pg)}/>
+      <Field label="HMV-Nummer" value={text(position.code)}/>
+      <Field label="Vertragsposition" value={text(position.pos)}/>
+      <Field label="Preis" value={money(position.preis)}/>
+      <Field label="Genehmigung" value={text(position.genehmigung||position.freigrenze)}/>
+      <Field label="Verordnung" value={text(position.verordnung)}/>
+    </div>
+    <details className="position-more-details">
+      <summary>Fachdetails, Originalquellen und Vertragsversionen anzeigen</summary>
     <div className="position-detail-grid">
       <div className="position-detail-group">
         <h4>Versorgung / Position</h4>
@@ -256,6 +266,7 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
       </div>
     </details>}
 
+    </details>
     {sourceError&&<div className="alert error position-source-error">{sourceError}</div>}
   </section>
 }
