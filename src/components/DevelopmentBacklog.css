@@ -89,3 +89,27 @@
 /* User/admin ticket reporter visibility */
 .backlog-reporter{display:block;color:#1b3250;font-size:12px;line-height:1.4}
 .backlog-reporter-role{display:block;margin-top:3px;color:#8593a2;font-size:11px}
+
+
+/* Eine einzige Eingabe fuer User und PG-Admins; Screenshots bleiben im Ticket sichtbar. */
+.backlog-simple-create{display:grid;gap:17px}
+.backlog-simple-description{display:grid;gap:8px;font-size:14px!important;font-weight:700}
+.backlog-simple-create .backlog-simple-description textarea{min-height:230px;resize:vertical;font-size:14px;line-height:1.55;padding:14px}
+.backlog-screenshot-field{display:grid;gap:9px;padding:13px;border:1px dashed #a9b8c7;border-radius:10px;background:#f8fafc}
+.backlog-screenshot-field>label{display:flex;flex-wrap:wrap;align-items:center;gap:9px;font-size:13px;font-weight:650}
+.backlog-screenshot-field input[type=file],.backlog-add-screenshot input[type=file]{max-width:100%;height:auto;font-size:12px}
+.backlog-screenshot-field small{font-size:11px;color:#667085;line-height:1.5}
+.backlog-screenshot-preview{display:grid;gap:9px;justify-items:start}
+.backlog-screenshot-preview img{max-width:100%;max-height:320px;object-fit:contain;border:1px solid #dce4eb;border-radius:8px}
+.backlog-screenshot-preview button{font-size:11px;padding:8px 12px}
+.backlog-simple-priority{display:grid;gap:7px;width:min(260px,100%);font-size:12px!important}
+.backlog-simple-priority select{font-size:13px}
+.backlog-screenshots{border-top:1px solid #edf0f4;padding:14px 0;display:grid;gap:12px}
+.backlog-screenshots h3{display:flex;align-items:center;gap:7px;margin:0;font-size:13px;color:var(--blue)}
+.backlog-screenshots>p{margin:0;color:#667085;font-size:12px}
+.backlog-screenshot-gallery{display:flex;flex-wrap:wrap;gap:10px}
+.backlog-screenshot-gallery a{display:block;border:1px solid #dce4eb;border-radius:9px;overflow:hidden;background:#f8fafc}
+.backlog-screenshot-gallery img{display:block;max-width:220px;max-height:190px;object-fit:contain}
+.backlog-add-screenshot{display:grid;gap:6px;justify-items:start;font-weight:600}
+.backlog-screenshot-error{color:#b42318!important}
+@media(max-width:620px){.backlog-simple-create .backlog-simple-description textarea{min-height:190px}.backlog-screenshot-gallery img{max-width:150px}}
