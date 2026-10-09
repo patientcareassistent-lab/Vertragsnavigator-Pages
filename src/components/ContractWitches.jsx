@@ -56,7 +56,7 @@ function WitchOnBroom({ variant, speaking }) {
           <circle cx="39" cy="73" r="4" fill="#f5c49e" />
         </svg>
       </div>
-      <span className="vn-hx-character-name">{isPurple ? 'Paragrafina' : 'Klausulina'}</span>
+      <span className="vn-hx-character-name">{isPurple ? 'Caro' : 'Julie'}</span>
     </div>
   )
 }
@@ -114,7 +114,7 @@ export default function ContractWitches() {
   }))
 
   const joke = CONTRACT_WITCH_JOKES[scene.index]
-  const speaker = scene.index % 2 === 0 ? 'Paragrafina' : 'Klausulina'
+  const speaker = scene.index % 2 === 0 ? 'Caro' : 'Julie'
 
   return (
     <aside className="vn-hx-widget" aria-label="Vertragshexen – humorvolle Einlage">
@@ -122,10 +122,10 @@ export default function ContractWitches() {
         <div className="vn-hx-stage">
           <div className="vn-hx-cast" aria-hidden="true">
             <div className="vn-hx-flight vn-hx-flight-left">
-              <WitchOnBroom variant="paragrafina" speaking={speaker === 'Paragrafina'} />
+              <WitchOnBroom variant="paragrafina" speaking={speaker === 'Caro'} />
             </div>
             <div className="vn-hx-flight vn-hx-flight-right">
-              <WitchOnBroom variant="klausulina" speaking={speaker === 'Klausulina'} />
+              <WitchOnBroom variant="klausulina" speaking={speaker === 'Julie'} />
             </div>
           </div>
           <div className="vn-hx-bubble" role="group" aria-label={`${speaker} sagt: ${joke} Nur Spaß, keine Vertragsauskunft.`}>
