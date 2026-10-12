@@ -94,7 +94,7 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
     let cancelled=false
     async function load(){
       if(!position){setVersions([]);setDocuments([]);setValidityScopes([]);setRequirements([]);setRequirementsError('');return}
-      setLoading(true);setSourceError('')
+      setLoading(true);setSourceError('');setRequirements([]);setRequirementsError('')
       try{
         const jobs=[]
         if(position.contract_id){
@@ -160,7 +160,7 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
           .slice(0,8)
         setDocuments(docs)
       }catch(e){
-        if(!cancelled)setSourceError(e.message||String(e))
+        if(!cancelled){setSourceError(e.message||String(e));setRequirementsError(e.message||String(e))}
       }finally{
         if(!cancelled)setLoading(false)
       }
