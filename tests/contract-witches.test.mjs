@@ -7,6 +7,7 @@ import { OFFICE_WISDOM } from '../src/components/witchOfficeWisdom.js'
 import {
   WITCH_JOKES, WITCH_WISDOM, localDateKey, getDailyWisdom,
   createShuffledJokeBag, restoreJokeBag, nextRandomDelay,
+  getWitchSpeaker, adaptWitchJokeText, displayWitchCategory,
 } from '../src/components/witchRotation.js'
 
 test('exactly 300 distinct sayings in four categories', () => {
@@ -61,4 +62,35 @@ test('automatic interval stays between 2 and 3 minutes', () => {
   assert.equal(nextRandomDelay(() => 0), 120000)
   assert.equal(nextRandomDelay(() => 0.5), 150000)
   assert.equal(nextRandomDelay(() => 0.999999), 180000)
+})
+
+test('Caro always says Julie and Julie always says Caro in Chuck-Norris jokes', () => {
+  const source = WITCH_JOKES[0]
+  assert.match(source.text, /Chuck Norris/)
+  assert.equal(getWitchSpeaker({variant: 'caro', sequence: 1}), 'Caro')
+  assert.equal(getWitchSpeaker({variant: 'julie', sequence: 2}), 'Julie')
+  assert.equal(getWitchSpeaker({variant: 'duo', sequence: 3}), 'Caro')
+  assert.equal(getWitchSpeaker({variant: 'flight', sequence: 4}), 'Julie')
+  const caroText = adaptWitchJokeText(source, {variant: 'caro', sequence: 1})
+  const julieText = adaptWitchJokeText(source, {variant: 'julie', sequence: 2})
+  assert.match(caroText, /Julie/)
+  assert.doesNotMatch(caroText, /Caro|Chuck Norris/)
+  assert.match(julieText, /Caro/)
+  assert.doesNotMatch(julieText, /Julie|Chuck Norris/)
+  assert.equal(displayWitchCategory(source, 'joke'), 'Hexen-Vertragswitz')
+})
+
+test('Every historical Chuck Norris joke is rewritten only for presentation', () => {
+  const all = WITCH_JOKES.filter(joke => joke.category === 'Chuck-Norris-Vertragswitz')
+  assert.equal(all.length, 100)
+  for(const joke of all) {
+    const forCaro = adaptWitchJokeText(joke, {variant: 'caro', sequence: 1})
+    const forJulie = adaptWitchJokeText(joke, {variant: 'julie', sequence: 2})
+    assert.doesNotMatch(forCaro, /Chuck\s+Norris/i)
+    assert.doesNotMatch(forJulie, /Chuck\s+Norris/i)
+    assert.match(forCaro, /Julie/)
+    assert.match(forJulie, /Caro/)
+  }
+  assert.equal(adaptWitchJokeText({text:'Ein guter Vertrag spart Wege.',category:'Vertragsweisheit'}, {variant:'julie'}), 'Ein guter Vertrag spart Wege.')
+  assert.equal(displayWitchCategory(null, 'wisdom'), 'Weisheit des Tages')
 })
