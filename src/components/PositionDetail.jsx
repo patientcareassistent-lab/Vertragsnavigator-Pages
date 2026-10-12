@@ -54,9 +54,17 @@ function requirementMatchesPayer(requirement,contract,position){
     ? new RegExp('(^|[^a-z0-9])'+a+'($|[^a-z0-9])').test(context)
     : context.includes(a))
 }
+function requirementMatchesPg(requirement,pg){
+  const wanted=Number.parseInt(String(pg||''),10)
+  if(!Number.isFinite(wanted))return false
+  const declared=String(requirement.pg||'').trim().toLowerCase()
+  if(declared==='diverse')return true
+  const groups=(declared.match(/\d{1,2}/g)||[]).map(v=>Number.parseInt(v,10))
+  return groups.includes(wanted)
+}
 const requirementStatusLabel={
-  EXPLIZIT_PFLICHT:'Pflicht laut Quelle',
-  INHALT_PFLICHT_FORMAT_FREI:'Inhalt verpflichtend',
+  EXPLIZIT_PFLICHT:'Pflicht im Quellvertrag',
+  INHALT_PFLICHT_FORMAT_FREI:'Inhalt im Quellvertrag verpflichtend',
   VERTRAGSFORMULAR:'Vertragsformular',
   VERTRAG_PRUEFEN:'Vertrag prüfen',
   GKV_STANDARD_OPTIONAL:'Optional'
@@ -79,7 +87,9 @@ function RequirementField({items=[],hints=[],versions=[],loading=false,error='',
         <div className="requirement-item-head"><b>{r.supply_type||r.region_contract||'Vertragsformular'}</b><span>{requirementStatusLabel[r.status]||'Hinweis'}</span></div>
         <p>{r.action||r.evidence||'Originalvertrag prüfen.'}</p>
         {r.evidence&&r.action&&<p className="requirement-evidence">Nachweis: {r.evidence}</p>}
-        {r.region_contract&&<p className="requirement-evidence">Vertragsbereich laut Quelle: {r.region_contract} (Geltungsumfang prüfen).</p>}
+        {r.region_contract&&<p className="requirement-evidence">Vertragsbereich laut Quelle: {r.region_contract}.</p>}
+        <p className="requirement-review">Zuordnung anhand von Kasse und PG; konkrete Versorgungsart und Vertragsfassung sind zusätzlich zu prüfen.</p>
+        {r.source&&<p className="requirement-evidence">Quelle: {r.source}</p>}
         {r.validity&&<p className="requirement-evidence">{r.validity}</p>}
         {r.review_required&&<p className="requirement-review">Fachprüfung erforderlich.</p>}
       </div>)}
@@ -152,11 +162,10 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
         }else jobs.push(Promise.resolve({data:[],error:null}))
 
         if(position.pg){
-          const pgNumber=Number.parseInt(position.pg,10)
-          const pgCodes=[...new Set([String(position.pg),Number.isFinite(pgNumber)?String(pgNumber):'',Number.isFinite(pgNumber)?String(pgNumber).padStart(2,'0'):''].filter(Boolean))]
+          // Composite PG scopes (e.g. "18/22") and "diverse" cannot be matched with .in('pg',...).
           jobs.push(supabase.from('form_requirements')
             .select('form_requirement_id,payer,region_contract,pg,supply_type,status,evidence,action,validity,source,review_required')
-            .in('pg',pgCodes).limit(100))
+            .limit(100))
         }else jobs.push(Promise.resolve({data:[],error:null}))
 
         if(position.contract_id&&position.pg){
@@ -176,7 +185,7 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
 
         setVersions(vr.data||[])
         setValidityScopes(sr.data||[])
-        setRequirements((rr.data||[]).filter(r=>requirementMatchesPayer(r,contract,position)).slice(0,12))
+        setRequirements((rr.data||[]).filter(r=>requirementMatchesPg(r,position.pg)&&requirementMatchesPayer(r,contract,position)).slice(0,20))
         setRequirementsError([rr.error?.message,er.error?.message].filter(Boolean).join(' | '))
         setDocumentHints((er.data||[]).filter(h=>h.evidence_excerpt).slice(0,20))
         const keys=sourceKeys(contract,position)
