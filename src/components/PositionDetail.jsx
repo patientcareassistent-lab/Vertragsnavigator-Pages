@@ -34,10 +34,58 @@ function Field({label,value,wide=false}){
   return <div className={'position-field '+(wide?'wide':'')}><small>{label}</small><strong>{value??'—'}</strong></div>
 }
 
+const requirementPayerAliases={
+  'aok baden-wurttemberg':['aok baden-wurttemberg','aok baden wurttemberg','aok bw','aokbw'],
+  'aok bremen/bremerhaven':['aok bremen','aok bremerhaven'],
+  'aok hessen':['aok hessen'],
+  'aok niedersachsen':['aok niedersachsen'],
+  'barmer':['barmer'],
+  'dak-gesundheit':['dak'],
+  'hek':['hek'],
+  'ikk classic':['ikk classic','ikk-classic'],
+  'kkh':['kkh'],
+  'techniker krankenkasse':['techniker krankenkasse','techniker','tk']
+}
+function requirementMatchesPayer(requirement,contract,position){
+  const payer=norm(requirement.payer).trim()
+  const aliases=requirementPayerAliases[payer]||[]
+  const context=norm([contract?.contract_name,position?.contract,position?.family,...asArray(contract?.payer_families)].filter(Boolean).join(' '))
+  return aliases.some(a=>a.length<=3
+    ? new RegExp('(^|[^a-z0-9])'+a+'($|[^a-z0-9])').test(context)
+    : context.includes(a))
+}
+const requirementStatusLabel={
+  EXPLIZIT_PFLICHT:'Pflicht laut Quelle',
+  INHALT_PFLICHT_FORMAT_FREI:'Inhalt verpflichtend',
+  VERTRAGSFORMULAR:'Vertragsformular',
+  VERTRAG_PRUEFEN:'Vertrag prüfen',
+  GKV_STANDARD_OPTIONAL:'Optional'
+}
+function RequirementField({items,loading,error}){
+  return <div className="position-field wide position-requirements">
+    <small>KV- / abrechnungsrelevante Unterlagen</small>
+    {loading?<strong>Unterlagenhinweise werden geladen …</strong>
+      :error?<strong>Unterlagenhinweise nicht verfügbar – Originalvertrag prüfen.</strong>
+      :items.length?<div className="requirement-items">
+        {items.map(r=><div className="requirement-item" key={r.form_requirement_id}>
+          <div className="requirement-item-head"><b>{r.supply_type||r.region_contract||'Vertragsunterlagen'}</b><span>{requirementStatusLabel[r.status]||'Hinweis'}</span></div>
+          <p>{r.action||r.evidence||'Vertragsunterlagen prüfen.'}</p>
+          {r.evidence&&r.action&&<p className="requirement-evidence">Nachweis: {r.evidence}</p>}
+          {r.validity&&<p className="requirement-evidence">{r.validity}</p>}
+          {r.review_required&&<p className="requirement-review">Fachliche Prüfung ausstehend.</p>}
+        </div>)}
+        <p className="requirement-disclaimer">Aus der Formularmatrix; weitere vertragliche Unterlagen können erforderlich sein.</p>
+      </div>
+      :<strong>Keine vertragsspezifischen Unterlagenanforderungen hinterlegt – Originalvertrag prüfen.</strong>}
+  </div>
+}
+
 export default function PositionDetail({position,contract,site,siteMatch,knowledge=[],canFach=false,onPossibleAddons=null}){
   const [versions,setVersions]=useState([])
   const [documents,setDocuments]=useState([])
   const [validityScopes,setValidityScopes]=useState([])
+  const [requirements,setRequirements]=useState([])
+  const [requirementsError,setRequirementsError]=useState('')
   const [loading,setLoading]=useState(false)
   const [sourceBusy,setSourceBusy]=useState(false)
   const [sourceError,setSourceError]=useState('')
@@ -45,7 +93,7 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
   useEffect(()=>{
     let cancelled=false
     async function load(){
-      if(!position){setVersions([]);setDocuments([]);setValidityScopes([]);return}
+      if(!position){setVersions([]);setDocuments([]);setValidityScopes([]);setRequirements([]);setRequirementsError('');return}
       setLoading(true);setSourceError('')
       try{
         const jobs=[]
@@ -79,7 +127,16 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
           )
         }else jobs.push(Promise.resolve({data:[],error:null}))
 
-        const [vr,dr,sr]=await Promise.all(jobs)
+        if(position.pg){
+          const pgNumber=Number.parseInt(position.pg,10)
+          const pgCodes=[...new Set([String(position.pg),Number.isFinite(pgNumber)?String(pgNumber):'',Number.isFinite(pgNumber)?String(pgNumber).padStart(2,'0'):''].filter(Boolean))]
+          jobs.push(supabase.from('form_requirements')
+            .select('form_requirement_id,payer,region_contract,pg,supply_type,status,evidence,action,validity,source,review_required')
+            .in('pg',pgCodes).limit(100))
+        }else jobs.push(Promise.resolve({data:[],error:null}))
+
+        const [vr,dr,sr,rr]=await Promise.all(jobs)
+
         if(cancelled)return
         if(vr.error)throw vr.error
         if(dr.error)throw dr.error
@@ -87,6 +144,8 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
 
         setVersions(vr.data||[])
         setValidityScopes(sr.data||[])
+        setRequirements((rr.data||[]).filter(r=>requirementMatchesPayer(r,contract,position)).slice(0,12))
+        setRequirementsError(rr.error?.message||'')
         const keys=sourceKeys(contract,position)
         const seen=new Set()
         const docs=(dr.data||[])
@@ -108,7 +167,7 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
     }
     load()
     return()=>{cancelled=true}
-  },[position?.position_row_id,position?.contract_id,position?.pg,contract?.contract_id])
+  },[position?.position_row_id,position?.contract_id,position?.pg,position?.contract,position?.family,contract?.contract_id,contract?.contract_name])
 
   const relevantVersions=useMemo(()=>{
     const matching=versions.filter(v=>versionRelevant(v,position?.pg))
@@ -204,6 +263,7 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
           <Field label="Positionsgültigkeit ab" value={text(position.gueltig_ab)}/>
           <Field label="Positionsgültigkeit bis" value={text(position.gueltig_bis||'offen')}/>
           <Field label={`Vertragsgeltung PG ${position.pg||'—'}`} value={contractValidityText} wide/>
+          <RequirementField items={requirements} loading={loading} error={requirementsError}/>
         </div>
       </div>
 
