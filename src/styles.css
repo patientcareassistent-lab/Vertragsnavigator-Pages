@@ -12,7 +12,7 @@
 .search-actions .secondary{white-space:nowrap}
 
 .advanced-search{display:none;grid-column:1/-1;border-top:1px solid #dfe5e9;margin-top:5px;padding-top:10px}
-.mode-fach .advanced-search{display:block}
+.mode-fach .advanced-search,.mode-innendienst .advanced-search{display:block}
 .advanced-search summary{cursor:pointer;color:var(--blue);font-size:12px;font-weight:800;user-select:none}
 .advanced-search summary span{font-weight:400;color:var(--muted);margin-left:7px}
 .advanced-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px 10px;margin-top:12px;align-items:end}
