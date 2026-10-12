@@ -21,6 +21,8 @@ jobs:
         run: node --test tests/contract-witches.test.mjs
       - name: Verify payer alias normalization and mixed contract handling
         run: node --test tests/payer-alias.test.mjs
+      - name: Verify position LEGS / validity display rules
+        run: node --test tests/position-scope.test.mjs
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Build production bundle
