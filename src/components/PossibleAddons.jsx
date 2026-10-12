@@ -21,6 +21,10 @@ function conditionMessage(item){
 function ExtraRow({item,onExplore,canExplore}){
   const checked=item.match_basis==='VERIFIED'
   const approval=approvalBadge(item)
+  const rawCondition=normalizeText(item.conditions).toLocaleLowerCase('de')
+  const included=/(in (der|den) (jeweiligen )?grundposition enthalten|im preis (des zusatzes )?enthalten|bereits enthalten|nicht gesondert abrechenbar|nicht separat abrechenbar)/.test(rawCondition)
+  const excluded=/(nicht zusammen mit|kann nicht in verbindung|nicht ansetzbar|nicht abrechenbar|nicht kombinierbar)/.test(rawCondition)
+  const justification=/(begründung|medizinische notwendigkeit|zu begründen)/.test(rawCondition)
   const price=item.preis===null||item.preis===undefined?'Preis nicht erfasst':fmtMoney(item.preis)
   const source=normalizeText(item.source_doc)
   return <article className={'possible-addon-item '+(checked?'is-verified':'is-unverified')}>
@@ -32,6 +36,9 @@ function ExtraRow({item,onExplore,canExplore}){
       <span className={'possible-addon-status '+(checked?'verified':'pending')}>{checked?'Quellengeprüft':'Nicht freigegeben'}</span>
     </div>
     <div className="possible-addon-tags">
+      {included&&<span className="addon-tag-blocked" title="Mögliche Inklusivleistung – Originalvertrag prüfen">Im Grundpreis enthalten?</span>}
+      {excluded&&<span className="addon-tag-blocked" title="Mögliche nicht zulässige Kombination – Originalvertrag prüfen">Kombination eingeschränkt?</span>}
+      {justification&&<span className="addon-tag-note">Begründung prüfen</span>}
       {item.relation_type&&<span className={item.relation_type==='EXCLUDED'?'addon-tag-blocked':'addon-tag-note'}>{RELATIONS[item.relation_type]||item.relation_type}</span>}
       <span className={'possible-addon-approval '+approval.tone} title={approval.detail}>{approval.label}</span>
     </div>
