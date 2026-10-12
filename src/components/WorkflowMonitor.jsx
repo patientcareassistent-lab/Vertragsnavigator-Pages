@@ -99,6 +99,7 @@ export default function WorkflowMonitor({onNavigate}){
   async function save(){
     if(!selected||selected.source_kind==='BACKLOG'||!draft)return
     if(draft.evidence_checked_at&&!draft.evidence_note.trim()){setError('Für einen bestätigten Prüfnachweis ist eine Begründung erforderlich.');return}
+    if(draft.business_status==='ERLEDIGT'&&!draft.evidence_checked_at){setError('Abschluss ist erst nach Bestätigung eines Prüfnachweises möglich.');return}
     if(draft.evidence_url&&!safeUrl(draft.evidence_url)){setError('Nachweis-URL muss eine vollständige HTTPS-Adresse sein.');return}
     setSaving(true);setError('');setNotice('')
     const patch={
