@@ -31,8 +31,7 @@ const NAV=[
 
 const EMPTY_ADVANCED={
   hmv:'',position:'',productType:'',contract:'',legs:'',lkz:'',
-  approval:'all',supplyForm:'all',prescription:'all',validOn:'',
-  priceMode:'all',minPrice:'',maxPrice:'',pq:'all',accession:'all',authoritative:false,
+  approval:'all',validOn:'',accession:'all',authoritative:false,
 }
 
 const escArray=v=>Array.isArray(v)?v:(v?[v]:[])
@@ -496,23 +495,17 @@ export default function App(){
     const hasAdvanced=[
       advanced.hmv,advanced.position,advanced.productType,advanced.contract,advanced.legs,advanced.lkz,
       advanced.approval!=='all'?'x':'',
-      advanced.supplyForm!=='all'?'x':'',
-      advanced.prescription!=='all'?'x':'',
       advanced.validOn,
-      advanced.priceMode!=='all'?'x':'',
-      advanced.minPrice,advanced.maxPrice,
-      advanced.pq!=='all'?'x':'',
       advanced.accession!=='all'?'x':'',
       advanced.authoritative?'x':'',
     ].some(Boolean)
 
     if(!term.trim()&&!pg&&!payer&&!payerDetail.trim()&&!hasAdvanced){setResults([]);return}
-    if((advanced.pq!=='all'||advanced.accession!=='all')&&!siteId){
-      setError('Für PQ oder Vertragsbeitritt bitte zuerst einen Standort auswählen.')
+    if(advanced.accession!=='all'&&!siteId){
+      setError('Für den Vertragsbeitritt bitte zuerst einen Standort auswählen.')
       return
     }
 
-    const toNumber=value=>String(value).trim()===''?null:Number(value)
     const rawTerm=canonicalCompanyQuery(term)
     const termIsHmv=/^\d{2}(?:\.\d{2}){1,3}(?:\.\d{1,4})?$/.test(rawTerm)
     const termIsPosition=/^\d{6,12}$/.test(rawTerm)
@@ -536,15 +529,16 @@ export default function App(){
         p_legs:advanced.legs.trim()||null,
         p_lkz:advanced.lkz.trim()||null,
         p_approval:advanced.approval,
-        p_supply_form:advanced.supplyForm,
-        p_prescription:advanced.prescription,
+        // Nicht mehr angebotene Filter neutral setzen; RPC-Parameter müssen erhalten bleiben.
+        p_supply_form:'all',
+        p_prescription:'all',
         p_valid_on:advanced.validOn||null,
-        p_price_mode:advanced.priceMode,
-        p_min_price:toNumber(advanced.minPrice),
-        p_max_price:toNumber(advanced.maxPrice),
+        p_price_mode:'all',
+        p_min_price:null,
+        p_max_price:null,
         p_authoritative_only:advanced.authoritative,
         p_site_id:siteId||null,
-        p_pq:advanced.pq,
+        p_pq:'all',
         p_accession:advanced.accession,
         p_fuzzy:false,
         p_limit:150,
@@ -697,7 +691,7 @@ export default function App(){
               </div>}
 
               <details className="advanced-search">
-                <summary>Erweiterte Suche <span>HMV · Position · Produktart · Vertrag · LEGS · Genehmigung · Versorgungsform · Gültigkeit · PQ · Standort</span></summary>
+                <summary>Erweiterte Suche <span>HMV · Position · Produktart · Vertrag · LEGS · Genehmigung · Stichtag · Vertragsbeitritt</span></summary>
                 <div className="advanced-grid">
                   <label>HMV-/Produktartcode<input value={advanced.hmv} onChange={e=>{setSupplyEval(null);setA('hmv',e.target.value)}} placeholder="z. B. 18.50.03"/></label>
                   <label>Position / GPOS<input value={advanced.position} onChange={e=>setA('position',e.target.value)} placeholder="z. B. 1850032"/></label>
@@ -708,16 +702,8 @@ export default function App(){
                   <label>Genehmigung<select value={advanced.approval} onChange={e=>setA('approval',e.target.value)}>
                     <option value="all">Alle</option><option value="kva">Kostenvoranschlag</option><option value="pflicht">Genehmigung erforderlich</option><option value="frei">Genehmigungsfrei</option><option value="anzeige">Versorgungsanzeige</option><option value="vorhanden">Angabe vorhanden</option><option value="ohne">ohne Angabe</option>
                   </select></label>
-                  <label>Versorgungsform / -art<select value={advanced.supplyForm} onChange={e=>setA('supplyForm',e.target.value)}>
-                    <option value="all">Alle</option><option>Kauf / Neulieferung</option><option>Neukauf</option><option>Kauf</option><option>Wiedereinsatz</option><option>Reparatur/Instandsetzung</option><option>Rückholung</option><option>Vergütungspauschale</option><option>Folgevergütungspauschale</option><option>Erstversorgungspauschale</option><option>Folgeversorgungspauschale</option><option>Zubehör/Zusatz</option><option>Zubehör</option><option>Versorgung</option>
-                  </select></label>
-                  <label>Verordnungsangabe<select value={advanced.prescription} onChange={e=>setA('prescription',e.target.value)}><option value="all">Alle</option><option value="vorhanden">vorhanden</option><option value="ohne">ohne Angabe</option></select></label>
 
                   <label>Vertragsstand am <span title="Stichtagsprüfung: Zeigt, welche Vertrags- und Positionsregelungen an diesem Datum gültig waren bzw. sind. Dies ist kein Zeitraumfilter von/bis." aria-label="Information zur Stichtagsprüfung">ⓘ</span><input type="date" value={advanced.validOn} onChange={e=>{setSupplyEval(null);setA('validOn',e.target.value)}}/><small style={{display:'block',fontWeight:400,color:'#52677e',marginTop:4}}>Vertragszustand zu einem bestimmten Stichtag prüfen.</small></label>
-                  <label>Preis<select value={advanced.priceMode} onChange={e=>setA('priceMode',e.target.value)}><option value="all">Alle</option><option value="vorhanden">Preis vorhanden</option><option value="ohne">ohne Preis</option></select></label>
-                  <label>Preis von €<input type="number" step="0.01" min="0" value={advanced.minPrice} onChange={e=>setA('minPrice',e.target.value)}/></label>
-                  <label>Preis bis €<input type="number" step="0.01" min="0" value={advanced.maxPrice} onChange={e=>setA('maxPrice',e.target.value)}/></label>
-                  <label>PQ am Standort<select value={advanced.pq} onChange={e=>setA('pq',e.target.value)}><option value="all">Alle</option><option value="ja">nur PQ vorhanden</option><option value="nein">PQ fehlt</option></select></label>
 
                   <label>Vertragsbeitritt am Standort<select value={advanced.accession} onChange={e=>setA('accession',e.target.value)}><option value="all">Alle</option><option value="aktiv">nur aktiver Beitritt</option><option value="fehlt">kein aktiver Beitritt</option></select></label>
                   <div className="authoritative-filter">
