@@ -17,6 +17,7 @@ import QuestionsQueue from './components/QuestionsQueue.jsx'
 import ContractExclusions from './components/ContractExclusions.jsx'
 import ContractNoticeBanner from './components/ContractNoticeBanner.jsx'
 import ContractMatrix from './components/ContractMatrix.jsx'
+import PossibleAddons from './components/PossibleAddons.jsx'
 import AddonCandidateReview from './components/AddonCandidateReview.jsx'
 import WorkQueueOverview from './components/WorkQueueOverview.jsx'
 import './components/VNFeatures.css'
@@ -182,6 +183,7 @@ export default function App(){
   const [visibleResults,setVisibleResults]=useState(12)
   const [hasSearched,setHasSearched]=useState(false)
   const [selected,setSelected]=useState(null)
+  const [addonTarget,setAddonTarget]=useState(null)
   const [supplyEval,setSupplyEval]=useState(null)
   const [supplyBusy,setSupplyBusy]=useState(false)
   const [searchBusy,setSearchBusy]=useState(false)
@@ -731,12 +733,13 @@ export default function App(){
             <div className="sectionbar"><div><h2 id="assistantResultsHeading">Schritt 2 · Treffer auswählen</h2><p>Passende Vertragsposition per Klick oder mit Tab und Enter auswählen. Das Prüfergebnis erscheint unter der Liste.</p></div><Badge>{hasSearched&&error?'Suche fehlgeschlagen':`${results.length} Treffer`}</Badge></div>
             {results.length>0&&!selected&&<div className="result-hint"><b>{results.length} passende Positionen · {resultContractCount} Vertragsvarianten</b><span>{payer==='AOK'&&!payerDetail&&!siteId?'AOK-Verträge sind regional. Bitte konkrete AOK/Region, Standort oder unten den passenden Vertrag auswählen.':'Bitte den passenden Vertrag bzw. die Position auswählen.'}</span></div>}
             {results.length>=150&&<p className="result-limit-note" role="note">Maximal 150 Treffer geladen. Falls die gesuchte Position fehlt, bitte Kasse, Produktgruppe oder Suchbegriff eingrenzen.</p>}
-            <div className="tablewrap"><table><thead><tr><th>PG</th><th>HMV/Code</th><th>Position</th><th>Bezeichnung</th><th>Vertrag</th><th>Preis</th><th>Genehmigung</th></tr></thead><tbody>
-              {results.slice(0,visibleResults).map(r=><tr key={r.position_row_id} className={'selectable '+(selected?.position_row_id===r.position_row_id?'selected':'')} tabIndex={0} aria-selected={selected?.position_row_id===r.position_row_id} aria-label={'Position auswählen: '+(r.bezeichnung||r.produktart_bezeichnung||r.code||r.pos||'Unbekannte Position')} onClick={()=>choosePosition(r)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choosePosition(r)}}}><td>{r.pg||'—'}</td><td>{r.code||'—'}</td><td>{r.pos||'—'}</td><td><b>{r.bezeichnung||r.produktart_bezeichnung||'—'}</b></td><td>{displayCompanyName(r.contract||r.family||'—')}</td><td>{r.preis??'—'}</td><td>{r.genehmigung||r.freigrenze||'—'}</td></tr>)}
-              {!results.length&&<tr><td colSpan="7" className="empty">{hasSearched&&!searchBusy?(error?'Die Suche wurde nicht abgeschlossen. Es liegt kein gültiges Suchergebnis vor.':'Keine passenden Positionen gefunden. Bitte die Suchkriterien anpassen.'):'Kasse, PG, Suchbegriff oder erweiterte Kriterien wählen und auf „Positionen suchen“ klicken.'}</td></tr>}
+            <div className="tablewrap"><table><thead><tr><th>PG</th><th>HMV/Code</th><th>Position</th><th>Bezeichnung</th><th>Vertrag</th><th>Preis</th><th>Genehmigung</th><th>Zusätze</th></tr></thead><tbody>
+              {results.slice(0,visibleResults).map(r=><tr key={r.position_row_id} className={'selectable '+(selected?.position_row_id===r.position_row_id?'selected':'')} tabIndex={0} aria-selected={selected?.position_row_id===r.position_row_id} aria-label={'Position auswählen: '+(r.bezeichnung||r.produktart_bezeichnung||r.code||r.pos||'Unbekannte Position')} onClick={()=>choosePosition(r)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choosePosition(r)}}}><td>{r.pg||'—'}</td><td>{r.code||'—'}</td><td>{r.pos||'—'}</td><td><b>{r.bezeichnung||r.produktart_bezeichnung||'—'}</b></td><td>{displayCompanyName(r.contract||r.family||'—')}</td><td>{r.preis??'—'}</td><td>{r.genehmigung||r.freigrenze||'—'}</td><td><button type="button" className="secondary assistant-addons-btn" aria-label={'Mögliche Zusatzpositionen zu '+(r.pos||r.bezeichnung||'dieser Position')+' öffnen'} title="Vertragsbezogene Zusatzpositionen, Zuordnungsvorschläge und deren Prüfstatus anzeigen" onClick={e=>{e.stopPropagation();setAddonTarget(r)}} onKeyDown={e=>e.stopPropagation()}>Mögliche Zusätze</button></td></tr>)}
+              {!results.length&&<tr><td colSpan="8" className="empty">{hasSearched&&!searchBusy?(error?'Die Suche wurde nicht abgeschlossen. Es liegt kein gültiges Suchergebnis vor.':'Keine passenden Positionen gefunden. Bitte die Suchkriterien anpassen.'):'Kasse, PG, Suchbegriff oder erweiterte Kriterien wählen und auf „Positionen suchen“ klicken.'}</td></tr>}
             </tbody></table></div>
             {results.length>0&&<div className="assistant-result-footer"><span>{Math.min(visibleResults,results.length)} von {results.length} Treffern angezeigt</span>{visibleResults<results.length&&<button className="secondary" type="button" onClick={()=>setVisibleResults(v=>v+12)}>Weitere 12 Treffer anzeigen</button>}</div>}
           </section>
+          {addonTarget&&<PossibleAddons position={addonTarget} onClose={()=>setAddonTarget(null)}/>}
           {selected&&<section className="panel span2 assistant-evaluation" id="assistantEvaluation" aria-labelledby="assistantDecisionHeading">
             <div className="assistant-evaluation-top"><div><small>Schritt 3 · Versorgungsprüfung</small><h2 id="assistantDecisionHeading" tabIndex={-1}>Ergebnis zur ausgewählten Position</h2><p><b>{selected.bezeichnung||selected.produktart_bezeichnung||selected.code||selected.pos||'Ausgewählte Position'}</b> · {displayCompanyName(selected.contract||selected.family||'Vertrag nicht benannt')}</p></div><div className={'decision '+decisionTone} role="status" aria-live="polite" aria-atomic="true"><small>Versorgungsprüfung</small><strong><DecisionIcon size={22} aria-hidden="true"/>{decisionLabel}</strong></div></div>
             <div className="supply-status-strip" aria-label="Kurzübersicht der sechs Prüfbereiche">
