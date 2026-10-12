@@ -9,6 +9,7 @@ const STATUSES={PENDING:'Zur Prüfung',APPROVED:'Fachlich freigegeben',REJECTED:
 const displayPosition=(row)=>[row?.pos||row?.code,row?.bezeichnung].filter(Boolean).join(' · ')
 
 export default function AddonCandidateReview({canReview=false}){
+  const [screeningOpen,setScreeningOpen]=useState(false)
   const [rows,setRows]=useState([])
   const [positions,setPositions]=useState({})
   const [busy,setBusy]=useState('')
@@ -80,6 +81,10 @@ export default function AddonCandidateReview({canReview=false}){
   return <section className="panel addon-review">
     <div className="sectionbar"><div><h2>Zusatzpositionen und Kombinationsregeln</h2><p>Originalvertrag und Positionszuordnung vor der Veröffentlichung fachlich kontrollieren.</p></div><button className="secondary" type="button" onClick={reload} disabled={!!busy}><RefreshCw size={15}/> Aktualisieren</button></div>
     <div className="note">Diese Datensätze sind bis zur persönlichen Fachfreigabe nicht Teil der verbindlichen Vertragsmatrix. Auch ausdrücklich genannte Zusatzpositionen bedeuten keine automatische Abrechenbarkeit. Inklusive Leistungen, Genehmigungspflichten und Ausschlüsse separat prüfen.</div>
+    <details className="addon-screening-disclosure" onToggle={e=>setScreeningOpen(e.currentTarget.open)} style={{margin:'18px 0'}}>
+      <summary style={{cursor:'pointer',fontWeight:700,fontSize:'1.04em',padding:'13px',border:'1px solid #cbd5e1',borderRadius:8}}>PG-übergreifende Prüfliste aller Krankenkassen öffnen · Hauptpositionen / Zusätze / Kombinationsbedingungen</summary>
+      {screeningOpen&&<PositionRelationScreening/>}
+    </details>
     <label className="addon-review-filter">Prüfstatus<select value={filter} onChange={e=>setFilter(e.target.value)}>{Object.entries(STATUSES).map(([x,y])=><option key={x} value={x}>{y}</option>)}</select></label>
     {error&&<div className="alert error" role="alert">{error}</div>}
     {message&&<div className="alert success" role="status">{message}</div>}
@@ -118,6 +123,5 @@ export default function AddonCandidateReview({canReview=false}){
       })}
       {!rows.length&&<div className="empty-panel">{busy?'Laden …':'Keine Kandidaten in dieser Auswahl.'}</div>}
     </div>
-    <PositionRelationScreening/>
   </section>
 }
