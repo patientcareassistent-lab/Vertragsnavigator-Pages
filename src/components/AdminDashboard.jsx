@@ -5,6 +5,7 @@ import {
   ShieldAlert,ShieldCheck,TimerReset,UploadCloud,Users,XCircle,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase.js'
+import WorkflowMonitor from './WorkflowMonitor.jsx'
 
 const PRIORITY_ORDER={HIGH:0,MEDIUM:1,LOW:2}
 const QUALITY_ORDER={RED:0,YELLOW:1,GREEN:2}
@@ -278,6 +279,8 @@ export default function AdminDashboard({onNavigate}){
         </div>
       </details>
     </div>
+
+    <WorkflowMonitor onNavigate={onNavigate}/>
 
     <section className="panel admin-system-state">
       <div className="sectionbar">
