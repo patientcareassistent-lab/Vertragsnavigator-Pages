@@ -5,6 +5,7 @@ import { ChevronRight, Heart, Info, Laugh, Lightbulb, MoonStar, Sparkles, X, Wan
 import {
   WITCH_JOKES, WITCH_WISDOM, getDailyWisdom, localDateKey,
   createShuffledJokeBag, restoreJokeBag, nextRandomDelay,
+  getWitchSpeaker, adaptWitchJokeText, displayWitchCategory,
 } from './witchRotation.js'
 import './ContractWitches.css'
 
@@ -128,7 +129,8 @@ function CharacterStage({ scene, reducedMotion }) {
 
 function SpeechCard({ scene, kindLabel, message, reducedMotion, onClose, onWisdom, onJoke }) {
   const duo = scene.variant === 'duo' || scene.variant === 'flight'
-  const speaker = duo ? 'Caro & Julie' : scene.variant === 'caro' ? 'Caro' : 'Julie'
+  const narrator = getWitchSpeaker(scene)
+  const speaker = duo ? 'Caro & Julie' : narrator
   const isJulie = scene.variant === 'julie'
   return (
     <motion.section
@@ -154,7 +156,7 @@ function SpeechCard({ scene, kindLabel, message, reducedMotion, onClose, onWisdo
         </span>
         <button type="button" className="vn-hx-icon-button" onClick={onClose} aria-label="Vertragshexen ausblenden" title="Ausblenden"><X size={23}/></button>
       </div>
-      <div className="vn-hx-subtitle">{kindLabel}</div>
+      <div className="vn-hx-subtitle">{duo ? narrator + " erzählt · " : ""}{kindLabel}</div>
       <p className="vn-hx-message">{message}</p>
       <p className="vn-hx-disclaimer"><span>Nur Humor · keine Vertragsauskunft</span><Info size={17} aria-hidden="true"/></p>
       <div className="vn-hx-card-actions">
@@ -244,7 +246,8 @@ export default function ContractWitches() {
   }
 
   const hideScene = () => setScene(previous => ({ ...previous, visible: false }))
-  const kindLabel = scene.kind === 'wisdom' ? 'Weisheit des Tages' : scene.entry?.category || 'Vertragswitz'
+  const kindLabel = displayWitchCategory(scene.entry, scene.kind)
+  const message = adaptWitchJokeText(scene.entry, scene)
   return (
     <aside className="vn-hx-widget" aria-label="Caro und Julie – humorvolle Vertragshexen">
       <AnimatePresence mode="wait">
@@ -253,7 +256,7 @@ export default function ContractWitches() {
             initial={{ opacity: 1 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: reducedMotion ? 0 : .2 }}>
             <CharacterStage scene={scene} reducedMotion={reducedMotion}/>
-            <SpeechCard scene={scene} kindLabel={kindLabel} message={scene.entry.text}
+            <SpeechCard scene={scene} kindLabel={kindLabel} message={message}
               reducedMotion={reducedMotion} onClose={hideScene} onWisdom={showWisdom} onJoke={showJoke}/>
           </motion.div>
         )}
