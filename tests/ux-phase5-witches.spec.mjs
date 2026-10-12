@@ -77,7 +77,7 @@ test('Freigegebenes Design: Figur links, breite Karte rechts, Namenschip überla
     primary: getComputedStyle(el.querySelector('.vn-hx-action-primary')).backgroundImage,
   }))
   expect(design.radius).toBeGreaterThanOrEqual(30)
-  expect(design.grid.trim().split(/\\s+/).length).toBe(2)
+  expect(design.grid.trim().split(/\s+/).length).toBe(2)
   expect(design.primary).toContain('linear-gradient')
   await expect(page.locator('.vn-hx-card-decor .vn-hx-card-heart')).toBeAttached()
   await expect(page.locator('.vn-hx-card .vn-hx-disclaimer')).toContainText('keine Vertragsauskunft')
