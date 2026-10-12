@@ -20,6 +20,42 @@ const cleanText=x=>String(x||'').trim()
  * Nichtproduktive Triage: Verknüpfung zur Hauptposition und abrechenbare
  * Relationen werden hier ausdrücklich NICHT freigegeben.
  */
+function SourceEvidence({ids=[]}){
+  const [open,setOpen]=useState(false)
+  const [rows,setRows]=useState([])
+  const [loading,setLoading]=useState(false)
+  const [error,setError]=useState('')
+  useEffect(()=>{
+    if(!open||!ids.length)return
+    let active=true
+    async function fetchEvidence(){
+      setLoading(true);setError('')
+      const {data,error:e}=await supabase.from('vn_position_catalog')
+        .select('position_row_id,pos,bezeichnung,leistung,source_doc,source_page')
+        .in('position_row_id',ids).limit(ids.length)
+      if(!active)return
+      setLoading(false)
+      if(e)setError(e.message)
+      else setRows(data||[])
+    }
+    fetchEvidence()
+    return()=>{active=false}
+  },[open])
+  return <details onToggle={e=>setOpen(e.currentTarget.open)}>
+    <summary>Alle {ids.length} zugrunde liegenden Positionszeilen / Regelvarianten prüfen</summary>
+    {loading&&<p>Quellzeilen werden geladen …</p>}
+    {error&&<p className="alert error">{error}</p>}
+    {!loading&&open&&rows.map(r=><div key={r.position_row_id} className="addon-review-note" style={{margin:'8px 0'}}>
+      <b>{r.pos||'—'} · {r.bezeichnung||'Ohne Bezeichnung'}</b>
+      <small> · Referenz {r.position_row_id}</small>
+      <p style={{whiteSpace:'pre-wrap',marginBottom:5}}>{r.leistung||'Keine Leistungsbeschreibung in dieser Zeile.'}</p>
+      <small>{r.source_doc||'Kein Quelldokument verknüpft'}{r.source_page!=null?' · S. '+r.source_page:''}</small>
+    </div>)}
+    {!loading&&open&&!error&&rows.length!==ids.length&&
+      <p>Nur {rows.length} von {ids.length} Quellzeilen lesbar. Berechtigungen und Datenstand kontrollieren.</p>}
+  </details>
+}
+
 export default function PositionRelationScreening(){
   const [pgRows,setPgRows]=useState([])
   const [pg,setPg]=useState('')
@@ -56,7 +92,7 @@ export default function PositionRelationScreening(){
       setBusy('load');setError('')
       try{
         let request=supabase.from('vn_position_relation_screening')
-          .select('screening_key,pg,family,contract_id,contract_name,pos,code,title,evidence_clause,source_doc,source_page,reference_codes,signal_tags,source_row_count,review_status,review_note',{count:'exact'})
+          .select('screening_key,pg,family,contract_id,contract_name,pos,code,title,evidence_clause,source_doc,source_page,reference_codes,signal_tags,source_row_count,source_row_ids,review_status,review_note',{count:'exact'})
           .eq('review_status',status)
         if(pg)request=request.eq('pg',pg)
         if(payer)request=request.eq('family',payer)
@@ -151,6 +187,7 @@ export default function PositionRelationScreening(){
             <p style={{whiteSpace:'pre-wrap'}}>{row.evidence_clause||'Kein erläuternder Leistungstext vorhanden.'}</p>
             <small>{row.source_row_count} Quellzeile(n) in dieser Gruppe.</small>
           </details>
+          <SourceEvidence ids={row.source_row_ids||[]}/>
           <div className="addon-review-note" role="note"><b>Quelle:</b> {row.source_doc||'Originaldokument nicht direkt mit dieser Positionszeile verknüpft'}
             {row.source_page!=null?' · Seite '+row.source_page:''}
             {noSource&&' · Vor fachlicher Freigabe Originalvertragsanlage ermitteln.'}
