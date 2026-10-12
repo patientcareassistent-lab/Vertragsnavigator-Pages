@@ -19,6 +19,8 @@ jobs:
           node-version: '20'
       - name: Verify contract witches sayings and rotation
         run: node --test tests/contract-witches.test.mjs
+      - name: Verify payer alias normalization and mixed contract handling
+        run: node --test tests/payer-alias.test.mjs
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Build production bundle
