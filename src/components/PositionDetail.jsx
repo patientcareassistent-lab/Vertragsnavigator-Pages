@@ -61,24 +61,47 @@ const requirementStatusLabel={
   VERTRAG_PRUEFEN:'Vertrag prüfen',
   GKV_STANDARD_OPTIONAL:'Optional'
 }
-function RequirementField({items,loading,error}){
+function RequirementField({items=[],hints=[],versions=[],loading=false,error='',pg}){
+  const today=new Date().toISOString().slice(0,10)
+  const attachments=versions.filter(v=>{
+    if(v.valid_to&&v.valid_to<today)return false
+    if(/archiv|inaktiv|ungultig/.test(norm(v.status)))return false
+    const name=norm([v.version_name,v.original_name].filter(Boolean).join(' '))
+    if(!/(dokument|erprobung|ma.blatt|formular|lieferschein|einwilligung|unterschrift|quittung|empfangsbestatigung|rezept|nachweis)/.test(name))return false
+    return !/\b(?:pg|pq)\s*\d{1,2}\b/.test(name)||versionRelevant(v,pg)
+  }).slice(0,5)
+  const any=items.length||hints.length||attachments.length
   return <div className="position-field wide position-requirements">
     <small>KV- / abrechnungsrelevante Unterlagen</small>
-    {loading?<strong>Unterlagenhinweise werden geladen …</strong>
-      :error?<strong>Unterlagenhinweise nicht verfügbar – Originalvertrag prüfen.</strong>
-      :items.length?<div className="requirement-items">
-        {items.map(r=><div className="requirement-item" key={r.form_requirement_id}>
-          <div className="requirement-item-head"><b>{r.supply_type||r.region_contract||'Vertragsunterlagen'}</b><span>{requirementStatusLabel[r.status]||'Hinweis'}</span></div>
-          <p>{r.action||r.evidence||'Vertragsunterlagen prüfen.'}</p>
-          {r.evidence&&r.action&&<p className="requirement-evidence">Nachweis: {r.evidence}</p>}
-          {r.validity&&<p className="requirement-evidence">{r.validity}</p>}
-          {r.review_required&&<p className="requirement-review">Fachliche Prüfung ausstehend.</p>}
-        </div>)}
-        <p className="requirement-disclaimer">Aus der Formularmatrix; weitere vertragliche Unterlagen können erforderlich sein.</p>
-      </div>
-      :<strong>Keine vertragsspezifischen Unterlagenanforderungen hinterlegt – Originalvertrag prüfen.</strong>}
+    {loading?<strong>Unterlagen werden geladen …</strong>:<div className="requirement-items">
+      {items.length>0&&<div className="requirement-section-caption">Kassen- und Formularmatrix</div>}
+      {items.map(r=><div className="requirement-item" key={r.form_requirement_id}>
+        <div className="requirement-item-head"><b>{r.supply_type||r.region_contract||'Vertragsformular'}</b><span>{requirementStatusLabel[r.status]||'Hinweis'}</span></div>
+        <p>{r.action||r.evidence||'Originalvertrag prüfen.'}</p>
+        {r.evidence&&r.action&&<p className="requirement-evidence">Nachweis: {r.evidence}</p>}
+        {r.region_contract&&<p className="requirement-evidence">Vertragsbereich laut Quelle: {r.region_contract} (Geltungsumfang prüfen).</p>}
+        {r.validity&&<p className="requirement-evidence">{r.validity}</p>}
+        {r.review_required&&<p className="requirement-review">Fachprüfung erforderlich.</p>}
+      </div>)}
+      {hints.length>0&&<div className="requirement-section-caption">Positionsbezogene Quellen – automatisch gefunden, ungeprüft</div>}
+      {hints.slice(0,4).map(h=><div className="requirement-item" key={h.position_row_id}>
+        <div className="requirement-item-head"><b>{h.hmv_code||h.contract_position||'Vertragsposition'}</b><span>Quelle · prüfen</span></div>
+        <p>{h.evidence_excerpt}</p>
+        <p className="requirement-evidence">Vertrag und PG zugeordnet{h.source_page?' · Seite '+h.source_page:''}; keine Pflicht automatisch abgeleitet.</p>
+      </div>)}
+      {hints.length>4&&<p className="requirement-evidence">Weitere Quelltext-Fundstellen vorhanden.</p>}
+      {attachments.length>0&&<div className="requirement-section-caption">Dokumentenbezogene Anlagen – Verwendung prüfen</div>}
+      {attachments.map(v=><div className="requirement-item" key={v.contract_version_id}>
+        <div className="requirement-item-head"><b>{v.version_name||v.original_name}</b><span>Anlage · prüfen</span></div>
+        <p className="requirement-evidence">Im Vertragsstamm erfasst; konkrete Erforderlichkeit nicht bestätigt.</p>
+      </div>)}
+      {!any&&<strong>Für diese Vertrags-/PG-Kombination sind keine Unterlagenanforderungen hinreichend strukturiert erfasst. Originalvertrag und Anlagen prüfen. Das bedeutet nicht, dass keine Unterlagen erforderlich sind.</strong>}
+      {error&&<p className="requirement-review">Teilweise keine Datenverbindung: {error}</p>}
+      {any>0&&<p className="requirement-disclaimer">Kassenmatrix, Vertragsanlagen und Textfundstellen sind getrennt zu bewerten. Nur ausdrücklich belegte und passende Pflichten sind verbindlich.</p>}
+    </div>}
   </div>
 }
+
 
 export default function PositionDetail({position,contract,site,siteMatch,knowledge=[],canFach=false,onPossibleAddons=null}){
   const [versions,setVersions]=useState([])
@@ -86,6 +109,7 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
   const [validityScopes,setValidityScopes]=useState([])
   const [requirements,setRequirements]=useState([])
   const [requirementsError,setRequirementsError]=useState('')
+  const [documentHints,setDocumentHints]=useState([])
   const [loading,setLoading]=useState(false)
   const [sourceBusy,setSourceBusy]=useState(false)
   const [sourceError,setSourceError]=useState('')
@@ -93,8 +117,8 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
   useEffect(()=>{
     let cancelled=false
     async function load(){
-      if(!position){setVersions([]);setDocuments([]);setValidityScopes([]);setRequirements([]);setRequirementsError('');return}
-      setLoading(true);setSourceError('');setRequirements([]);setRequirementsError('')
+      if(!position){setVersions([]);setDocuments([]);setValidityScopes([]);setRequirements([]);setRequirementsError('');setDocumentHints([]);return}
+      setLoading(true);setSourceError('');setRequirements([]);setRequirementsError('');setDocumentHints([])
       try{
         const jobs=[]
         if(position.contract_id){
@@ -135,7 +159,15 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
             .in('pg',pgCodes).limit(100))
         }else jobs.push(Promise.resolve({data:[],error:null}))
 
-        const [vr,dr,sr,rr]=await Promise.all(jobs)
+        if(position.contract_id&&position.pg){
+          jobs.push(supabase.from('vn_contract_document_evidence')
+            .select('position_row_id,hmv_code,contract_position,evidence_excerpt,source_page,evidence_quality')
+            .eq('contract_id',position.contract_id)
+            .eq('pg',String(position.pg))
+            .limit(70))
+        }else jobs.push(Promise.resolve({data:[],error:null}))
+
+        const [vr,dr,sr,rr,er]=await Promise.all(jobs)
 
         if(cancelled)return
         if(vr.error)throw vr.error
@@ -145,7 +177,8 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
         setVersions(vr.data||[])
         setValidityScopes(sr.data||[])
         setRequirements((rr.data||[]).filter(r=>requirementMatchesPayer(r,contract,position)).slice(0,12))
-        setRequirementsError(rr.error?.message||'')
+        setRequirementsError([rr.error?.message,er.error?.message].filter(Boolean).join(' | '))
+        setDocumentHints((er.data||[]).filter(h=>h.evidence_excerpt).slice(0,20))
         const keys=sourceKeys(contract,position)
         const seen=new Set()
         const docs=(dr.data||[])
@@ -263,7 +296,7 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
           <Field label="Positionsgültigkeit ab" value={text(position.gueltig_ab)}/>
           <Field label="Positionsgültigkeit bis" value={text(position.gueltig_bis||'offen')}/>
           <Field label={`Vertragsgeltung PG ${position.pg||'—'}`} value={contractValidityText} wide/>
-          <RequirementField items={requirements} loading={loading} error={requirementsError}/>
+          <RequirementField items={requirements} hints={documentHints} versions={versions} pg={position.pg} loading={loading} error={requirementsError}/>
         </div>
       </div>
 
