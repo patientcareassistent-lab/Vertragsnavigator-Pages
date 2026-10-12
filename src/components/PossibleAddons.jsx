@@ -6,6 +6,8 @@ import './PossibleAddons.css'
 
 const CATEGORIES=[
   {id:'VERIFIED',title:'Quellengeprüfte Beziehungen',subtitle:'Vertraglich zugeordnete Zusatzpositionen; die Versorgungsvoraussetzungen bleiben gesondert zu prüfen.'},
+  {id:'SOURCE_LISTED',title:'Im Originalvertrag ausdrücklich genannte mögliche Zusätze',subtitle:'Die Vertragsanlage listet diese Nummern direkt zur Grundposition. Kombination, Geltung und Abrechnung sind nicht freigegeben.'},
+  {id:'SOURCE_INCLUDED',title:'Bereits in der Grundposition enthalten',subtitle:'In der Vertragsanlage genannt, aber laut Vertragsbedingungen nicht gesondert zu berechnen. Quellenkonflikte werden separat markiert.'},
   {id:'REVIEW_CANDIDATE',title:'Konkrete Zuordnungsvorschläge',subtitle:'Haupt- und Zusatzposition bereits verknüpft, aber nicht fachlich freigegeben.'},
   {id:'REFERENCED_BY_ADDON',title:'Im Zusatz ausdrücklich genannte Hauptposition',subtitle:'Automatisch aus Positionsnummern und Vertragsbedingungen erkannt – noch nicht fachlich freigegeben.'},
   {id:'MENTIONED_IN_BASE',title:'In der Hauptposition genannte Zusatznummern',subtitle:'Die gewählte Position nennt diese Nummern. Ob sie zusätzlich abrechenbar oder im Preis enthalten sind, ist ungeklärt.'},
@@ -20,9 +22,10 @@ function conditionMessage(item){
 }
 function ExtraRow({item,onExplore,canExplore}){
   const checked=item.match_basis==='VERIFIED'
+  const sourceReferenced=item.match_basis==='SOURCE_LISTED'||item.match_basis==='SOURCE_INCLUDED'
   const approval=approvalBadge(item)
   const rawCondition=normalizeText(item.conditions).toLocaleLowerCase('de')
-  const included=/(in (der|den) (jeweiligen )?grundposition enthalten|im preis (des zusatzes )?enthalten|bereits enthalten|nicht gesondert abrechenbar|nicht separat abrechenbar)/.test(rawCondition)
+  const included=item.included_in_base===true||/(in (der|den) (jeweiligen )?grundposition enthalten|im preis (des zusatzes )?enthalten|bereits enthalten|nicht gesondert abrechenbar|nicht separat abrechenbar)/.test(rawCondition)
   const excluded=/(nicht zusammen mit|kann nicht in verbindung|nicht ansetzbar|nicht abrechenbar|nicht kombinierbar)/.test(rawCondition)
   const justification=/(begründung|medizinische notwendigkeit|zu begründen)/.test(rawCondition)
   const price=item.preis===null||item.preis===undefined?'Preis nicht erfasst':fmtMoney(item.preis)
@@ -33,16 +36,18 @@ function ExtraRow({item,onExplore,canExplore}){
         <b>{item.bezeichnung||'Zusatzposition ohne Bezeichnung'}</b>
         <small>HiMiNr {item.code||'—'} · Vertragsposition {item.pos||'—'} · {price}</small>
       </div>
-      <span className={'possible-addon-status '+(checked?'verified':'pending')}>{checked?'Quellengeprüft':'Nicht freigegeben'}</span>
+      <span className={'possible-addon-status '+(checked?'verified':'pending')}>{checked?'Fachlich quellengeprüft':sourceReferenced?'Im Vertrag genannt · Prüfung nötig':'Nicht freigegeben'}</span>
     </div>
     <div className="possible-addon-tags">
-      {included&&<span className="addon-tag-blocked" title="Mögliche Inklusivleistung – Originalvertrag prüfen">Im Grundpreis enthalten?</span>}
+      {included&&<span className="addon-tag-blocked" title="Laut Vertragsanlage bereits im Umfang der Grundposition enthalten">Im Grundpreis enthalten</span>}
+      {item.source_conflict===true&&<span className="addon-tag-blocked" title="Widersprüchliche Positionsbezeichnung zwischen Teil 1 und Teil 2 der Anlage">Quellenwiderspruch · fachlich klären</span>}
       {excluded&&<span className="addon-tag-blocked" title="Mögliche nicht zulässige Kombination – Originalvertrag prüfen">Kombination eingeschränkt?</span>}
       {justification&&<span className="addon-tag-note">Begründung prüfen</span>}
-      {item.relation_type&&<span className={item.relation_type==='EXCLUDED'?'addon-tag-blocked':'addon-tag-note'}>{checked?(RELATIONS[item.relation_type]||item.relation_type):'Vorschlag: '+(RELATIONS[item.relation_type]||item.relation_type)}</span>}
+      {item.relation_type&&!included&&<span className={item.relation_type==='EXCLUDED'?'addon-tag-blocked':'addon-tag-note'}>{checked?(RELATIONS[item.relation_type]||item.relation_type):'Vorschlag: '+(RELATIONS[item.relation_type]||item.relation_type)}</span>}
       <span className={'possible-addon-approval '+approval.tone} title={approval.detail}>{approval.label}</span>
     </div>
     <p className="possible-addon-reason">{item.reason}</p>
+    {item.source_label&&item.source_label!==item.bezeichnung&&<p className="possible-addon-reason"><b>Bezeichnung in der Originalquelle:</b> {item.source_label}</p>}
     {conditionMessage(item)&&<details className="possible-addon-rule">
       <summary>Vertragsbedingung / Hinweis anzeigen</summary>
       <p>{conditionMessage(item)}</p>
@@ -80,7 +85,7 @@ export default function PossibleAddons({position,onClose}){
     async function fetchAddons(){
       try{
         if(!rowId)throw new Error('Keine eindeutige Positions-ID vorhanden.')
-        const {data:result,error:rpcError}=await supabase.rpc('vn_possible_position_extras_v1',{p_base_position_row_id:rowId})
+        const {data:result,error:rpcError}=await supabase.rpc('vn_possible_position_extras_v2',{p_base_position_row_id:rowId})
         if(rpcError)throw rpcError
         if(!result?.position_found)throw new Error('Die gewählte Vertragsposition ist nicht mehr aktuell oder nicht verfügbar.')
         if(currentRequest)setData(result)
@@ -96,7 +101,10 @@ export default function PossibleAddons({position,onClose}){
     const items=Array.isArray(data?.items)?data.items:[]
     return CATEGORIES.map(cat=>({...cat,items:items.filter(x=>x.match_basis===cat.id)}))
   },[data])
-  const actionable=groups.filter(g=>g.id!=='SAME_CONTRACT_ONLY').reduce((n,g)=>n+g.items.length,0)
+  const actionable=groups.filter(g=>g.id!=='SAME_CONTRACT_ONLY'&&g.id!=='SOURCE_INCLUDED').reduce((n,g)=>n+g.items.length,0)
+  const sourceCount=groups.find(g=>g.id==='SOURCE_LISTED')?.items.length||0
+  const includedCount=groups.find(g=>g.id==='SOURCE_INCLUDED')?.items.length||0
+  const unlinkedCount=groups.find(g=>g.id==='SAME_CONTRACT_ONLY')?.items.length||0
   function drill(item){
     if(path.some(p=>p.position_row_id===item.position_row_id))return
     setPath(list=>[...list,{...item,contract:current.contract,contract_id:current.contract_id}])
@@ -121,8 +129,10 @@ export default function PossibleAddons({position,onClose}){
         {error&&<div className="alert error" role="alert">{error}</div>}
         {!loading&&!error&&data&&<>
           {!data.contract_id&&<p className="alert error">Keine eindeutige Vertragszuordnung. Eine vertragsbezogene Zusatzsuche ist derzeit nicht möglich.</p>}
-          <p className="possible-addons-count">{actionable} Hinweise mit Positionsbezug oder bereits erfasstem Zuordnungsvorschlag
-            {groups[4].items.length>0?' · '+groups[4].items.length+' weitere Vertragspositionen ohne Zuordnungsnachweis':''}
+          <p className="possible-addons-count">{sourceCount>0?sourceCount+' mögliche Zusätze ausdrücklich in der Vertragsanlage genannt':'Keine ausdrücklich zugeordneten Zusätze aus einer strukturiert erfassten Vertragsanlage'}
+            {includedCount>0?' · '+includedCount+' bereits enthaltene Positionen':''}
+            {actionable>sourceCount?' · '+(actionable-sourceCount)+' weitere Zuordnungshinweise':''}
+            {unlinkedCount>0?' · '+unlinkedCount+' weitere Vertragspositionen ohne Zuordnungsnachweis':''}
           </p>
           {!data.items?.length&&<p className="possible-addons-empty">Für diese Position wurden derzeit keine möglichen Zusatzpositionen erkannt. Das bedeutet nicht, dass vertraglich keine Zusätze möglich sind.</p>}
           {groups.map(group=>{
