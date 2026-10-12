@@ -55,3 +55,48 @@ test('Reduzierte Bewegung funktioniert ohne Hover-Animation', async ({page}) => 
   await page.getByRole('button',{name:'Tagesweisheit'}).click()
   await expect(page.locator('.vn-hx-subtitle')).toHaveText('Weisheit des Tages')
 })
+
+
+test('Freigegebenes Design: Figur links, breite Karte rechts, Namenschip überlappt', async ({page}) => {
+  await page.setViewportSize({width: 1440, height: 900})
+  await openNavigator(page)
+  await page.getByRole('button',{name:'Caro und Julie öffnen'}).click()
+  const stage = await page.locator('.vn-hx-character-stage').boundingBox()
+  const card = await page.locator('.vn-hx-card').boundingBox()
+  const pill = await page.locator('.vn-hx-name-pill').boundingBox()
+  expect(stage).not.toBeNull()
+  expect(card).not.toBeNull()
+  expect(pill).not.toBeNull()
+  expect(stage.x).toBeLessThan(card.x)
+  expect(Math.abs((stage.y + stage.height/2) - (card.y + card.height/2))).toBeLessThan(85)
+  expect(card.width).toBeGreaterThan(450)
+  expect(pill.y).toBeLessThan(card.y)
+  const design = await page.locator('.vn-hx-card').evaluate(el => ({
+    radius: parseFloat(getComputedStyle(el).borderTopLeftRadius),
+    grid: getComputedStyle(el.querySelector('.vn-hx-card-actions')).gridTemplateColumns,
+    primary: getComputedStyle(el.querySelector('.vn-hx-action-primary')).backgroundImage,
+  }))
+  expect(design.radius).toBeGreaterThanOrEqual(30)
+  expect(design.grid.trim().split(/\\s+/).length).toBe(2)
+  expect(design.primary).toContain('linear-gradient')
+  await expect(page.locator('.vn-hx-card-decor .vn-hx-card-heart')).toBeAttached()
+  await expect(page.locator('.vn-hx-card .vn-hx-disclaimer')).toContainText('keine Vertragsauskunft')
+})
+
+test('Freigegebene Dialogkarte: mobile Figur über Karte und Buttons im Viewport', async ({page}) => {
+  await page.setViewportSize({width:390,height:844})
+  await openNavigator(page)
+  await page.getByRole('button',{name:'Caro und Julie öffnen'}).click()
+  const stage = await page.locator('.vn-hx-character-stage').boundingBox()
+  const card = await page.locator('.vn-hx-card').boundingBox()
+  expect(stage.y).toBeLessThan(card.y)
+  expect(card.x).toBeGreaterThanOrEqual(-1)
+  expect(card.x + card.width).toBeLessThanOrEqual(391)
+  for (const name of ['Tagesweisheit','Nächster Witz']) {
+    const button = page.getByRole('button',{name})
+    await expect(button).toBeVisible()
+    const box = await button.boundingBox()
+    expect(box.x).toBeGreaterThanOrEqual(-1)
+    expect(box.x + box.width).toBeLessThanOrEqual(391)
+  }
+})
