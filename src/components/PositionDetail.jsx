@@ -34,7 +34,7 @@ function Field({label,value,wide=false}){
   return <div className={'position-field '+(wide?'wide':'')}><small>{label}</small><strong>{value??'—'}</strong></div>
 }
 
-export default function PositionDetail({position,contract,site,siteMatch,knowledge=[],canFach=false}){
+export default function PositionDetail({position,contract,site,siteMatch,knowledge=[],canFach=false,onPossibleAddons=null}){
   const [versions,setVersions]=useState([])
   const [documents,setDocuments]=useState([])
   const [validityScopes,setValidityScopes]=useState([])
@@ -157,6 +157,7 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
         <p>{position.contract||contract?.contract_name||position.family||'Vertrag ohne Bezeichnung'}</p>
       </div>
       <div className="position-detail-actions">
+        {typeof onPossibleAddons==='function'&&<button type="button" className="primary inline-button position-addons-trigger" onClick={()=>onPossibleAddons(position)} aria-label={'Mögliche Zusatzpositionen zu '+(position.pos||position.bezeichnung||'dieser Vertragsposition')+' anzeigen'} title="Vertraglich mögliche Zusatzpositionen und ungeprüfte Hinweise öffnen">Mögliche Zusätze</button>}
         {canOpen&&<button type="button" className="primary inline-button" onClick={openSource} disabled={sourceBusy}>
           <ExternalLink size={15}/>{sourceBusy?'Link wird erstellt …':'Vertrag öffnen'}
         </button>}
