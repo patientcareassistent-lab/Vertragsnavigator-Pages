@@ -51,3 +51,25 @@ export function restoreJokeBag(value) {
 export function nextRandomDelay(random = Math.random) {
   return 120000 + Math.floor(random() * 60001)
 }
+
+/** The person in the picture narrates, the other witch stars in each old Chuck-Norris joke.
+ * Duo/flight artwork shows both; those scenes alternate the narrator by sequence.
+ * Source jokes remain untouched so persisted joke IDs and repeat protection stay stable. */
+export function getWitchSpeaker(scene) {
+  if (scene?.variant === 'caro') return 'Caro'
+  if (scene?.variant === 'julie') return 'Julie'
+  return (scene?.sequence ?? 1) % 2 === 0 ? 'Julie' : 'Caro'
+}
+
+export function adaptWitchJokeText(entry, scene) {
+  if (!entry?.text) return ''
+  const other = getWitchSpeaker(scene) === 'Caro' ? 'Julie' : 'Caro'
+  return entry.text.replace(/Chuck\s+Norris/gi, other)
+}
+
+export function displayWitchCategory(entry, kind) {
+  if (kind === 'wisdom') return 'Weisheit des Tages'
+  return entry?.category === 'Chuck-Norris-Vertragswitz'
+    ? 'Hexen-Vertragswitz'
+    : entry?.category || 'Vertragswitz'
+}
