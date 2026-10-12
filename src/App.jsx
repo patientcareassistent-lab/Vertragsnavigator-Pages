@@ -163,6 +163,8 @@ export default function App(){
   const [mode,setMode]=useState('versorger')
   const [error,setError]=useState('')
   const [contracts,setContracts]=useState([])
+  const [trafficContracts,setTrafficContracts]=useState([])
+  const [trafficStatus,setTrafficStatus]=useState('idle')
   const [knowledge,setKnowledge]=useState([])
   const [knowledgeLoaded,setKnowledgeLoaded]=useState(false)
   const [questions,setQuestions]=useState([])
@@ -366,37 +368,54 @@ export default function App(){
   async function loadData(){
     const started=performance.now()
     setError('')
+    // Der leichte, aktive Vertragskatalog versorgt die Suchfilter.
+    // Die aufwendige, standortbezogene Beitrittsampel wird nur im Vertragsbereich geladen.
+    // Fehler bei optionalen Zählern dürfen die Suchfilter nicht mehr blockieren.
     const [cc,pc,kc,qr,cr,sr]=await Promise.all([
-      supabase.from('vn_contract_read_model_p2').select('contract_id',{count:'planned',head:true}),
+      supabase.from('vn_contract_catalog').select('contract_id',{count:'planned',head:true}),
       supabase.from('vn_position_catalog').select('position_row_id',{count:'planned',head:true}),
       supabase.from('vn_contract_knowledge_approved').select('knowledge_id',{count:'planned',head:true}),
       supabase.from('vn_contract_questions_open_p2').select('question_id',{count:'exact',head:true}),
-      supabase.from('vn_contract_read_model_p2').select('*').order('contract_name').limit(700),
+      supabase.from('vn_contract_catalog').select('*').order('contract_name').limit(700),
       supabase.from('vn_site_directory').select('*').order('branch').limit(100),
     ])
-    const first=[cc,pc,kc,qr,cr,sr].find(r=>r.error)?.error
-    if(first){
-      const raw=String(first.message||'')
-      const recovering=/not accepting connections|starting up|hot standby|timeout/i.test(raw)
-      recordRuntimeEvent({
-        severity:recovering?'WARN':'ERROR',
-        area:'APP_LOAD_DATA',
-        code:recovering?'DATABASE_RECOVERING':(first.code||'LOAD_FAILED'),
-        route:'bootstrap',
-        durationMs:performance.now()-started,
-      })
-      setError(recovering
-        ? 'Vertragsdatenbank befindet sich in Wiederherstellung. Bitte später erneut versuchen.'
-        : raw)
-      return
+    const outcomes=[['CONTRACT_COUNT',cc],['POSITION_COUNT',pc],['KNOWLEDGE_COUNT',kc],['QUESTIONS_COUNT',qr],['CONTRACT_CATALOG',cr],['SITES',sr]]
+    for(const [area,response] of outcomes){
+      if(response.error)recordRuntimeEvent({severity:'ERROR',area:'APP_LOAD_DATA',code:response.error.code||area,route:'bootstrap',durationMs:performance.now()-started})
     }
-    const loadDuration=performance.now()-started
-    if(loadDuration>=5000)recordRuntimeEvent({severity:'WARN',area:'APP_LOAD_DATA',code:'SLOW_LOAD',route:'bootstrap',durationMs:loadDuration})
-    setContracts(cr.data||[])
-    setSites((sr.data||[]).map(s=>({...s,eligibilities:[]})))
-    setQuestionCount(qr.count||0)
-    setStats({contracts:cc.count||0,positions:pc.count||0,knowledge:kc.count||0,questions:qr.count||0})
+    if(cr.error)setError('Vertragskatalog konnte nicht geladen werden: '+cr.error.message)
+    else setContracts(cr.data||[])
+    if(sr.error)setError(previous=>[previous,'Standorte konnten nicht geladen werden: '+sr.error.message].filter(Boolean).join(' · '))
+    else setSites((sr.data||[]).map(site=>({...site,eligibilities:[]})))
+    if(!qr.error)setQuestionCount(qr.count||0)
+    setStats({contracts:cc.error?(cr.data?.length||0):(cc.count||0),positions:pc.count||0,knowledge:kc.count||0,questions:qr.count||0})
+    const duration=performance.now()-started
+    if(duration>=5000)recordRuntimeEvent({severity:'WARN',area:'APP_LOAD_DATA',code:'SLOW_LOAD',route:'bootstrap',durationMs:duration})
   }
+
+  // Beitrittsampeln sind rechenintensiv und dürfen die Auswahl von Kasse, PG und IK nicht sperren.
+  useEffect(()=>{
+    if(active!=='contracts'||!session?.user?.id||trafficStatus!=='idle')return
+    let cancelled=false
+    setTrafficStatus('loading')
+    async function loadTraffic(){
+      try{
+        const {data,error:trafficError}=await supabase.from('vn_contract_read_model_p2')
+          .select('*').order('contract_name').limit(700)
+        if(cancelled)return
+        if(trafficError)throw trafficError
+        setTrafficContracts(data||[])
+        setTrafficStatus('ready')
+      }catch(e){
+        if(cancelled)return
+        setTrafficContracts([])
+        setTrafficStatus('error')
+        recordRuntimeEvent({severity:'WARN',area:'CONTRACT_TRAFFIC',code:e?.code||'TRAFFIC_UNAVAILABLE',route:'contracts'})
+      }
+    }
+    loadTraffic()
+    return()=>{cancelled=true}
+  },[active,session?.user?.id,trafficStatus])
 
   async function loadKnowledge(){
     if(knowledgeLoaded)return
@@ -790,7 +809,7 @@ export default function App(){
           <small>Bekannte Ansprechpartner:innen, IK und Status als Arbeitsgemeinschaft bleiben laut Mitteilung unverändert. Zusätzlich kann die E-Mail-Domain <b>@valuny.de</b> verwendet werden. Suche funktioniert mit VALUNY, spectrumK und ITSC.</small></div>
         </section>}
         <section className="panel"><div className="sectionbar"><div><h2>Vertragskatalog mit Beitrittsampel</h2><p>Beitritt, Gültigkeit und Voraussetzungen je Vertrag auf einen Blick.</p></div><input className="compact" value={contractQuery} onChange={e=>setContractQuery(e.target.value)} placeholder="Vertrag durchsuchen …"/></div>
-          <ContractTrafficLightPanel contracts={filteredContracts}/>
+          {trafficStatus==='ready'?<ContractTrafficLightPanel contracts={trafficContracts.filter(item=>filteredContracts.some(contract=>contract.contract_id===item.contract_id))}/>:<div className="empty-panel" role="status">{trafficStatus==='loading'?'Beitrittsampeln werden separat geladen …':trafficStatus==='error'?'Beitrittsampeln derzeit aufgrund einer Datenbank-Zeitüberschreitung nicht abrufbar. Die Vertrags- und Positionssuche bleibt verfügbar.':'Beitrittsampeln werden vorbereitet …'}{trafficStatus==='error'&&<button className="secondary" type="button" onClick={()=>setTrafficStatus('idle')}>Erneut versuchen</button>}</div>}
         </section>
       </>}
 
