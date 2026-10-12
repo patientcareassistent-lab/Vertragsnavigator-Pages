@@ -772,6 +772,7 @@ export default function App(){
               siteMatch={siteMatch}
               knowledge={relatedKnowledge}
               canFach={inFachMode}
+              onPossibleAddons={()=>setAddonTarget(selected)}
             />}
 
           </section>}
