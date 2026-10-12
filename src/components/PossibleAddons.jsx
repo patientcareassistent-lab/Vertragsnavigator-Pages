@@ -28,7 +28,12 @@ function ExtraRow({item,onExplore,canExplore}){
   const included=item.included_in_base===true||/(in (der|den) (jeweiligen )?grundposition enthalten|im preis (des zusatzes )?enthalten|bereits enthalten|nicht gesondert abrechenbar|nicht separat abrechenbar)/.test(rawCondition)
   const excluded=/(nicht zusammen mit|kann nicht in verbindung|nicht ansetzbar|nicht abrechenbar|nicht kombinierbar)/.test(rawCondition)
   const justification=/(begründung|medizinische notwendigkeit|zu begründen)/.test(rawCondition)
-  const price=item.preis===null||item.preis===undefined?'Preis nicht erfasst':fmtMoney(item.preis)
+  const currentPrice=item.price_status==='CURRENT'
+  const historical=item.price_status==='EXPIRED'||item.price_status==='SUPERSEDED'
+  const futurePrice=item.price_status==='FUTURE'
+  const price=item.preis===null||item.preis===undefined?'Kein gesonderter Preis':(
+    !currentPrice?(historical?'Historischer Preis: ':futurePrice?'Zukünftiger Preis: ':'Preis ungeprüft: '):'')+fmtMoney(item.preis)
+  const priceNotice=item.price_status==='CURRENT'?'Preisvariante am Prüftag zeitlich gültig':item.price_status==='EXPIRED'?'Abgelaufene Preisvariante – nicht aktuell':item.price_status==='FUTURE'?'Preisvariante noch nicht gültig':item.price_status==='SUPERSEDED'?'Ersetzte Preisvariante – nicht aktuell':item.price_status==='DATE_UNCLEAR'?'Preisgültigkeit nicht ausreichend belegt':item.price_status==='NO_LINKED_PRICE_POSITION'?'Keine zugehörige separate Preisposition im Datenbestand':''
   const source=normalizeText(item.source_doc)
   return <article className={'possible-addon-item '+(checked?'is-verified':'is-unverified')}>
     <div className="possible-addon-line">
@@ -41,6 +46,7 @@ function ExtraRow({item,onExplore,canExplore}){
     <div className="possible-addon-tags">
       {included&&<span className="addon-tag-blocked" title="Laut Vertragsanlage bereits im Umfang der Grundposition enthalten">Im Grundpreis enthalten</span>}
       {item.source_conflict===true&&<span className="addon-tag-blocked" title="Widersprüchliche Positionsbezeichnung zwischen Teil 1 und Teil 2 der Anlage">Quellenwiderspruch · fachlich klären</span>}
+      {priceNotice&&!currentPrice&&!included&&<span className="addon-tag-blocked" title={priceNotice}>{priceNotice}</span>}
       {excluded&&<span className="addon-tag-blocked" title="Mögliche nicht zulässige Kombination – Originalvertrag prüfen">Kombination eingeschränkt?</span>}
       {justification&&<span className="addon-tag-note">Begründung prüfen</span>}
       {item.relation_type&&!included&&<span className={item.relation_type==='EXCLUDED'?'addon-tag-blocked':'addon-tag-note'}>{checked?(RELATIONS[item.relation_type]||item.relation_type):'Vorschlag: '+(RELATIONS[item.relation_type]||item.relation_type)}</span>}
@@ -85,7 +91,7 @@ export default function PossibleAddons({position,onClose}){
     async function fetchAddons(){
       try{
         if(!rowId)throw new Error('Keine eindeutige Positions-ID vorhanden.')
-        const {data:result,error:rpcError}=await supabase.rpc('vn_possible_position_extras_v2',{p_base_position_row_id:rowId})
+        const {data:result,error:rpcError}=await supabase.rpc('vn_possible_position_extras_v3',{p_base_position_row_id:rowId})
         if(rpcError)throw rpcError
         if(!result?.position_found)throw new Error('Die gewählte Vertragsposition ist nicht mehr aktuell oder nicht verfügbar.')
         if(currentRequest)setData(result)
@@ -129,6 +135,7 @@ export default function PossibleAddons({position,onClose}){
         {error&&<div className="alert error" role="alert">{error}</div>}
         {!loading&&!error&&data&&<>
           {!data.contract_id&&<p className="alert error">Keine eindeutige Vertragszuordnung. Eine vertragsbezogene Zusatzsuche ist derzeit nicht möglich.</p>}
+          {data.base_selected_price_valid_now===false&&<p className="alert error" role="note">Die gewählte Grundpositions-Preiszeile ist zum Prüftag {data.validity_checked_as_of||'heute'} nicht zeitlich gültig. {data.base_has_valid_price_variant?'Eine andere Preisvariante im Vertrag kann gültig sein; bitte diese gezielt auswählen.':'Im erfassten Vertrag gibt es für diese Grundposition keine aktuell zeitgültige Preisvariante.'} Die angezeigten Zusätze sind nur Quellenhinweise und keine Abrechnungsfreigabe.</p>}
           <p className="possible-addons-count">{sourceCount>0?sourceCount+' mögliche Zusätze ausdrücklich in der Vertragsanlage genannt':'Keine ausdrücklich zugeordneten Zusätze aus einer strukturiert erfassten Vertragsanlage'}
             {includedCount>0?' · '+includedCount+' bereits enthaltene Positionen':''}
             {actionable>sourceCount?' · '+(actionable-sourceCount)+' weitere Zuordnungshinweise':''}
