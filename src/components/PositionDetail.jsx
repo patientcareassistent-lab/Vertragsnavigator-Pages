@@ -179,9 +179,9 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
         const [vr,dr,sr,rr,er]=await Promise.all(jobs)
 
         if(cancelled)return
-        if(vr.error)throw vr.error
-        if(dr.error)throw dr.error
-        if(sr.error)throw sr.error
+        // Fehler einzelner Quellen dürfen die anderen Unterlagenhinweise nicht unterdrücken.
+        const detailErrors=[vr.error?.message,dr.error?.message,sr.error?.message].filter(Boolean)
+        if(detailErrors.length)setSourceError(detailErrors.join(' | '))
 
         setVersions(vr.data||[])
         setValidityScopes(sr.data||[])
