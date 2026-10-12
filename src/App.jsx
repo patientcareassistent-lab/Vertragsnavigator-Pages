@@ -718,7 +718,10 @@ export default function App(){
                   <label>PQ am Standort<select value={advanced.pq} onChange={e=>setA('pq',e.target.value)}><option value="all">Alle</option><option value="ja">nur PQ vorhanden</option><option value="nein">PQ fehlt</option></select></label>
 
                   <label>Vertragsbeitritt am Standort<select value={advanced.accession} onChange={e=>setA('accession',e.target.value)}><option value="all">Alle</option><option value="aktiv">nur aktiver Beitritt</option><option value="fehlt">kein aktiver Beitritt</option></select></label>
-                  <label className="check-option"><input type="checkbox" checked={advanced.authoritative} onChange={e=>setA('authoritative',e.target.checked)}/><span>Nur autoritative Positionsdaten</span></label>
+                  <div className="authoritative-filter">
+                    <label className="check-option"><input type="checkbox" checked={advanced.authoritative} onChange={e=>setA('authoritative',e.target.checked)}/><span>Nur autoritative Positionsdaten</span><span className="authoritative-info" tabIndex={0} role="note" aria-label="Filterinformation: Zeigt nur ausdrücklich als autoritativ gekennzeichnete Originalvertragspositionen. Andere importierte Daten werden ausgeblendet. Das ist keine Bestätigung der Abrechenbarkeit." title="Nur ausdrücklich als autoritativ gekennzeichnete Originalvertragspositionen werden angezeigt. Noch nicht entsprechend gekennzeichnete Importpositionen entfallen. Die Abrechenbarkeit muss separat geprüft werden.">ⓘ</span></label>
+                    <small className="authoritative-description">Nur als Originalvertragsdaten gekennzeichnete Positionen. Kein Nachweis der Abrechenbarkeit.</small>
+                  </div>
                 </div>
               </details>
             </form>
