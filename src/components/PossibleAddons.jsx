@@ -39,7 +39,7 @@ function ExtraRow({item,onExplore,canExplore}){
       {included&&<span className="addon-tag-blocked" title="Mögliche Inklusivleistung – Originalvertrag prüfen">Im Grundpreis enthalten?</span>}
       {excluded&&<span className="addon-tag-blocked" title="Mögliche nicht zulässige Kombination – Originalvertrag prüfen">Kombination eingeschränkt?</span>}
       {justification&&<span className="addon-tag-note">Begründung prüfen</span>}
-      {item.relation_type&&<span className={item.relation_type==='EXCLUDED'?'addon-tag-blocked':'addon-tag-note'}>{RELATIONS[item.relation_type]||item.relation_type}</span>}
+      {item.relation_type&&<span className={item.relation_type==='EXCLUDED'?'addon-tag-blocked':'addon-tag-note'}>{checked?(RELATIONS[item.relation_type]||item.relation_type):'Vorschlag: '+(RELATIONS[item.relation_type]||item.relation_type)}</span>}
       <span className={'possible-addon-approval '+approval.tone} title={approval.detail}>{approval.label}</span>
     </div>
     <p className="possible-addon-reason">{item.reason}</p>
