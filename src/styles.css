@@ -18,6 +18,11 @@
 .advanced-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px 10px;margin-top:12px;align-items:end}
 .advanced-grid label{margin:0}.advanced-grid .wide2{grid-column:span 2}
 .check-option{display:flex!important;align-items:center;gap:8px;min-height:42px;padding-top:19px}.check-option input{width:auto;margin:0}.check-option span{font-size:12px;font-weight:700;color:#475467}
+.authoritative-filter{align-self:end;min-width:0}
+.authoritative-filter .check-option{padding-top:0;min-height:24px;flex-wrap:wrap;gap:6px}
+.authoritative-filter .authoritative-info{font-weight:700;color:#245c88;cursor:help;font-size:15px;line-height:1}
+.authoritative-filter .authoritative-info:focus-visible{outline:2px solid #245c88;outline-offset:3px;border-radius:50%}
+.authoritative-filter .authoritative-description{display:block;margin:4px 0 0 20px;color:#52677e;font-size:11px;line-height:1.4}
 .selected-meta{margin-top:14px}
 @media(max-width:1100px){.advanced-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.advanced-grid{grid-template-columns:1fr}.advanced-grid .wide2{grid-column:auto}}
