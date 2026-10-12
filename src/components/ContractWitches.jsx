@@ -22,10 +22,10 @@ export const CONTRACT_WITCH_WISDOM = WITCH_WISDOM.map(entry => entry.text)
 // The approved PNG/WebP character artwork can be dropped into public/witches.
 // A self-contained vector fallback is used while the image files are unavailable.
 export const WITCH_ASSETS = Object.freeze({
-  caro: 'witches/caro.webp',
-  julie: 'witches/julie.webp',
-  duo: 'witches/caro-julie.webp',
-  flight: 'witches/caro-julie-flug.webp',
+  caro: 'witches/caro.png',
+  julie: 'witches/julie.png',
+  duo: 'witches/caro-julie.png',
+  flight: 'witches/caro-julie-flug.png',
 })
 export const WITCH_SCENES = Object.freeze(['caro', 'julie', 'duo', 'flight'])
 
