@@ -1,6 +1,7 @@
 import React,{useEffect,useMemo,useState} from 'react'
 import { ExternalLink, FileText } from 'lucide-react'
 import { supabase } from '../lib/supabase.js'
+import { resolvePositionScope } from '../lib/positionContractScope.js'
 
 const asArray=v=>Array.isArray(v)?v:(v?[v]:[])
 const text=v=>v===null||v===undefined||v===''?'—':String(v)
@@ -113,7 +114,8 @@ function RequirementField({items=[],hints=[],versions=[],loading=false,error='',
 }
 
 
-export default function PositionDetail({position,contract,site,siteMatch,knowledge=[],canFach=false,onPossibleAddons=null}){
+export default function PositionDetail({position,contract,site,siteMatch,knowledge=[],canFach=false,onPossibleAddons=null,scopeRules=[],asOf}){
+  const positionScope=useMemo(()=>resolvePositionScope(position,scopeRules,asOf),[position,scopeRules,asOf])
   const [versions,setVersions]=useState([])
   const [documents,setDocuments]=useState([])
   const [validityScopes,setValidityScopes]=useState([])
@@ -265,14 +267,16 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
       </div>
     </div>
 
+    {positionScope.notice&&<p role="status" className="requirement-review">{positionScope.notice}</p>}
     <div className="position-quickfacts" aria-label="Wesentliche Vertragsangaben">
       <Field label="Produktgruppe" value={text(position.pg)}/>
       <Field label="HMV-Nummer" value={text(position.code)}/>
       <Field label="Vertragsposition" value={text(position.pos)}/>
-      <Field label="Preis" value={money(position.preis)}/>
+      <Field label="Preis" value={positionScope.priceText}/>
       <Field label="Genehmigung" value={text(position.genehmigung||position.freigrenze)}/>
       <Field label="Verordnung" value={text(position.verordnung)}/>
     </div>
+    {positionScope.variants.length>0&&<div className="position-price-variants"><h4>Ausführungsvarianten laut Vertragsanlage (netto, fachlich zu prüfen)</h4><ul>{positionScope.variants.map((v,i)=><li key={v.variant_code||i}>{v.variant_label||v.variant_code}: {money(v.net_price_eur)}</li>)}</ul><p className="requirement-review">Keine automatische Preisfreigabe ohne eindeutig belegte Ausführung, Stichtag und Leistungserbringer.</p></div>}
     <details className="position-more-details">
       <summary>Fachdetails, Originalquellen und Vertragsversionen anzeigen</summary>
     <div className="position-detail-grid">
@@ -297,8 +301,8 @@ export default function PositionDetail({position,contract,site,siteMatch,knowled
         <div className="position-field-grid">
           <Field label="Kanonischer Vertrag" value={text(contract?.contract_name||position.contract)} wide/>
           <Field label="Kostenträger" value={asArray(contract?.payer_families).join(', ')||text(position.family)}/>
-          <Field label="LEGS" value={text(position.legs)}/>
-          <Field label="Preis" value={money(position.preis)}/>
+          <Field label="LEGS (Anlagenbezug)" value={positionScope.legsText}/>
+          <Field label="Preis" value={positionScope.priceText}/>
           <Field label="Rabatt" value={position.rabatt===null||position.rabatt===undefined?'—':text(position.rabatt)}/>
           <Field label="Genehmigung" value={text(position.genehmigung||position.freigrenze)} wide/>
           <Field label="Verordnung" value={text(position.verordnung)} wide/>

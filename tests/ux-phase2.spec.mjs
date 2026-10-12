@@ -33,7 +33,7 @@ test('Suche → Treffer → Ergebnis: sichtbare Reihenfolge und kompakter Fachst
   })
   expect(Boolean(order)).toBe(true)
   await expect(page.locator('.supply-mini')).toHaveCount(6)
-  await expect(page.locator('.supply-mini').filter({hasText:'Abrechnung'})).toContainText('Preis dokumentiert')
+  await expect(page.locator('.supply-mini').filter({hasText:'Abrechnung'})).toContainText('Preis prüfen')
   await expect(page.locator('.supply-checks-details')).not.toHaveAttribute('open','')
   await expect(page.locator('.position-quickfacts .position-field')).toHaveCount(6)
   await expect(page.locator('.position-more-details')).not.toHaveAttribute('open','')
