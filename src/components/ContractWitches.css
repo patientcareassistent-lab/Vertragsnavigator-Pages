@@ -1,212 +1,193 @@
-/* Caro & Julie – freigegebene Dialogkarten-Vorlage:
-   breite Karte rechts neben der Figur, überlappendes Mond-Namensschild,
-   große Spruchtypografie und zwei weiche Pill-Buttons.
-   Rein dekorativ – keine Supabase-/Vertragslogik. */
+/* Compact, non-modal Caro & Julie Easter egg. Approved artwork is unchanged.
+   Small speech card in the lower right; the illustrated witch floats ABOVE it. */
 .vn-hx-widget{
   --hx-purple:#7932b1;--hx-teal:#0e8d90;--hx-ink:#2e174f;
-  position:fixed;right:16px;bottom:14px;z-index:45;
-  width:min(980px,calc(100vw - 32px));pointer-events:none;
+  position:fixed;right:14px;bottom:12px;z-index:45;
+  width:min(348px,calc(100vw - 22px));
+  max-height:calc(100dvh - 16px);
   display:flex;flex-direction:column;align-items:stretch;
-  font-family:inherit;
+  pointer-events:none;font-family:inherit;
 }
 .vn-hx-widget button{font:inherit;cursor:pointer;pointer-events:auto}
 .vn-hx-panel{
-  pointer-events:none;width:100%;display:grid;
-  grid-template-columns:400px minmax(0,1fr);
-  align-items:center;gap:0;isolation:isolate;
+  width:100%;min-width:0;display:flex;flex-direction:column;
+  align-items:stretch;gap:0;pointer-events:none;isolation:isolate;
 }
 .vn-hx-character-stage{
-  position:relative;z-index:3;width:100%;height:489px;
-  display:flex;justify-content:flex-end;align-items:center;pointer-events:none;
+  position:relative;z-index:3;width:100%;height:176px;
+  display:flex;justify-content:center;align-items:center;pointer-events:none;
 }
 .vn-hx-character-float{
-  height:100%;display:flex;align-items:center;justify-content:center;
+  width:100%;height:100%;display:flex;justify-content:center;align-items:center;
   animation:vn-hx-hover 3.8s ease-in-out infinite;
 }
 .vn-hx-character-image,.vn-hx-fallback{
-  display:block;height:480px;max-width:435px;width:auto;
+  display:block;width:auto;height:220px;max-width:280px;
   object-fit:contain;object-position:center;
-  filter:drop-shadow(0 12px 13px rgba(45,26,56,.15));
+  filter:drop-shadow(0 9px 10px rgba(45,26,56,.14));
   user-select:none;
 }
-.vn-hx-fallback{width:360px}
+.vn-hx-fallback{width:210px}
 .vn-witch-vector{height:100%;width:100%;overflow:visible}
-.vn-hx-mode-duo .vn-hx-character-image,.vn-hx-mode-flight .vn-hx-character-image{max-width:450px;height:450px}
-.vn-hx-mode-duo .vn-hx-fallback,.vn-hx-mode-flight .vn-hx-fallback{width:405px}
+.vn-hx-mode-duo .vn-hx-character-image,.vn-hx-mode-flight .vn-hx-character-image{
+  height:208px;max-width:296px;
+}
+.vn-hx-mode-duo .vn-hx-fallback,.vn-hx-mode-flight .vn-hx-fallback{width:267px}
 .vn-hx-mode-julie .vn-hx-character-float{animation-delay:-1.9s}
-.vn-hx-magic{position:absolute;font-size:22px;color:#bb75d7;opacity:.86;animation:vn-hx-spark 2.9s ease-in-out infinite;z-index:-1}
-.vn-hx-magic-a{left:16%;top:13%;color:#e3a33b}
-.vn-hx-magic-b{right:8%;top:31%;animation-delay:-1.5s;color:#40adae}
+.vn-hx-magic{
+  position:absolute;font-size:17px;color:#ae75d7;opacity:.8;
+  animation:vn-hx-spark 2.9s ease-in-out infinite;z-index:-1;
+}
+.vn-hx-magic-a{left:14%;top:23%;color:#dfa340}
+.vn-hx-magic-b{right:11%;top:13%;animation-delay:-1.5s;color:#40adae}
 .vn-hx-card{
-  --hx-accent:var(--hx-purple);--hx-pale:#f4e5ff;
-  position:relative;z-index:2;width:calc(100% + 14px);min-width:0;
-  margin-left:-14px;pointer-events:auto;box-sizing:border-box;
-  padding:64px 27px 24px;
-  border-radius:40px;
-  background:
-    radial-gradient(ellipse at 14% 0%,rgba(251,232,255,.8),transparent 47%),
-    linear-gradient(146deg,#fff 0%,#fffefe 57%,#fff8ff 100%);
-  border:2px solid #f2e4f6;
-  box-shadow:0 22px 48px rgba(87,44,109,.17),0 4px 12px rgba(79,45,103,.08),inset 0 1px 0 #fff;
+  --hx-accent:var(--hx-purple);
+  position:relative;z-index:2;box-sizing:border-box;width:100%;min-width:0;
+  pointer-events:auto;margin:0;padding:39px 15px 13px;
+  border-radius:24px;border:1px solid #eadcf3;
+  background:radial-gradient(ellipse at 9% 0%,#fbecff 0%,transparent 58%),linear-gradient(145deg,#fff 0%,#fff 60%,#fffbff 100%);
+  box-shadow:0 12px 29px rgba(69,37,92,.16),0 2px 7px rgba(56,34,71,.07);
   color:var(--hx-ink);
 }
-.vn-hx-card::before{
-  content:"";position:absolute;z-index:-1;inset:-12px -9px;
-  border-radius:47px;pointer-events:none;
-  background:radial-gradient(ellipse at 70% 8%,rgba(241,198,255,.36),transparent 65%);
-  filter:blur(12px);
-}
 .vn-hx-card-teal{
-  --hx-accent:#087e86;--hx-pale:#dff8f7;
-  background:radial-gradient(ellipse at 12% 0%,rgba(222,250,247,.8),transparent 48%),linear-gradient(150deg,#fff 0%,#fff 60%,#f5ffff 100%);
-  border-color:#dbf1ed;
+  --hx-accent:#087e86;
+  background:radial-gradient(ellipse at 8% 0%,#e9fcf9,transparent 60%),linear-gradient(145deg,#fff,#faffff);
+  border-color:#d8eae7;
 }
-.vn-hx-card-duo{--hx-accent:#7040a6;--hx-pale:#f0e6ff}
-.vn-hx-card-head{position:relative;height:0;min-height:0;z-index:3}
+.vn-hx-card-duo{--hx-accent:#7040a6}
+.vn-hx-card::before{
+  content:"";position:absolute;z-index:-1;inset:-5px;
+  border-radius:27px;background:rgba(244,221,252,.14);
+  filter:blur(8px);pointer-events:none;
+}
+.vn-hx-card-head{position:relative;height:0;z-index:3}
 .vn-hx-name-pill{
-  position:absolute;top:-85px;left:2px;
-  display:inline-flex;align-items:center;gap:10px;
-  min-height:66px;padding:5px 24px 5px 17px;
-  border-radius:999px;
-  background:linear-gradient(120deg,#fff8ff 2%,#f5e6ff 52%,#ffe4f9 100%);
-  border:3px solid rgba(255,255,255,.94);
-  box-shadow:0 8px 24px rgba(120,55,155,.17),inset 0 -2px 5px rgba(230,173,255,.25);
-  white-space:nowrap;color:#432174;
+  position:absolute;top:-54px;left:0;
+  display:inline-flex;align-items:center;gap:5px;
+  min-height:42px;max-width:calc(100% - 45px);
+  box-sizing:border-box;padding:3px 12px 3px 9px;
+  border-radius:999px;border:2px solid white;
+  background:linear-gradient(110deg,#fff8ff,#f3dfff,#ffe9f9);
+  box-shadow:0 4px 11px rgba(120,55,155,.16);
+  color:#432174;white-space:nowrap;
 }
-.vn-hx-card-teal .vn-hx-name-pill{background:linear-gradient(120deg,#f6ffff,#dff9fa,#f7f0ff);color:#12656f}
+.vn-hx-card-teal .vn-hx-name-pill{background:linear-gradient(110deg,#f6ffff,#ddf7f7,#f6edff);color:#12656f}
 .vn-hx-name-script{
   font-family:"Segoe Script","Brush Script MT","Comic Sans MS",cursive;
-  font-size:31px;line-height:1.1;font-style:italic;font-weight:700;
-  letter-spacing:-.045em;
+  font-size:22px;font-weight:700;font-style:italic;
+  line-height:1.1;letter-spacing:-.035em;
 }
-.vn-hx-pill-moon{color:#f5a73f;filter:drop-shadow(0 2px 2px rgba(237,154,41,.27));flex-shrink:0}
-.vn-hx-pill-stars{color:#ee6bc7;flex-shrink:0}
+.vn-hx-pill-moon{width:20px;height:20px;color:#eda53f;flex-shrink:0}
+.vn-hx-pill-stars{width:16px;height:16px;color:#e869c3;flex-shrink:0}
 .vn-hx-icon-button{
   position:absolute;right:-1px;top:-48px;
-  width:43px;height:43px;display:grid;place-items:center;
-  border:2px solid #f0e6f4;border-radius:50%;
-  background:linear-gradient(150deg,#fff,#fcf8ff);color:#442061;
-  box-shadow:0 5px 13px rgba(75,36,96,.08);
+  width:31px;height:31px;display:grid;place-items:center;
+  padding:0;border:1px solid #eddfef;border-radius:50%;
+  background:white;color:#442061;
+  box-shadow:0 2px 7px rgba(75,36,96,.07);
 }
-.vn-hx-icon-button:hover{background:#f6e5fc}
+.vn-hx-icon-button svg{width:17px;height:17px}
+.vn-hx-icon-button:hover{background:#f9effc}
 .vn-hx-subtitle{
-  color:var(--hx-accent);font-size:11px;
-  text-transform:uppercase;letter-spacing:.105em;
-  font-weight:800;line-height:1.4;
+  color:var(--hx-accent);font-size:10px;line-height:1.45;
+  text-transform:uppercase;letter-spacing:.065em;font-weight:800;
 }
 .vn-hx-message{
-  font-size:20px;font-weight:650;line-height:1.43;
-  color:#2d174c;margin:12px 0 20px;
-  overflow-wrap:anywhere;min-height:79px;
+  margin:6px 0 9px;max-height:min(136px,21dvh);
+  overflow-y:auto;scrollbar-width:thin;overflow-wrap:anywhere;
+  color:#2d174c;font-size:14px;font-weight:630;line-height:1.43;
   position:relative;z-index:1;
 }
 .vn-hx-card-teal .vn-hx-message{color:#244451}
 .vn-hx-disclaimer{
-  margin:0 0 14px;display:flex;align-items:center;gap:9px;
-  font-size:13px;font-weight:500;color:#9392a7;line-height:1.35;
+  display:flex;align-items:center;gap:5px;
+  margin:0 0 9px;color:#838095;line-height:1.3;
+  font-size:10px;font-weight:500;
 }
-.vn-hx-disclaimer svg{flex-shrink:0}
-.vn-hx-card-decor{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:inherit;color:var(--hx-accent)}
-.vn-hx-card-heart{position:absolute;right:10%;top:33%;color:#e548c9;opacity:.76;transform:rotate(-13deg)}
-.vn-hx-card-spark{position:absolute;color:#d89e2f;opacity:.8}
-.vn-hx-card-spark-a{right:4%;top:53%}
-.vn-hx-card-spark-b{left:3%;bottom:21%;color:#c46bca}
+.vn-hx-disclaimer svg{height:13px;width:13px;flex-shrink:0}
+.vn-hx-card-decor{
+  position:absolute;inset:0;overflow:hidden;pointer-events:none;
+  border-radius:inherit;
+}
+.vn-hx-card-heart{position:absolute;right:8%;top:27%;height:18px;width:18px;color:#e548c9;opacity:.45;transform:rotate(-13deg)}
+.vn-hx-card-spark{position:absolute;color:#d89e2f;opacity:.52}
+.vn-hx-card-spark-a{right:4%;top:51%;height:14px;width:14px}
+.vn-hx-card-spark-b{left:3%;bottom:18%;height:12px;width:12px;color:#c46bca}
 .vn-hx-card-actions{
-  display:grid;grid-template-columns:1.12fr 1fr;gap:10px;
-  align-items:stretch;border-top:1px solid #f0e6f2;
-  padding-top:15px;
+  display:grid;grid-template-columns:1.12fr 1fr;gap:7px;
+  align-items:stretch;border-top:1px solid #f0e6f2;padding-top:9px;
 }
 .vn-hx-card-actions button{
-  box-sizing:border-box;min-width:0;min-height:51px;
-  display:flex;align-items:center;justify-content:center;
-  gap:8px;padding:10px 13px;
-  border-radius:999px;font-size:14px;font-weight:750;
-  border:2px solid transparent;white-space:nowrap;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+  box-sizing:border-box;min-width:0;min-height:37px;padding:5px 6px;
+  border-radius:999px;border:1px solid transparent;white-space:nowrap;
+  font-size:11px;font-weight:750;
   transition:transform .16s ease,box-shadow .16s ease,background .16s ease;
 }
-.vn-hx-card-actions button:hover{transform:translateY(-2px)}
-.vn-hx-card-actions button span{flex:0 1 auto}
-.vn-hx-card-actions svg{flex-shrink:0}
+.vn-hx-card-actions button:hover{transform:translateY(-1px)}
+.vn-hx-card-actions button span{min-width:0}
+.vn-hx-card-actions svg{width:15px;height:15px;flex-shrink:0}
 .vn-hx-action-primary{
-  color:white;
-  background:linear-gradient(140deg,#b94eeb 0%,#8e35ca 52%,#66239e 100%);
-  box-shadow:0 7px 15px rgba(106,39,150,.23),inset 0 1px 0 rgba(255,255,255,.27);
+  background:linear-gradient(138deg,#b94eeb,#8e35ca 55%,#66239e);
+  color:#fff;box-shadow:0 4px 10px rgba(106,39,150,.18);
 }
-.vn-hx-action-primary .vn-hx-lightbulb{color:#ffdc76}
+.vn-hx-action-primary .vn-hx-lightbulb{color:#ffdb78}
 .vn-hx-card-teal .vn-hx-action-primary{background:linear-gradient(135deg,#24b6b9,#128b96,#166e84)}
 .vn-hx-action-secondary{
-  color:#3e1c64;
   background:linear-gradient(155deg,#fff,#fcf5ff);
-  border-color:#eaddf1!important;
-  box-shadow:0 5px 13px rgba(100,64,120,.10);
+  color:#3e1c64;border-color:#eaddf1!important;
 }
-.vn-hx-action-secondary:hover{background:#f9ecff}
+.vn-hx-action-secondary:hover{background:#f8eefe}
 .vn-hx-footer-controls{
-  margin-top:8px;display:flex;justify-content:flex-end;
-  gap:7px;flex-wrap:wrap;pointer-events:auto;
+  pointer-events:auto;margin-top:7px;display:flex;
+  flex-wrap:wrap;justify-content:flex-end;gap:6px;
 }
 .vn-hx-footer-controls button{
+  display:inline-flex;align-items:center;gap:5px;min-height:31px;
+  padding:6px 10px;border-radius:999px;
   border:1px solid #d9cde1;background:white;color:#62466e;
-  padding:8px 12px;min-height:34px;display:inline-flex;align-items:center;gap:7px;
-  border-radius:999px;box-shadow:0 3px 12px rgba(43,28,56,.13);
-  font-size:12px;font-weight:750;
+  box-shadow:0 2px 8px rgba(43,28,56,.1);
+  font-size:11px;font-weight:750;
 }
+.vn-hx-footer-controls svg{width:13px;height:13px}
 .vn-hx-open-button:hover,.vn-hx-launcher:hover{background:#f8f1fa}
-.vn-hx-widget button:focus-visible{outline:3px solid #bd90d5;outline-offset:3px}
-@keyframes vn-hx-hover{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
-@keyframes vn-hx-spark{0%,100%{transform:scale(.7);opacity:.35}50%{transform:scale(1.2);opacity:.95}}
-/* At medium widths preserve the dialog card and cap images to the grid track. */
-@media(min-width:801px) and (max-width:1100px){
-  .vn-hx-panel{grid-template-columns:minmax(280px,40%) minmax(0,1fr)}
-  .vn-hx-character-image,.vn-hx-fallback{max-width:100%}
-  .vn-hx-mode-duo .vn-hx-character-image,.vn-hx-mode-flight .vn-hx-character-image{max-width:100%}
+.vn-hx-widget button:focus-visible{outline:3px solid #bd90d5;outline-offset:2px}
+.vn-hx-fallback-duo{
+  width:255px;max-width:100%;display:flex;
+  justify-content:center;align-items:flex-end;gap:0;
 }
-@media(max-width:800px){
-  .vn-hx-widget{width:min(860px,calc(100vw - 24px));right:12px}
-  .vn-hx-panel{grid-template-columns:minmax(260px,40%) minmax(0,1fr)}
-  .vn-hx-character-stage{height:402px}
-  .vn-hx-character-image,.vn-hx-fallback{height:384px;max-width:min(375px,100%)}
-  .vn-hx-mode-duo .vn-hx-character-image,.vn-hx-mode-flight .vn-hx-character-image{height:375px;max-width:min(382px,100%)}
-  .vn-hx-card{padding:60px 20px 20px;border-radius:34px}
-  .vn-hx-message{font-size:18px}
-  .vn-hx-card-actions button{min-height:45px;font-size:12px;gap:5px;padding:7px}
-  .vn-hx-card-actions svg{width:17px;height:17px}
-  .vn-hx-name-pill{min-height:58px;top:-79px}
-}
-@media(max-width:700px){
-  .vn-hx-widget{right:8px;bottom:8px;width:min(400px,calc(100vw - 16px))}
-  .vn-hx-panel{display:flex;flex-direction:column;align-items:stretch;gap:0}
-  .vn-hx-character-stage{width:100%;height:174px;justify-content:center}
-  .vn-hx-character-image,.vn-hx-fallback{height:198px;max-width:264px}
-  .vn-hx-mode-duo .vn-hx-character-image,.vn-hx-mode-flight .vn-hx-character-image{height:197px;max-width:292px}
-  .vn-hx-fallback{width:198px}
-  .vn-hx-card{
-    width:100%;margin-left:0;padding:51px 17px 16px;
-    border-radius:26px;border-width:1px;
-  }
-  .vn-hx-name-pill{top:-69px;left:0;min-height:51px;padding:4px 14px;gap:6px;border-width:2px}
-  .vn-hx-name-script{font-size:23px}
-  .vn-hx-pill-moon{width:22px;height:22px}
-  .vn-hx-pill-stars{width:17px;height:17px}
-  .vn-hx-icon-button{top:-36px;right:0;width:34px;height:34px}
-  .vn-hx-icon-button svg{width:18px}
-  .vn-hx-subtitle{font-size:10px}
-  .vn-hx-message{font-size:16px;min-height:38px;margin:10px 0 13px;line-height:1.42}
-  .vn-hx-disclaimer{font-size:11px;margin-bottom:11px}
-  .vn-hx-card-actions{gap:7px;padding-top:11px}
-  .vn-hx-card-actions button{min-height:40px;font-size:11px;padding:6px 7px;gap:5px}
-  .vn-hx-card-actions svg{width:15px;height:15px}
-  .vn-hx-card-heart{right:8%;top:35%;width:22px}
+.vn-hx-fallback-duo .vn-witch-vector{width:50%;flex:1 1 50%;height:100%}
+@keyframes vn-hx-hover{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes vn-hx-spark{0%,100%{transform:scale(.75);opacity:.25}50%{transform:scale(1.2);opacity:.9}}
+@media(max-width:600px){
+  .vn-hx-widget{right:7px;bottom:7px;width:min(322px,calc(100vw - 14px))}
+  .vn-hx-character-stage{height:126px}
+  .vn-hx-character-image,.vn-hx-fallback{height:163px;max-width:224px}
+  .vn-hx-mode-duo .vn-hx-character-image,.vn-hx-mode-flight .vn-hx-character-image{height:154px;max-width:255px}
+  .vn-hx-fallback{width:161px}
+  .vn-hx-fallback-duo{width:214px}
+  .vn-hx-card{padding:34px 12px 11px;border-radius:22px}
+  .vn-hx-name-pill{top:-49px;min-height:39px}
+  .vn-hx-name-script{font-size:20px}
+  .vn-hx-icon-button{top:-44px}
+  .vn-hx-message{font-size:13px;max-height:min(113px,17dvh)}
+  .vn-hx-card-actions{gap:5px}
+  .vn-hx-card-actions button{padding:5px 4px;font-size:10px;gap:3px;min-height:35px}
+  .vn-hx-card-actions svg{height:14px;width:14px}
+  .vn-hx-card-heart{opacity:.25}
 }
 @media(max-width:350px){
-  .vn-hx-card-actions{grid-template-columns:1fr}
-  .vn-hx-card-actions button{min-height:38px;justify-content:space-between;padding:7px 17px}
-  .vn-hx-card{padding-left:13px;padding-right:13px}
+  .vn-hx-widget{width:min(306px,calc(100vw - 12px));right:6px}
+  .vn-hx-card-actions{grid-template-columns:1fr 1fr}
+  .vn-hx-card-actions button svg:last-child{display:none}
+}
+@media(max-height:630px){
+  .vn-hx-character-stage{height:92px}
+  .vn-hx-character-image,.vn-hx-fallback{height:125px;max-width:180px}
+  .vn-hx-mode-duo .vn-hx-character-image,.vn-hx-mode-flight .vn-hx-character-image{height:125px;max-width:205px}
+  .vn-hx-message{max-height:90px}
 }
 @media(prefers-reduced-motion:reduce){
   .vn-hx-widget *,.vn-hx-widget *::before,.vn-hx-widget *::after{animation:none!important;transition:none!important}
   .vn-hx-card-actions button:hover{transform:none}
 }
-.vn-hx-fallback-duo{width:230px;max-width:95%;display:flex;justify-content:center;align-items:flex-end;gap:0}
-.vn-hx-fallback-duo .vn-witch-vector{width:50%;flex:1 1 50%;height:100%}
-@media(max-width:700px){.vn-hx-fallback-duo{width:255px}}
