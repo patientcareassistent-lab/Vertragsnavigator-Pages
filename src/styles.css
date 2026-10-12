@@ -671,3 +671,6 @@
   .payer-review-note{grid-template-columns:1fr}
   .payer-review-actions button{flex:1 1 100%;justify-content:center}
 }
+
+.requirement-section-caption{font-weight:800;color:#667085;font-size:10px;letter-spacing:.025em;margin:4px 0 0}
+.position-requirements .requirement-items>strong{color:#344054;font-size:11px;line-height:1.5;font-weight:600}
