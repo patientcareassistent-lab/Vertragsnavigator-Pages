@@ -2,6 +2,7 @@ import React,{useEffect,useState} from 'react'
 import { ExternalLink,FileCheck2,RefreshCw,ShieldCheck } from 'lucide-react'
 import { supabase } from '../lib/supabase.js'
 import './AddonCandidateReview.css'
+import PositionRelationScreening from './PositionRelationScreening.jsx'
 
 const TYPES={REQUIRED:'Erforderlich',OPTIONAL:'Möglicher Zusatz',EXCLUDED:'Nicht kombinierbar'}
 const STATUSES={PENDING:'Zur Prüfung',APPROVED:'Fachlich freigegeben',REJECTED:'Abgelehnt'}
@@ -117,5 +118,6 @@ export default function AddonCandidateReview({canReview=false}){
       })}
       {!rows.length&&<div className="empty-panel">{busy?'Laden …':'Keine Kandidaten in dieser Auswahl.'}</div>}
     </div>
+    <PositionRelationScreening/>
   </section>
 }
