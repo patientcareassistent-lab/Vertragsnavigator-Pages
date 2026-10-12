@@ -2,6 +2,7 @@ import React,{useMemo,useRef,useState} from 'react'
 import { AlertCircle, ChevronDown,GitCompare,LoaderCircle,Plus,Search,Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase.js'
 import { addonMatrixRows,addonNotice,approvalBadge,fmtMoney,groupedMatrix,pairKey,pairTitle } from '../lib/matrixComparison.js'
+import { payerDetailOptions } from '../lib/payerAliases.js'
 
 const MAX_PAYERS=4
 const PAGE_LIMIT=75
@@ -61,6 +62,7 @@ function AddonItem({addon}){
 
 export default function ContractMatrix({contracts=[]}){
   const families=useMemo(()=>[...new Set(contracts.flatMap(c=>Array.isArray(c.payer_families)?c.payer_families:[]))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'de')),[contracts])
+  const detailOptions=useMemo(()=>Object.fromEntries(families.map(f=>[f,payerDetailOptions(contracts,f)])),[contracts,families])
   const [payerRows,setPayerRows]=useState([{family:'',detail:''},{family:'',detail:''}])
   const [pg,setPg]=useState('24')
   const [query,setQuery]=useState('')
@@ -73,12 +75,7 @@ export default function ContractMatrix({contracts=[]}){
   const [searched,setSearched]=useState(false)
   const serial=useRef(0)
   function updatePair(index,part,value){setPayerRows(v=>v.map((row,i)=>i===index?{...row,[part]:value,...(part==='family'?{detail:''}:{})}:row))}
-  const optionsFor=family=>{
-    if(!family)return []
-    return [...new Set(contracts.filter(c=>(c.payer_families||[]).includes(family))
-      .map(c=>String(c.contract_name||'').split(':')[0].trim()).filter(Boolean))]
-      .sort((a,b)=>a.localeCompare(b,'de')).slice(0,250)
-  }
+  const optionsFor=family=>detailOptions[family]||[]
 
   async function search(e){
     e.preventDefault()
@@ -93,16 +90,32 @@ export default function ContractMatrix({contracts=[]}){
       const term=query.trim()
       const looksLikeHmv=/^\d{2}\.\d{2}/.test(term)
       const groups=await Promise.all(pairs.map(async(pair)=>{
-        const {data,error:dbError}=await supabase.rpc('vn_search_positions_v14',{
-          p_payer:pair.family,
-          p_payer_detail:pair.detail||null,
-          p_pg:pg.trim()||null,
-          p_query:!looksLikeHmv&&term?term:null,
-          p_hmv:looksLikeHmv?term:null,
-          p_limit:PAGE_LIMIT
-        })
-        if(dbError)throw new Error(pairTitle(pair)+': '+dbError.message)
-        return {pair,items:data||[]}
+        // One visible option may stand for several original spellings. Query each
+        // original detail separately; never substitute a canonical label in SQL.
+        const originals=pair.detail
+          ?optionsFor(pair.family).find(x=>x.label===pair.detail)?.raws||[pair.detail]
+          :[null]
+        const batches=await Promise.all(originals.map(async detail=>{
+          const {data,error:dbError}=await supabase.rpc('vn_search_positions_v14',{
+            p_payer:pair.family,
+            p_payer_detail:detail,
+            p_pg:pg.trim()||null,
+            p_query:!looksLikeHmv&&term?term:null,
+            p_hmv:looksLikeHmv?term:null,
+            p_limit:PAGE_LIMIT
+          })
+          if(dbError)throw new Error(pairTitle(pair)+': '+dbError.message)
+          return data||[]
+        }))
+        const unique=new Map()
+        for(const rows of batches)for(const row of rows){
+          const key=String(row.position_row_id||'')
+          if(key&&!unique.has(key))unique.set(key,row)
+        }
+        return {
+          pair,items:[...unique.values()].slice(0,PAGE_LIMIT),
+          hitLimit:batches.some(rows=>rows.length>=PAGE_LIMIT)||unique.size>PAGE_LIMIT,
+        }
       }))
       if(requestId!==serial.current)return
       setComparisons(groups)
@@ -158,7 +171,7 @@ export default function ContractMatrix({contracts=[]}){
         <h3 className="matrix-compare-label">Kassen / Regionen vergleichen</h3>
         {payerRows.map((row,i)=><div key={i} className="matrix-payer-row">
           <label>Kostenträger<select value={row.family} onChange={e=>updatePair(i,'family',e.target.value)}><option value="">Kasse auswählen</option>{families.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
-          <label>Kasse / Region (optional)<select value={row.detail} disabled={!row.family} onChange={e=>updatePair(i,'detail',e.target.value)}><option value="">Alle dieser Familie</option>{optionsFor(row.family).map(x=><option key={x} value={x}>{x}</option>)}</select></label>
+          <label>Kasse / Region (optional)<select value={row.detail} disabled={!row.family} onChange={e=>updatePair(i,'detail',e.target.value)}><option value="">Alle dieser Familie</option>{optionsFor(row.family).map(x=><option key={x.label} value={x.label}>{x.label}</option>)}</select></label>
           <button type="button" className="secondary" aria-label={'Kassenauswahl '+(i+1)+' entfernen'} title="Auswahl entfernen" disabled={payerRows.length<2} onClick={()=>setPayerRows(rows=>rows.filter((_,j)=>i!==j))}><Trash2 size={16}/></button>
         </div>)}
         <div className="matrix-actions">
@@ -167,11 +180,12 @@ export default function ContractMatrix({contracts=[]}){
         </div>
       </form>
       {error&&<div className="alert error" role="alert">{error}</div>}
+      <p className="matrix-scope-note">Kassen- und Regionsnamen sind für die Anzeige vereinheitlicht. Originalvertragsnamen und Mehrkassenverträge bleiben getrennt und werden in der Datenbanksuche vollständig berücksichtigt.</p>
       <p className="matrix-scope-note"><AlertCircle size={17} aria-hidden="true"/> Positionen stehen nur bei übereinstimmender Produktgruppe und HMV-Klassifikation in einer gemeinsamen Zeile. Andere HMV-Nummern werden ohne bestätigte Äquivalenz nicht gleichgesetzt. Zusatzrelationen erscheinen nur nach Quellenprüfung.</p>
     </section>
     {searched&&!busy&&<section className="panel spaced matrix-results">
       <div className="sectionbar"><div><h2>Grund- und Vertragspositionen</h2><p>Die Kassen stehen in festen Spalten. Unbelegte Zuordnungen bleiben leer; innerhalb einer Zelle können mehrere Vertragspositionen vorkommen.</p></div><span className="badge">{total} Positionen · {comparisonRows.length} HMV-/Einzelzeilen</span></div>
-      {comparisons.some(g=>g.items.length===PAGE_LIMIT)&&<p className="result-limit-note">Bei mindestens einer Kasse wurden 75 Treffer geladen. Der Vergleich kann unvollständig sein. Bitte Suche weiter eingrenzen.</p>}
+      {comparisons.some(g=>g.hitLimit)&&<p className="result-limit-note">Bei mindestens einer Kasse wurden 75 Treffer geladen. Der Vergleich kann unvollständig sein. Bitte Suche weiter eingrenzen.</p>}
       {addonWarning&&<div className="alert error" role="status">{addonWarning}</div>}
       <div className="matrix-legend" aria-label="Bedeutung der Farbcodes">
         <StatusTag tone="free" label="Genehmigungsfrei"/>
