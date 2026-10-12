@@ -6,6 +6,7 @@ import ContractWitches from './components/ContractWitches.jsx'
 import ContractUpload from './components/ContractUpload.jsx'
 import ContractChanges from './components/ContractChanges.jsx'
 import PositionDetail from './components/PositionDetail.jsx'
+import { resolvePositionScope } from './lib/positionContractScope.js'
 import MissingSources from './components/MissingSources.jsx'
 import ContractTrafficLightPanel from './components/ContractTrafficLightPanel.jsx'
 import ContractPrecheck from './components/ContractPrecheck.jsx'
@@ -179,6 +180,7 @@ export default function App(){
   const [siteId,setSiteId]=useState('')
   const [advanced,setAdvanced]=useState({...EMPTY_ADVANCED})
   const [results,setResults]=useState([])
+  const [scopeRules,setScopeRules]=useState([])
   const [visibleResults,setVisibleResults]=useState(12)
   const [hasSearched,setHasSearched]=useState(false)
   const [selected,setSelected]=useState(null)
@@ -273,9 +275,15 @@ export default function App(){
         setMode(profileRole==='ADMIN'?'admin':profileRole==='PG_ADMIN'?'fach':profileRole==='INNENDIENST'?'innendienst':'versorger')
         setActive(profileRole==='ADMIN'?'admin':'assistant')
         await loadData()
+        const {data:rulesData,error:rulesError}=await supabase.from('vn_position_display_rules').select('*').limit(100)
+        if(!cancelled){
+          if(rulesError)recordRuntimeEvent({severity:'ERROR',area:'CONTRACT_SCOPE',code:rulesError.code||'RULES_UNAVAILABLE',route:'login'})
+          setScopeRules(rulesError?[]:(rulesData||[]))
+        }
         return
       }
       setUserProfile(null)
+      setScopeRules([])
       setKnowledge([]);setKnowledgeLoaded(false)
       setQuestions([]);setQuestionsLoaded(false);setQuestionCount(0)
       setRelatedKnowledge([]);setSelectedSiteEligibilities([])
@@ -611,6 +619,7 @@ export default function App(){
   const selectedSite=sites.find(s=>String(s.site_id)===String(siteId))
   const siteMatch=selectedSiteEligibilities.find(e=>e.active)||selectedSiteEligibilities[0]||null
   const selectedContract=selected?contracts.find(c=>String(c.contract_id)===String(selected.contract_id)):null
+  const selectedScope=resolvePositionScope(selected,scopeRules,advanced.validOn||undefined)
   const resultContractCount=new Set(results.map(r=>r.contract_id||r.contract||r.family).filter(Boolean)).size
   const supplyDecision=supplyEval?.decision||''
   const decisionTone=!selected||!siteId||supplyBusy||!supplyEval?'idle':supplyDecision==='GRUEN'?'ok':supplyDecision==='ROT'?'bad':'warn'
@@ -720,7 +729,7 @@ export default function App(){
             {results.length>0&&!selected&&<div className="result-hint"><b>{results.length} passende Positionen · {resultContractCount} Vertragsvarianten</b><span>{payer==='AOK'&&!payerDetail&&!siteId?'AOK-Verträge sind regional. Bitte konkrete AOK/Region, Standort oder unten den passenden Vertrag auswählen.':'Bitte den passenden Vertrag bzw. die Position auswählen.'}</span></div>}
             {results.length>=150&&<p className="result-limit-note" role="note">Maximal 150 Treffer geladen. Falls die gesuchte Position fehlt, bitte Kasse, Produktgruppe oder Suchbegriff eingrenzen.</p>}
             <div className="tablewrap"><table><thead><tr><th>PG</th><th>HMV/Code</th><th>Position</th><th>LKZ</th><th>Bezeichnung</th><th>Vertrag</th><th>LEGS</th><th>Preis</th><th>Genehmigung</th><th>Zusätze</th></tr></thead><tbody>
-              {results.slice(0,visibleResults).map(r=><tr key={r.position_row_id} className={'selectable '+(selected?.position_row_id===r.position_row_id?'selected':'')} tabIndex={0} aria-selected={selected?.position_row_id===r.position_row_id} aria-label={'Position auswählen: '+(r.bezeichnung||r.produktart_bezeichnung||r.code||r.pos||'Unbekannte Position')} onClick={()=>choosePosition(r)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choosePosition(r)}}}><td>{r.pg||'—'}</td><td>{r.code||'—'}</td><td>{r.pos||'—'}</td><td>{r.lkz==null||String(r.lkz).trim()===''?'—':r.lkz}</td><td><b>{r.bezeichnung||r.produktart_bezeichnung||'—'}</b></td><td>{displayCompanyName(r.contract||r.family||'—')}</td><td>{String(r.legs??'').trim()||'—'}</td><td>{r.preis??'—'}</td><td>{r.genehmigung||r.freigrenze||'—'}</td><td><button type="button" className="secondary assistant-addons-btn" aria-label={'Mögliche Zusatzpositionen zu '+(r.pos||r.bezeichnung||'dieser Position')+' öffnen'} title="Vertragsbezogene Zusatzpositionen, Zuordnungsvorschläge und deren Prüfstatus anzeigen" onClick={e=>{e.stopPropagation();setAddonTarget(r)}} onKeyDown={e=>e.stopPropagation()}>Mögliche Zusätze</button></td></tr>)}
+              {results.slice(0,visibleResults).map(r=><tr key={r.position_row_id} className={'selectable '+(selected?.position_row_id===r.position_row_id?'selected':'')} tabIndex={0} aria-selected={selected?.position_row_id===r.position_row_id} aria-label={'Position auswählen: '+(r.bezeichnung||r.produktart_bezeichnung||r.code||r.pos||'Unbekannte Position')} onClick={()=>choosePosition(r)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choosePosition(r)}}}><td>{r.pg||'—'}</td><td>{r.code||'—'}</td><td>{r.pos||'—'}</td><td>{r.lkz==null||String(r.lkz).trim()===''?'—':r.lkz}</td><td><b>{r.bezeichnung||r.produktart_bezeichnung||'—'}</b></td><td>{displayCompanyName(r.contract||r.family||'—')}</td><td title={resolvePositionScope(r,scopeRules,advanced.validOn||undefined).notice}>{resolvePositionScope(r,scopeRules,advanced.validOn||undefined).legsText}</td><td title={resolvePositionScope(r,scopeRules,advanced.validOn||undefined).notice}>{resolvePositionScope(r,scopeRules,advanced.validOn||undefined).priceText}</td><td>{r.genehmigung||r.freigrenze||'—'}</td><td><button type="button" className="secondary assistant-addons-btn" aria-label={'Mögliche Zusatzpositionen zu '+(r.pos||r.bezeichnung||'dieser Position')+' öffnen'} title="Vertragsbezogene Zusatzpositionen, Zuordnungsvorschläge und deren Prüfstatus anzeigen" onClick={e=>{e.stopPropagation();setAddonTarget(r)}} onKeyDown={e=>e.stopPropagation()}>Mögliche Zusätze</button></td></tr>)}
               {!results.length&&<tr><td colSpan="10" className="empty">{hasSearched&&!searchBusy?(error?'Die Suche wurde nicht abgeschlossen. Es liegt kein gültiges Suchergebnis vor.':'Keine passenden Positionen gefunden. Bitte die Suchkriterien anpassen.'):'Kasse, PG, Suchbegriff oder erweiterte Kriterien wählen und auf „Positionen suchen“ klicken.'}</td></tr>}
             </tbody></table></div>
             {results.length>0&&<div className="assistant-result-footer"><span>{Math.min(visibleResults,results.length)} von {results.length} Treffern angezeigt</span>{visibleResults<results.length&&<button className="secondary" type="button" onClick={()=>setVisibleResults(v=>v+12)}>Weitere 12 Treffer anzeigen</button>}</div>}
@@ -729,7 +738,7 @@ export default function App(){
           {selected&&<section className="panel span2 assistant-evaluation" id="assistantEvaluation" aria-labelledby="assistantDecisionHeading">
             <div className="assistant-evaluation-top"><div><small>Schritt 3 · Versorgungsprüfung</small><h2 id="assistantDecisionHeading" tabIndex={-1}>Ergebnis zur ausgewählten Position</h2><p><b>{selected.bezeichnung||selected.produktart_bezeichnung||selected.code||selected.pos||'Ausgewählte Position'}</b> · {displayCompanyName(selected.contract||selected.family||'Vertrag nicht benannt')}</p></div><div className={'decision '+decisionTone} role="status" aria-live="polite" aria-atomic="true"><small>Versorgungsprüfung</small><strong><DecisionIcon size={22} aria-hidden="true"/>{decisionLabel}</strong></div></div>
             <div className="supply-status-strip" aria-label="Kurzübersicht der sechs Prüfbereiche">
-              {[['Vertrag','Position zugeordnet',true],['PQ / IK / Beitritt',!siteId?'Standort fehlt':supplyBusy?'Prüfung läuft':supplyPathOk?'Bestätigt':supplyEval?.pq_decision==='ROT'||supplyEval?.accession_decision==='ROT'?'Nicht erfüllt':'Zu prüfen',supplyPathOk],['Genehmigung',supplyEval?.authorization_decision==='GRUEN'?'Bestätigt':supplyEval?.authorization_decision==='ROT'?'Nicht erfüllt':'Zu prüfen',supplyEval?.authorization_decision==='GRUEN'],['Verordnung',supplyEval?.prescription_decision==='GRUEN'?'Bestätigt':supplyEval?.prescription_decision==='ROT'?'Nicht erfüllt':'Zu prüfen',supplyEval?.prescription_decision==='GRUEN'],['Quellen',supplyEval?.source_decision==='GRUEN'?'Bestätigt':supplyEval?.source_decision==='ROT'?'Quellenmangel':'Zu prüfen',supplyEval?.source_decision==='GRUEN'],['Abrechnung',selected?.preis!=null?'Preis dokumentiert':'Preis offen',false]].map(([name,status,ok])=><span className={'supply-mini '+(ok?'ok':/nicht erfüllt|quellenmangel/i.test(status)?'bad':'neutral')} key={name}><small>{name}</small><strong>{status}</strong></span>)}
+              {[['Vertrag','Position zugeordnet',true],['PQ / IK / Beitritt',!siteId?'Standort fehlt':supplyBusy?'Prüfung läuft':supplyPathOk?'Bestätigt':supplyEval?.pq_decision==='ROT'||supplyEval?.accession_decision==='ROT'?'Nicht erfüllt':'Zu prüfen',supplyPathOk],['Genehmigung',supplyEval?.authorization_decision==='GRUEN'?'Bestätigt':supplyEval?.authorization_decision==='ROT'?'Nicht erfüllt':'Zu prüfen',supplyEval?.authorization_decision==='GRUEN'],['Verordnung',supplyEval?.prescription_decision==='GRUEN'?'Bestätigt':supplyEval?.prescription_decision==='ROT'?'Nicht erfüllt':'Zu prüfen',supplyEval?.prescription_decision==='GRUEN'],['Quellen',supplyEval?.source_decision==='GRUEN'?'Bestätigt':supplyEval?.source_decision==='ROT'?'Quellenmangel':'Zu prüfen',supplyEval?.source_decision==='GRUEN'],['Abrechnung',selectedScope.priceConfirmed?'Preis dokumentiert':'Preis offen',false]].map(([name,status,ok])=><span className={'supply-mini '+(ok?'ok':/nicht erfüllt|quellenmangel/i.test(status)?'bad':'neutral')} key={name}><small>{name}</small><strong>{status}</strong></span>)}
             </div>
             <details className="supply-checks-details">
               <summary>Alle sechs Prüfschritte und Vertragsangaben anzeigen</summary>
@@ -745,7 +754,7 @@ export default function App(){
               <Check n="3" title="Genehmigung" status={supplyEval?.authorization_decision==='GRUEN'?'geprüft':supplyEval?.authorization_decision==='ROT'?'nicht erfüllt':supplyEval?'prüfen':'noch offen'} value={supplyEval?.authorization_text||selected?.genehmigung||selected?.freigrenze||'Vertragsangabe fehlt'} ok={supplyEval?.authorization_decision==='GRUEN'}/>
               <Check n="4" title="Verordnung" status={supplyEval?.prescription_decision==='GRUEN'?'geprüft':supplyEval?.prescription_decision==='ROT'?'nicht erfüllt':supplyEval?'prüfen':'noch offen'} value={supplyEval?.prescription_text||selected?.verordnung||'Vertragsangabe fehlt'} ok={supplyEval?.prescription_decision==='GRUEN'}/>
               <Check n="5" title="Dokumentation / Quelle" status={supplyEval?.source_decision==='GRUEN'?'Quelle bestätigt':supplyEval?.source_decision==='ROT'?'Quellenmangel':supplyEval?'prüfen':'noch offen'} value={supplyEval?.source_text||(relatedKnowledgeBusy?'Vertragswissen wird geladen':relatedKnowledge.length?`${relatedKnowledge.length} Wissenseinträge`:'Quellennachweis prüfen')} ok={supplyEval?.source_decision==='GRUEN'}/>
-              <Check n="6" title="Abrechnung" status={selected?.preis!=null?'Preis vorhanden':'noch offen'} value={selected?.preis!=null?String(selected.preis):'Preis/Versorgungsform'} ok={selected?.preis!=null}/>
+              <Check n="6" title="Abrechnung" status={selectedScope.priceConfirmed?'Preis vorhanden':'noch offen'} value={selectedScope.priceConfirmed?selectedScope.priceText:'Preis/Versorgungsform'} ok={selectedScope.priceConfirmed}/>
             </div>
 
             </details>
@@ -753,6 +762,8 @@ export default function App(){
 
             {selected&&<PositionDetail
               position={selected}
+              scopeRules={scopeRules}
+              asOf={advanced.validOn||undefined}
               contract={selectedContract}
               site={selectedSite}
               siteMatch={siteMatch}
