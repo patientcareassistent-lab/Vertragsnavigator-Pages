@@ -5,18 +5,18 @@
 .vn-hx-widget{
   --hx-purple:#7932b1;--hx-teal:#0e8d90;--hx-ink:#2e174f;
   position:fixed;right:16px;bottom:14px;z-index:45;
-  width:min(790px,calc(100vw - 32px));pointer-events:none;
+  width:min(980px,calc(100vw - 32px));pointer-events:none;
   display:flex;flex-direction:column;align-items:stretch;
   font-family:inherit;
 }
 .vn-hx-widget button{font:inherit;cursor:pointer;pointer-events:auto}
 .vn-hx-panel{
   pointer-events:none;width:100%;display:grid;
-  grid-template-columns:268px minmax(0,1fr);
+  grid-template-columns:400px minmax(0,1fr);
   align-items:center;gap:0;isolation:isolate;
 }
 .vn-hx-character-stage{
-  position:relative;z-index:3;width:100%;height:326px;
+  position:relative;z-index:3;width:100%;height:489px;
   display:flex;justify-content:flex-end;align-items:center;pointer-events:none;
 }
 .vn-hx-character-float{
@@ -24,15 +24,15 @@
   animation:vn-hx-hover 3.8s ease-in-out infinite;
 }
 .vn-hx-character-image,.vn-hx-fallback{
-  display:block;height:320px;max-width:290px;width:auto;
+  display:block;height:480px;max-width:435px;width:auto;
   object-fit:contain;object-position:center;
   filter:drop-shadow(0 12px 13px rgba(45,26,56,.15));
   user-select:none;
 }
-.vn-hx-fallback{width:240px}
+.vn-hx-fallback{width:360px}
 .vn-witch-vector{height:100%;width:100%;overflow:visible}
-.vn-hx-mode-duo .vn-hx-character-image,.vn-hx-mode-flight .vn-hx-character-image{max-width:300px;height:300px}
-.vn-hx-mode-duo .vn-hx-fallback,.vn-hx-mode-flight .vn-hx-fallback{width:270px}
+.vn-hx-mode-duo .vn-hx-character-image,.vn-hx-mode-flight .vn-hx-character-image{max-width:450px;height:450px}
+.vn-hx-mode-duo .vn-hx-fallback,.vn-hx-mode-flight .vn-hx-fallback{width:405px}
 .vn-hx-mode-julie .vn-hx-character-float{animation-delay:-1.9s}
 .vn-hx-magic{position:absolute;font-size:22px;color:#bb75d7;opacity:.86;animation:vn-hx-spark 2.9s ease-in-out infinite;z-index:-1}
 .vn-hx-magic-a{left:16%;top:13%;color:#e3a33b}
@@ -155,25 +155,31 @@
 .vn-hx-widget button:focus-visible{outline:3px solid #bd90d5;outline-offset:3px}
 @keyframes vn-hx-hover{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 @keyframes vn-hx-spark{0%,100%{transform:scale(.7);opacity:.35}50%{transform:scale(1.2);opacity:.95}}
+/* At medium widths preserve the dialog card and cap images to the grid track. */
+@media(min-width:801px) and (max-width:1100px){
+  .vn-hx-panel{grid-template-columns:minmax(280px,40%) minmax(0,1fr)}
+  .vn-hx-character-image,.vn-hx-fallback{max-width:100%}
+  .vn-hx-mode-duo .vn-hx-character-image,.vn-hx-mode-flight .vn-hx-character-image{max-width:100%}
+}
 @media(max-width:800px){
-  .vn-hx-widget{width:min(690px,calc(100vw - 24px));right:12px}
-  .vn-hx-panel{grid-template-columns:minmax(180px,36%) minmax(0,1fr)}
-  .vn-hx-character-stage{height:268px}
-  .vn-hx-character-image,.vn-hx-fallback{height:256px;max-width:250px}
-  .vn-hx-mode-duo .vn-hx-character-image,.vn-hx-mode-flight .vn-hx-character-image{height:250px;max-width:255px}
+  .vn-hx-widget{width:min(860px,calc(100vw - 24px));right:12px}
+  .vn-hx-panel{grid-template-columns:minmax(260px,40%) minmax(0,1fr)}
+  .vn-hx-character-stage{height:402px}
+  .vn-hx-character-image,.vn-hx-fallback{height:384px;max-width:min(375px,100%)}
+  .vn-hx-mode-duo .vn-hx-character-image,.vn-hx-mode-flight .vn-hx-character-image{height:375px;max-width:min(382px,100%)}
   .vn-hx-card{padding:60px 20px 20px;border-radius:34px}
   .vn-hx-message{font-size:18px}
   .vn-hx-card-actions button{min-height:45px;font-size:12px;gap:5px;padding:7px}
   .vn-hx-card-actions svg{width:17px;height:17px}
   .vn-hx-name-pill{min-height:58px;top:-79px}
 }
-@media(max-width:600px){
+@media(max-width:700px){
   .vn-hx-widget{right:8px;bottom:8px;width:min(400px,calc(100vw - 16px))}
   .vn-hx-panel{display:flex;flex-direction:column;align-items:stretch;gap:0}
-  .vn-hx-character-stage{width:100%;height:116px;justify-content:center}
-  .vn-hx-character-image,.vn-hx-fallback{height:132px;max-width:176px}
-  .vn-hx-mode-duo .vn-hx-character-image,.vn-hx-mode-flight .vn-hx-character-image{height:131px;max-width:195px}
-  .vn-hx-fallback{width:132px}
+  .vn-hx-character-stage{width:100%;height:174px;justify-content:center}
+  .vn-hx-character-image,.vn-hx-fallback{height:198px;max-width:264px}
+  .vn-hx-mode-duo .vn-hx-character-image,.vn-hx-mode-flight .vn-hx-character-image{height:197px;max-width:292px}
+  .vn-hx-fallback{width:198px}
   .vn-hx-card{
     width:100%;margin-left:0;padding:51px 17px 16px;
     border-radius:26px;border-width:1px;
@@ -203,4 +209,4 @@
 }
 .vn-hx-fallback-duo{width:230px;max-width:95%;display:flex;justify-content:center;align-items:flex-end;gap:0}
 .vn-hx-fallback-duo .vn-witch-vector{width:50%;flex:1 1 50%;height:100%}
-@media(max-width:600px){.vn-hx-fallback-duo{width:170px}}
+@media(max-width:700px){.vn-hx-fallback-duo{width:255px}}
