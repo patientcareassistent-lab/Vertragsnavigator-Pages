@@ -640,7 +640,7 @@ export default function App(){
     {authError&&<div className="alert error">{authError}</div>}<button className="primary" type="submit">Anmelden</button>
   </form></main>
 
-  return <div className={'app '+(['fach','admin'].includes(mode)?'mode-fach':'')}>
+  return <div className={'app '+(['fach','admin'].includes(mode)?'mode-fach':'')+(mode==='innendienst'?' mode-innendienst':'')}>
     <header className="top">
       <div className="masthead">
         <div className="brand-small"><div className="brandmark">B</div><div><strong>Vertragsnavigator 2.1</strong><small>brillinger | ottobock.care · Vertragsassistent</small></div></div>
