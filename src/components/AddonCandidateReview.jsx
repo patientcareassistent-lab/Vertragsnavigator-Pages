@@ -3,6 +3,7 @@ import { ExternalLink,FileCheck2,RefreshCw,ShieldCheck } from 'lucide-react'
 import { supabase } from '../lib/supabase.js'
 import './AddonCandidateReview.css'
 import PositionRelationScreening from './PositionRelationScreening.jsx'
+import AddonAuditWorkqueues from './AddonAuditWorkqueues.jsx'
 
 const TYPES={REQUIRED:'Erforderlich',OPTIONAL:'Möglicher Zusatz',EXCLUDED:'Nicht kombinierbar'}
 const STATUSES={PENDING:'Zur Prüfung',APPROVED:'Fachlich freigegeben',REJECTED:'Abgelehnt'}
@@ -81,6 +82,7 @@ export default function AddonCandidateReview({canReview=false}){
   return <section className="panel addon-review">
     <div className="sectionbar"><div><h2>Zusatzpositionen und Kombinationsregeln</h2><p>Originalvertrag und Positionszuordnung vor der Veröffentlichung fachlich kontrollieren.</p></div><button className="secondary" type="button" onClick={reload} disabled={!!busy}><RefreshCw size={15}/> Aktualisieren</button></div>
     <div className="note">Diese Datensätze sind bis zur persönlichen Fachfreigabe nicht Teil der verbindlichen Vertragsmatrix. Auch ausdrücklich genannte Zusatzpositionen bedeuten keine automatische Abrechenbarkeit. Inklusive Leistungen, Genehmigungspflichten und Ausschlüsse separat prüfen.</div>
+    <AddonAuditWorkqueues/>
     <details className="addon-screening-disclosure" onToggle={e=>setScreeningOpen(e.currentTarget.open)} style={{margin:'18px 0'}}>
       <summary style={{cursor:'pointer',fontWeight:700,fontSize:'1.04em',padding:'13px',border:'1px solid #cbd5e1',borderRadius:8}}>PG-übergreifende Prüfliste aller Krankenkassen öffnen · Hauptpositionen / Zusätze / Kombinationsbedingungen</summary>
       {screeningOpen&&<PositionRelationScreening/>}
