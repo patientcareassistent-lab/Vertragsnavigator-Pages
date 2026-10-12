@@ -1,7 +1,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { BookOpenText, Laugh, MoonStar, Sparkles, X, WandSparkles } from 'lucide-react'
+import { ChevronRight, Heart, Info, Laugh, Lightbulb, MoonStar, Sparkles, X, WandSparkles } from 'lucide-react'
 import {
   WITCH_JOKES, WITCH_WISDOM, getDailyWisdom, localDateKey,
   createShuffledJokeBag, restoreJokeBag, nextRandomDelay,
@@ -132,25 +132,38 @@ function SpeechCard({ scene, kindLabel, message, reducedMotion, onClose, onWisdo
   const isJulie = scene.variant === 'julie'
   return (
     <motion.section
-      className={'vn-hx-card ' + (isJulie ? 'vn-hx-card-teal' : 'vn-hx-card-purple')}
+      className={'vn-hx-card ' + (isJulie ? 'vn-hx-card-teal' : duo ? 'vn-hx-card-duo' : 'vn-hx-card-purple')}
       key={'witch-card-' + scene.sequence}
       role="group"
       aria-label={speaker + ': ' + kindLabel}
-      initial={reducedMotion ? false : { opacity: 0, y: 18, scale: .95 }}
+      initial={reducedMotion ? false : { opacity: 0, y: 20, scale: .97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 9, scale: .97 }}
-      transition={{ duration: reducedMotion ? 0 : .32, delay: reducedMotion ? 0 : .16 }}
+      exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 10, scale: .98 }}
+      transition={{ duration: reducedMotion ? 0 : .36, delay: reducedMotion ? 0 : .16 }}
     >
+      <div className="vn-hx-card-decor" aria-hidden="true">
+        <Heart className="vn-hx-card-heart" size={30}/>
+        <Sparkles className="vn-hx-card-spark vn-hx-card-spark-a" size={21}/>
+        <Sparkles className="vn-hx-card-spark vn-hx-card-spark-b" size={15}/>
+      </div>
       <div className="vn-hx-card-head">
-        <span className="vn-hx-name-pill"><MoonStar size={17} aria-hidden="true" />{speaker}<Sparkles size={14} aria-hidden="true"/></span>
-        <button type="button" className="vn-hx-icon-button" onClick={onClose} aria-label="Vertragshexen ausblenden" title="Ausblenden"><X size={17} /></button>
+        <span className="vn-hx-name-pill">
+          <MoonStar className="vn-hx-pill-moon" size={27} aria-hidden="true"/>
+          <span className="vn-hx-name-script">{speaker}</span>
+          <Sparkles className="vn-hx-pill-stars" size={21} aria-hidden="true"/>
+        </span>
+        <button type="button" className="vn-hx-icon-button" onClick={onClose} aria-label="Vertragshexen ausblenden" title="Ausblenden"><X size={23}/></button>
       </div>
       <div className="vn-hx-subtitle">{kindLabel}</div>
       <p className="vn-hx-message">{message}</p>
-      <p className="vn-hx-disclaimer">Nur Humor · keine Vertragsauskunft</p>
+      <p className="vn-hx-disclaimer"><span>Nur Humor · keine Vertragsauskunft</span><Info size={17} aria-hidden="true"/></p>
       <div className="vn-hx-card-actions">
-        <button type="button" className="vn-hx-action-primary" onClick={onWisdom}><BookOpenText size={16} aria-hidden="true"/> Tagesweisheit</button>
-        <button type="button" className="vn-hx-action-secondary" onClick={onJoke}><Laugh size={16} aria-hidden="true"/> Nächster Witz</button>
+        <button type="button" className="vn-hx-action-primary" onClick={onWisdom}>
+          <Lightbulb className="vn-hx-lightbulb" size={24} aria-hidden="true"/><span>Tagesweisheit</span><ChevronRight size={20} aria-hidden="true"/>
+        </button>
+        <button type="button" className="vn-hx-action-secondary" onClick={onJoke}>
+          <Laugh size={23} aria-hidden="true"/><span>Nächster Witz</span><ChevronRight size={20} aria-hidden="true"/>
+        </button>
       </div>
     </motion.section>
   )
