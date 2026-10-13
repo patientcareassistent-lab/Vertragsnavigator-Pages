@@ -540,11 +540,12 @@ export default function App(){
     }
 
     const rawTerm=canonicalCompanyQuery(correctSupplyTerm(term))
+    const equivalentHmv=normalizeSearch(rawTerm)==='gehbock'?'10.46.01.0':null
     const termIsHmv=/^\d{2}(?:\.\d{2}){1,3}(?:\.\d{1,4})?$/.test(rawTerm)
     const termIsPosition=/^\d{6,12}$/.test(rawTerm)
     const companyContractQuery=canonicalCompanyQuery(advanced.contract)
     const contractAliasQuery=companyContractQuery.toLowerCase()==='valuny'&&!term.trim()?companyContractQuery:null
-    const freeTextQuery=(!termIsHmv&&!termIsPosition&&rawTerm)?rawTerm:contractAliasQuery
+    const freeTextQuery=(!equivalentHmv&&!termIsHmv&&!termIsPosition&&rawTerm)?rawTerm:contractAliasQuery
     const rpcName='vn_search_positions_v14'
     setSearchBusy(true)
     setHasSearched(true)
@@ -554,7 +555,7 @@ export default function App(){
         p_payer_detail:payerDetailMatched?(companyRelated(payerDetailMatched)?'spectrumK':payerDetailMatched):null,
         p_pg:pg||null,
         p_query:freeTextQuery,
-        p_hmv:advanced.hmv.trim()||(termIsHmv?rawTerm:null),
+        p_hmv:advanced.hmv.trim()||equivalentHmv||(termIsHmv?rawTerm:null),
         p_position:advanced.position.trim()||(termIsPosition?rawTerm:null),
         p_identifier:null,
         p_product_type:advanced.productType.trim()||null,
@@ -721,6 +722,7 @@ export default function App(){
                 <button className="secondary" type="button" onClick={resetAssistantSearch} disabled={searchBusy}>Zurücksetzen</button>
               </div>
               {payerDetailUnverified&&<div className="payer-match-notice" role="status"><b>Keine bestätigte Kassenzuordnung:</b> „{payerDetail}“ ist nicht eindeutig einem Vertrag zugeordnet. Es wird {payer?'in der gewählten Vertragsfamilie':'ohne Kassenfilter'} gesucht. <b>Keine Versorgungsfreigabe.</b></div>}
+              {normalizeSearch(correctedTerm)==='gehbock'&&<div className="search-correction" role="status">Gehbock / Gehgestelle: Vertragspositionen werden HMV-übergreifend nach dem einheitlichen Produktartcode 10.46.01.0 gesucht. Gleicher HMV-Code ist kein Nachweis einer gültigen Vertrags- oder Kassenzuordnung.</div>}
               {correctedTerm!==term.trim()&&<div className="search-correction" role="status">„{term}“ wird als „{correctedTerm}“ gesucht.</div>}
               {searchBusy&&<div className="search-running" role="status" aria-live="polite">
                 <LoaderCircle className="spin" size={17}/><span>Vertragsdaten werden durchsucht …</span>
