@@ -63,3 +63,18 @@
   .app .navwrap,.app .nav,.app .content,.app .work-queue-overview,.app .work-queue-grid,.app .work-queue-card {min-width:0;max-width:100%}
   .app .work-queue-card button {white-space:normal;min-width:0;overflow-wrap:anywhere}
 }
+
+/* Positionssuche: Kennzeichnung nicht nachgewiesener Krankenkassen und ermittelter Schreibvarianten. */
+.app .content .check-form .payer-match-notice,
+.app .content .check-form .search-correction {
+  grid-column:1/-1;
+  min-width:0;
+  padding:9px 12px;
+  border:1px solid #d8e0e6;
+  border-radius:9px;
+  font-size:13px;
+  line-height:1.45;
+}
+.app .content .payer-match-notice {color:#874500;background:#fff8ed;border:1px solid #e7c8a4;border-radius:9px;padding:10px 12px}
+.app .content .search-correction {color:#205477;background:#edf7fd}
+.app .content .check-form input[list="vnKassenVorschlaege"] {width:100%;min-width:0}
