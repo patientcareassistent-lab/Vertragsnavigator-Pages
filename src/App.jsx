@@ -722,7 +722,7 @@ export default function App(){
                 <button className="secondary" type="button" onClick={resetAssistantSearch} disabled={searchBusy}>Zurücksetzen</button>
               </div>
               {payerDetailUnverified&&<div className="payer-match-notice" role="status"><b>Keine bestätigte Kassenzuordnung:</b> „{payerDetail}“ ist nicht eindeutig einem Vertrag zugeordnet. Es wird {payer?'in der gewählten Vertragsfamilie':'ohne Kassenfilter'} gesucht. <b>Keine Versorgungsfreigabe.</b></div>}
-              {normalizeSearch(correctedTerm)==='gehbock'&&<div className="search-correction" role="status">Gehbock / Gehgestelle: Vertragspositionen werden HMV-übergreifend nach dem einheitlichen Produktartcode 10.46.01.0 gesucht. Gleicher HMV-Code ist kein Nachweis einer gültigen Vertrags- oder Kassenzuordnung.</div>}
+              {normalizeSearch(correctedTerm)==='gehbock'&&<div className="search-correction" role="status">Gehbock / Gehgestelle: Vertragspositionen werden vertragsübergreifend mit dem einheitlichen HMV-Code 10.46.01.0 gesucht. Gleicher HMV-Code ist kein Nachweis einer gültigen Vertrags- oder Kassenzuordnung.</div>}
               {correctedTerm!==term.trim()&&<div className="search-correction" role="status">„{term}“ wird als „{correctedTerm}“ gesucht.</div>}
               {searchBusy&&<div className="search-running" role="status" aria-live="polite">
                 <LoaderCircle className="spin" size={17}/><span>Vertragsdaten werden durchsucht …</span>
