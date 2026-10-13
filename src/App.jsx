@@ -49,6 +49,10 @@ const normalizeSearch=value=>String(value||'')
 const searchTokens=value=>normalizeSearch(value).split(/\s+/).filter(Boolean)
 
 const COMPANY_ALIAS_TEXT='VALUNY GmbH spectrumK Spectrum K ITSC GmbH'
+const correctSupplyTerm=value=>{
+  const text=String(value||'').trim()
+  return ({gebock:'Gehbock',gehbok:'Gehbock'})[normalizeSearch(text)]||text
+}
 const COMPANY_NOTICE_VISIBLE_UNTIL='2026-10-21T23:59:59+02:00'
 const companyRelated=value=>{
   const n=normalizeSearch(value)
@@ -212,15 +216,17 @@ export default function App(){
   const activeSecondary=secondaryNav.find(([id])=>active===id)?.[1]||''
   const payerOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.payer_families))),[contracts])
   const payerDetailOptions=useMemo(()=>{
-    if(!payer)return []
-    // Keine globalen Namensalias-Einträge: nur Verträge der gewählten Kassenfamilie.
+    // Freie Kassensuche: Vorschläge auch ohne Vertragsfamilie.
     const scoped=contracts
-      .filter(r=>escArray(r.payer_families).includes(payer))
+      .filter(r=>!payer||escArray(r.payer_families).includes(payer))
       .map(r=>payerDetailLabel(r,payer))
       .filter(v=>v&&normalizeSearch(v)!==normalizeSearch(payer))
     // Firmenumbenennungen als ein Eintrag statt drei scheinbar unterschiedlicher Kassen.
     return uniq(scoped.map(v=>companyRelated(v)?'VALUNY GmbH (ehemals spectrumK / ITSC)':v))
   },[contracts,payer])
+  const payerDetailMatched=payerDetail.trim()?payerDetailOptions.find(v=>normalizeSearch(v)===normalizeSearch(payerDetail))||'':''
+  const payerDetailUnverified=Boolean(payerDetail.trim()&&!payerDetailMatched)
+  const correctedTerm=correctSupplyTerm(term)
   const pgOptions=useMemo(()=>uniq(contracts.flatMap(r=>escArray(r.product_groups))),[contracts])
   const filteredContracts=useMemo(()=>{
     const q=normalizeSearch(contractQuery)
@@ -296,7 +302,7 @@ export default function App(){
   useEffect(()=>{
     let cancelled=false
     async function evaluateSelected(){
-      if(!selected||!siteId){setSupplyEval(null);setSupplyBusy(false);return}
+      if(!selected||!siteId||payerDetailUnverified){setSupplyEval(null);setSupplyBusy(false);return}
       setSupplyBusy(true)
       try{
         const args={
@@ -320,7 +326,7 @@ export default function App(){
     }
     evaluateSelected()
     return()=>{cancelled=true}
-  },[selected?.position_row_id,siteId,advanced.validOn,advanced.hmv])
+  },[selected?.position_row_id,siteId,advanced.validOn,advanced.hmv,payerDetailUnverified])
 
   useEffect(()=>{
     if(!selected)return
@@ -517,7 +523,7 @@ export default function App(){
   async function runAssistant(e){
     e.preventDefault();setSelected(null);setSupplyEval(null);setError('');setVisibleResults(12);setHasSearched(false)
 
-    if(payerDetail&&(!payer||!payerDetailOptions.includes(payerDetail))){setError('Bitte eine zum Kostenträger passende Kasse / Region auswählen.');setResults([]);return}
+    if(payerDetailUnverified&&!term.trim()&&!pg&&!payer&&!Object.values(advanced).some(v=>v!==''&&v!=='all'&&v!==false)){setError('Kassenzuordnung nicht bestätigt. Bitte ergänzend Hilfsmittelbegriff, PG oder Vertragsfamilie wählen.');setResults([]);return}
 
     const hasAdvanced=[
       advanced.hmv,advanced.position,advanced.productType,advanced.contract,advanced.legs,advanced.lkz,
@@ -533,7 +539,7 @@ export default function App(){
       return
     }
 
-    const rawTerm=canonicalCompanyQuery(term)
+    const rawTerm=canonicalCompanyQuery(correctSupplyTerm(term))
     const termIsHmv=/^\d{2}(?:\.\d{2}){1,3}(?:\.\d{1,4})?$/.test(rawTerm)
     const termIsPosition=/^\d{6,12}$/.test(rawTerm)
     const companyContractQuery=canonicalCompanyQuery(advanced.contract)
@@ -545,7 +551,7 @@ export default function App(){
     try{
       const {data,error}=await supabase.rpc(rpcName,{
         p_payer:payer||null,
-        p_payer_detail:payerDetail.trim()?(companyRelated(payerDetail)?'spectrumK':payerDetail.trim()):null,
+        p_payer_detail:payerDetailMatched?(companyRelated(payerDetailMatched)?'spectrumK':payerDetailMatched):null,
         p_pg:pg||null,
         p_query:freeTextQuery,
         p_hmv:advanced.hmv.trim()||(termIsHmv?rawTerm:null),
@@ -567,7 +573,7 @@ export default function App(){
         p_site_id:siteId||null,
         p_pq:'all',
         p_accession:advanced.accession,
-        p_fuzzy:false,
+        p_fuzzy:true,
         p_limit:150,
       })
       if(error){
@@ -641,8 +647,8 @@ export default function App(){
   const selectedScope=resolvePositionScope(selected,scopeRules,advanced.validOn||undefined)
   const resultContractCount=new Set(results.map(r=>r.contract_id||r.contract||r.family).filter(Boolean)).size
   const supplyDecision=supplyEval?.decision||''
-  const decisionTone=!selected||!siteId||supplyBusy||!supplyEval?'idle':supplyDecision==='GRUEN'?'ok':supplyDecision==='ROT'?'bad':'warn'
-  const decisionLabel=!selected?'Position auswählen':!siteId?'Standort auswählen':supplyBusy?'Prüfung läuft':supplyDecision==='GRUEN'?'Versorgung möglich':supplyDecision==='ROT'?'Versorgung nicht möglich':supplyEval?'Prüfung erforderlich':'Prüfung steht aus'
+  const decisionTone=selected&&payerDetailUnverified?'warn':!selected||!siteId||supplyBusy||!supplyEval?'idle':supplyDecision==='GRUEN'?'ok':supplyDecision==='ROT'?'bad':'warn'
+  const decisionLabel=!selected?'Position auswählen':payerDetailUnverified?'Kassenzuordnung prüfen':!siteId?'Standort auswählen':supplyBusy?'Prüfung läuft':supplyDecision==='GRUEN'?'Versorgung möglich':supplyDecision==='ROT'?'Versorgung nicht möglich':supplyEval?'Prüfung erforderlich':'Prüfung steht aus'
   const DecisionIcon=decisionTone==='ok'?CheckCircle2:decisionTone==='bad'?XCircle:decisionTone==='warn'?AlertTriangle:CircleHelp
   const supplyPathOk=supplyEval?.pq_decision==='GRUEN'&&supplyEval?.accession_decision==='GRUEN'&&Number(supplyEval?.green_scope_count||0)>0
   const supplyV3Actions=Array.isArray(supplyEval?.action_items)?supplyEval.action_items:[]
@@ -703,7 +709,7 @@ export default function App(){
             <div className="assistant-top"><div className="assistant-title"><small>Schritt 1 · Positionssuche</small><h2>Passende Vertragsposition finden</h2><p>Kostenträger, Produktgruppe oder Hilfsmittel eingeben, dann die passende Position auswählen.</p></div></div>
             <form className="check-form" onSubmit={runAssistant} aria-busy={searchBusy}>
               <label>Kostenträger<select value={payer} onChange={e=>{setPayer(e.target.value);setPayerDetail('');setError('')}}><option value="">Alle Kassen</option>{payerOptions.map(v=><option key={v}>{v}</option>)}</select></label>
-              <label>Kasse / Region<select value={payerDetailOptions.includes(payerDetail)?payerDetail:''} onChange={e=>{setPayerDetail(e.target.value);setError('')}} disabled={!payer} aria-label="Kasse und Region des gewählten Kostenträgers"><option value="">{payer?'Alle Kassen / Regionen der Auswahl':'Zuerst Kostenträger wählen'}</option>{payerDetailOptions.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+              <label>Kasse / Region (frei)<input value={payerDetail} list="vnKassenVorschlaege" onChange={e=>{setPayerDetail(e.target.value);setError('');setSelected(null)}} placeholder="z. B. BKK B. Braun Aesculap" autoComplete="off"/><datalist id="vnKassenVorschlaege">{payerDetailOptions.map(v=><option key={v} value={v}/>)}</datalist></label>
               <label>Produktgruppe<select value={pg} onChange={e=>{setPg(e.target.value);setError('')}}><option value="">Alle PG</option>{pgOptions.map(v=><option key={v}>{v}</option>)}</select></label>
               <label>LKZ / VWKZ<select value={advanced.lkz} onChange={e=>setA('lkz',e.target.value)}><option value="">Alle</option><option value="0">0 – Neulieferung</option><option value="1">1 – Reparatur</option><option value="2">2 – Wiedereinsatz</option><option value="3">3 – Miete</option><option value="4">4 – Nachlieferung</option><option value="5">5 – Zurichtung</option><option value="6">6 – höherwertige Versorgung</option><option value="7">7 – unbesetzt / vertragsspezifisch</option><option value="8">8 – Vergütungspauschale</option><option value="9">9 – Folgevergütungspauschale</option><option value="10">10 – Folgeversorgung</option><option value="11">11 – Erstbeschaffung</option><option value="12">12 – Zubehör</option><option value="13">13 – Reparaturpauschale</option><option value="14">14 – Wartung</option><option value="15">15 – Wartungspauschale</option><option value="16">16 – Auslieferung</option><option value="17">17 – Aussonderung</option><option value="18">18 – Rückholung</option><option value="19">19 – Abbruch</option><option value="20">20 – Erprobung</option></select></label>
               <label>Standort / IK<select value={siteId} onChange={e=>{setSupplyEval(null);setSiteId(e.target.value);setError('')}}><option value="">Standort wählen</option>{sites.map(s=><option key={s.site_id} value={s.site_id}>{s.branch||'Standort'}{s.ik?` · IK ${s.ik}`:''}</option>)}</select></label>
@@ -714,6 +720,8 @@ export default function App(){
                 </button>
                 <button className="secondary" type="button" onClick={resetAssistantSearch} disabled={searchBusy}>Zurücksetzen</button>
               </div>
+              {payerDetailUnverified&&<div className="payer-match-notice" role="status"><b>Keine bestätigte Kassenzuordnung:</b> „{payerDetail}“ ist nicht eindeutig einem Vertrag zugeordnet. Es wird {payer?'in der gewählten Vertragsfamilie':'ohne Kassenfilter'} gesucht. <b>Keine Versorgungsfreigabe.</b></div>}
+              {correctedTerm!==term.trim()&&<div className="search-correction" role="status">„{term}“ wird als „{correctedTerm}“ gesucht.</div>}
               {searchBusy&&<div className="search-running" role="status" aria-live="polite">
                 <LoaderCircle className="spin" size={17}/><span>Vertragsdaten werden durchsucht …</span>
               </div>}
@@ -745,6 +753,7 @@ export default function App(){
           </section>
           <section className="panel span2 assistant-results" id="assistantResults" aria-labelledby="assistantResultsHeading">
             <div className="sectionbar"><div><h2 id="assistantResultsHeading">Schritt 2 · Treffer auswählen</h2><p>Passende Vertragsposition per Klick oder mit Tab und Enter auswählen. Das Prüfergebnis erscheint unter der Liste.</p></div><Badge>{hasSearched&&error?'Suche fehlgeschlagen':`${results.length} Treffer`}</Badge></div>
+            {results.length>0&&payerDetailUnverified&&<p className="payer-match-notice"><b>Ungeprüfter Kassenbezug:</b> Treffer sind nur Vertrags-/Positionskandidaten, kein Nachweis einer Abrechnungsmöglichkeit.</p>}
             {results.length>0&&!selected&&<div className="result-hint"><b>{results.length} passende Positionen · {resultContractCount} Vertragsvarianten</b><span>{payer==='AOK'&&!payerDetail&&!siteId?'AOK-Verträge sind regional. Bitte konkrete AOK/Region, Standort oder unten den passenden Vertrag auswählen.':'Bitte den passenden Vertrag bzw. die Position auswählen.'}</span></div>}
             {results.length>=150&&<p className="result-limit-note" role="note">Maximal 150 Treffer geladen. Falls die gesuchte Position fehlt, bitte Kasse, Produktgruppe oder Suchbegriff eingrenzen.</p>}
             <div className="tablewrap"><table><thead><tr><th>PG</th><th>HMV/Code</th><th>Position</th><th>LKZ</th><th>Bezeichnung</th><th>Vertrag</th><th>LEGS</th><th>Preis</th><th>Genehmigung</th><th>Zusätze</th></tr></thead><tbody>
@@ -756,7 +765,8 @@ export default function App(){
           {addonTarget&&<PossibleAddons position={addonTarget} onClose={()=>setAddonTarget(null)}/>}
           {selected&&<section className="panel span2 assistant-evaluation" id="assistantEvaluation" aria-labelledby="assistantDecisionHeading">
             <div className="assistant-evaluation-top"><div><small>Schritt 3 · Versorgungsprüfung</small><h2 id="assistantDecisionHeading" tabIndex={-1}>Ergebnis zur ausgewählten Position</h2><p><b>{selected.bezeichnung||selected.produktart_bezeichnung||selected.code||selected.pos||'Ausgewählte Position'}</b> · {displayCompanyName(selected.contract||selected.family||'Vertrag nicht benannt')}</p></div><div className={'decision '+decisionTone} role="status" aria-live="polite" aria-atomic="true"><small>Versorgungsprüfung</small><strong><DecisionIcon size={22} aria-hidden="true"/>{decisionLabel}</strong></div></div>
-            <div className="supply-status-strip" aria-label="Kurzübersicht der sechs Prüfbereiche">
+            {payerDetailUnverified&&<p className="payer-match-notice"><b>Versorgung nicht freigegeben:</b> Die Zuordnung von „{payerDetail}“ zu einem Vertrag muss fachlich bestätigt werden.</p>}
+             <div className="supply-status-strip" aria-label="Kurzübersicht der sechs Prüfbereiche">
               {[['Vertrag','Position zugeordnet',true],['PQ / IK / Beitritt',!siteId?'Standort fehlt':supplyBusy?'Prüfung läuft':supplyPathOk?'Bestätigt':supplyEval?.pq_decision==='ROT'||supplyEval?.accession_decision==='ROT'?'Nicht erfüllt':'Zu prüfen',supplyPathOk],['Genehmigung',supplyEval?.authorization_decision==='GRUEN'?'Bestätigt':supplyEval?.authorization_decision==='ROT'?'Nicht erfüllt':'Zu prüfen',supplyEval?.authorization_decision==='GRUEN'],['Verordnung',supplyEval?.prescription_decision==='GRUEN'?'Bestätigt':supplyEval?.prescription_decision==='ROT'?'Nicht erfüllt':'Zu prüfen',supplyEval?.prescription_decision==='GRUEN'],['Quellen',supplyEval?.source_decision==='GRUEN'?'Bestätigt':supplyEval?.source_decision==='ROT'?'Quellenmangel':'Zu prüfen',supplyEval?.source_decision==='GRUEN'],['Abrechnung',selectedScope.priceConfirmed?'Preis dokumentiert':selected?.preis!=null?'Preis prüfen':'Preis offen',false]].map(([name,status,ok])=><span className={'supply-mini '+(ok?'ok':/nicht erfüllt|quellenmangel/i.test(status)?'bad':'neutral')} key={name}><small>{name}</small><strong>{status}</strong></span>)}
             </div>
             <details className="supply-checks-details">
