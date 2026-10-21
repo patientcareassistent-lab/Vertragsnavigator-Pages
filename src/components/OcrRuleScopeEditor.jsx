@@ -1,6 +1,7 @@
 import React,{useEffect,useState} from 'react'
 import {AlertTriangle,CheckCircle2,LoaderCircle,ShieldCheck,Save,ChevronDown} from 'lucide-react'
 import {getOcrRuleScopeOptions,saveOcrRuleScope} from '../lib/contractUpload.js'
+import {ocrScopeIssues} from '../lib/ocrRuleScopePolicy.js'
 import './OcrRuleScopeEditor.css'
 
 const EMPTY={
@@ -52,10 +53,8 @@ export default function OcrRuleScopeEditor({uploadId,item,onUpdated=()=>{}}){
     return (options[DIMENSIONS.find(([k])=>k===kind)?.[2]]||[]).map(x=>({value:String(x),label:String(x)}))
   }
   const verified=item.scope?.scope_status==='VERIFIED'
-  const complete=sourceConfirmed&&scope.evidence_note.trim().length>=30&&
-    scope.contract_version_id&&scope.valid_from&&
-    DIMENSIONS.every(([key])=>scope[key+'_mode']!=='UNRESOLVED'&&
-      (scope[key+'_mode']!=='EXACT'||scope[key].trim()))
+  const issues=ocrScopeIssues(scope,sourceConfirmed)
+  const complete=issues.length===0
   async function save(verify){
     setBusy('save');setError('');setMessage('')
     try{
@@ -143,6 +142,7 @@ export default function OcrRuleScopeEditor({uploadId,item,onUpdated=()=>{}}){
           Ich habe die Geltung dieser Klausel anhand des Originalvertrags geprüft. Das ersetzt keine Einzelfallprüfung von Vertragsbeitritt, PQ und Standort.
         </label>
         {options.warning&&<small className="ocr-scope-warning">{options.warning}</small>}
+        {!complete&&<small className="ocr-scope-warning" aria-live="polite">Offen: {issues.slice(0,4).join(' · ')}{issues.length>4?' · …':''}</small>}
         <div className="ocr-scope-actions">
           <button type="button" className="secondary inline-button" onClick={()=>save(false)} disabled={Boolean(busy)}>
             <Save size={15}/> Arbeitsstand speichern
