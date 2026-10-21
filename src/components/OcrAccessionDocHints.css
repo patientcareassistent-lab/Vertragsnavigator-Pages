@@ -1,0 +1,14 @@
+.ocr-doc-hints{margin:10px 0;padding:10px;border:1px solid #d4dfef;border-radius:8px;background:#fafcff}
+.ocr-doc-hints>button{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ocr-doc-hints-note{display:flex;gap:7px;align-items:flex-start;font-size:12px;color:#75552d;background:#fff9ee;margin:12px 0;padding:9px;line-height:1.45}
+.ocr-doc-hints-note svg{flex:none}
+.ocr-doc-hints>p{font-size:12px;color:#61708a}
+.ocr-doc-hint-list{display:flex;flex-direction:column;gap:8px;margin:9px 0}
+.ocr-doc-hint{padding:10px;border:1px solid #dbe5f1;background:#fff;border-radius:7px}
+.ocr-doc-hint-title{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#002c8a}
+.ocr-doc-hint-title small{color:#64738c;white-space:nowrap}
+.ocr-doc-hint p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;font-size:12px;margin:9px 0}
+.ocr-doc-hint-fields{display:flex;gap:9px;flex-wrap:wrap;font-size:11px}
+.ocr-doc-hint-fields span{background:#eff3fb;padding:4px 6px;border-radius:5px}
+.ocr-doc-hint>small{display:block;margin:6px 0;color:#74634e;font-size:11px}
+.ocr-doc-hint>button{margin-top:6px}
