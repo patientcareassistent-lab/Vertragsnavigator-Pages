@@ -1,0 +1,8 @@
+.ocr-proof-entry{margin:12px 0;padding:12px;border:1px solid #d0dcec;border-radius:8px;background:#fff}
+.ocr-proof-entry summary{cursor:pointer;color:#002c8a;font-weight:700;font-size:12px}
+.ocr-proof-entry>p{color:#52637e;font-size:12px;line-height:1.5}
+.ocr-proof-entry label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;margin:10px 0}
+.ocr-proof-entry input:not([type=checkbox]),.ocr-proof-entry select,.ocr-proof-entry textarea{min-height:38px;border:1px solid #becde0;border-radius:6px;padding:8px;width:100%;box-sizing:border-box;font:inherit}
+.ocr-proof-entry textarea{min-height:76px;resize:vertical}
+.ocr-proof-entry label:has(input[type=checkbox]){flex-direction:row;align-items:center;font-weight:400}
+.ocr-proof-entry .ocr-proof-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
