@@ -32,7 +32,7 @@ export function headingInfo(line){
   if(!match) return null;
   const mark=match[1].replace(/\s+/g,"").replace(/\.+$/g,"").toLowerCase();
   // §-Nummern, Artikel und Abschnittsnummern gelten nur mit Bezeichnung.
-  if(match[2].length<3 || /^[\d\s.,;:\-]+$/.test(match[2]))return null;
+  if(match[2].length<3 || /^[\d\s.,;:\-]+$/.test(match[2]) || /^\d{1,3},\d{2}\b/.test(match[2]))return null;
   return {key:mark,heading:src};
 }
 export function clauseCategory(text){
@@ -115,6 +115,9 @@ export function similarity(a,b){
   for(const t of aa)if(bb.has(t))shared++;
   return (2*shared)/(aa.size+bb.size);
 }
+function materialNumbers(s){
+  return normalizeClauseText(s).match(/\b\d+(?:[.,]\d+)*\b/g)?.join("|")??"";
+}
 export function compactClauses(list){
   return list.map(c=>({
     key:c.key,section_id:c.section_id,heading:c.heading,
@@ -138,7 +141,7 @@ export function compareOcrClauses(newParsed,oldParsed,{maxResults=800}={}){
         unchanged++;continue;
       }
       changes.push({
-        kind:score>=0.94?"UNSICHER":"GEAENDERT",section:next.heading,section_key:next.key,
+        kind:score>=0.94 && materialNumbers(existing.c.heading+" "+existing.c.text)===materialNumbers(next.heading+" "+next.text)?"UNSICHER":"GEAENDERT",section:next.heading,section_key:next.key,
         category:next.category,similarity:Math.round(score*100)/100,
         before:{page:existing.c.page,end_page:existing.c.end_page,text:existing.c.text},
         after:{page:next.page,end_page:next.end_page,text:next.text},
