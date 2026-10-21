@@ -58,3 +58,15 @@ test("Anzahl der Kandidaten ist begrenzt",()=>{
   const many=Array.from({length:1100},(_,i)=>({...clause("Eine Genehmigung ist erforderlich.","§ "+(i+1)+" Leistung"),key:"§"+(i+1)+"#1"}));
   assert.throws(()=>extractOcrRuleCandidates(many,{max:900}),/OCR_RULE_HINT_LIMIT/);
 });
+
+
+test("Eine unbeschriftete siebenstellige Nummer wird nicht als LEGS ausgegeben",()=>{
+  const x=extractHintsFromClause(clause("Vertragsnummer 1234567 wurde im Dokument vermerkt.","§ 9 Verwaltungsregelung"));
+  assert.equal(x.some(v=>v.rule_kind==="LEGS"),false);
+  assert.equal(x.some(v=>v.proposed_fields.legs_codes.includes("1234567")),false);
+});
+
+test("Expliziter LEGS-Schlüssel wird als textgebundenes Merkmal erkannt",()=>{
+  const x=extractHintsFromClause(clause("LEGS: 1234567, Leistungserbringergruppenschlüssel 12345678","§ 9 Leistungserbringer"));
+  assert.deepEqual(x[0].proposed_fields.legs_codes,["1234567","12345678"]);
+});
