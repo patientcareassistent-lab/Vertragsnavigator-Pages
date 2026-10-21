@@ -43,6 +43,13 @@ test('OCR-Regelhinweise: ausschließlich bestätigter Kandidat darf als DRAFT ü
   for (const label of ['Kostenträgerfamilie','Produktgruppe (PG)','Standort-IK','LEGS']){
     await card.getByLabel(label+' Geltungsart').selectOption('ALL_IN_CONTRACT');
   }
+  await card.getByLabel('Beitrittsprüfung Standort-IK').fill('123456789');
+  await card.getByLabel('Beitrittsprüfung Produktgruppe').fill('24');
+  await card.getByRole('button',{name:'Beitrittsdaten prüfen'}).click();
+  await expect(card).toContainText('Widersprüchliche Beitrittsinformationen');
+  await expect(card).toContainText('Prüfung erforderlich');
+  await expect(card).toContainText('PG 24: Widerspruch');
+  await expect(card.getByRole('button',{name:/Fachlich formulierten Wissensentwurf anlegen/})).toHaveCount(0);
   await card.getByLabel('Geltungsbereich Vertragsversion').selectOption('VER-TEST');
   await card.getByLabel('Geltungsbereich gültig ab').fill('2026-01-01');
   await card.getByLabel('Geltungsbereich Quellennachweis').fill(
