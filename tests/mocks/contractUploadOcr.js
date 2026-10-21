@@ -26,3 +26,35 @@ export async function getContractOcrReview(uploadId,{baselineUploadId='',offset=
   };
 }
 export async function getContractUploadOriginalLink(){return {url:'https://example.invalid/test-original.pdf?token=TEST',filename:'TEST.pdf'}}
+
+
+// Isolierter OCR-Regelkandidaten-Test. Keine Netzwerkzugriffe auf echte Verträge.
+let ruleStatus='PENDING',ruleNote='',knowledgeId=null;
+const ruleCandidate={
+  candidate_id:'33333333-3333-4333-8333-333333333333',
+  rule_kind:'GENEHMIGUNG',source_page:6,source_end_page:6,
+  clause_key:'§5#1',display_title:'§ 5 Genehmigungsfrist',
+  source_excerpt:'Ein Kostenvoranschlag ist innerhalb von sechs Werktagen vorzulegen.',
+  proposed_fields:{
+    legs_codes:['1234567'],hmv_codes:[],durations_literal:['6 werktagen'],
+    amounts_literal_eur:[],source:'OCR_HINWEIS_NICHT_GEPRUEFT'
+  },
+  ocr_quality:'OCR'
+}
+export async function getOcrRuleCandidates(_uploadId,{offset=0,limit=25,status='',kind=''}={}){
+  const row={...ruleCandidate,status:ruleStatus,review_note:ruleNote,knowledge_id:knowledgeId};
+  const list=(!status||status===ruleStatus)&&(!kind||kind===row.rule_kind)?[row]:[];
+  return {available:true,candidates:list.slice(offset,offset+limit),
+    pagination:{offset,limit,total:list.length,has_more:false},
+    can_decide:true,can_draft:true};
+}
+export async function scanOcrRuleCandidates(){return{generated:1,unchanged_reviews_preserved:true}}
+export async function decideOcrRuleCandidate(_uploadId,_candidateId,status,note){
+  if(ruleStatus!=='PENDING')throw new Error('Bereits entschieden')
+  ruleStatus=status;ruleNote=note;return{candidate:{status,review_note:note}}
+}
+export async function createOcrKnowledgeDraft(_uploadId,_candidateId,decisionText){
+  if(ruleStatus!=='CONFIRMED'||String(decisionText||'').length<20)throw new Error('Fachfreigabe erforderlich')
+  knowledgeId='44444444-4444-4444-8444-444444444444';
+  return{knowledge_id:knowledgeId,status:'DRAFT'}
+}
