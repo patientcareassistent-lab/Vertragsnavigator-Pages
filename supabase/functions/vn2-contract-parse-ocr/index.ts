@@ -103,6 +103,7 @@ Deno.serve(async (req: Request) => {
     }];
     for (let i = 0; i < lines.length && items.length <= MAX_HINTS; i++) {
       const row = lines[i];
+      if (row.method === "failed") continue; // Nicht lesbare Seiten liefern keine abrechnungsrelevanten Kandidaten.
       const match = row.line.match(/\b(\d{2}\.\d{2}\.\d{2}\.\d{1,4})\b/);
       if (!match) continue;
       const price = parseEuro(row.line);
