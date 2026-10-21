@@ -93,6 +93,15 @@ export async function uploadContractSource(contractId,file,contractName=''){
   return completed
 }
 
+export async function fetchContractUploadOriginal(uploadId){
+  const data=await invoke('vn2-contract-upload-original',{upload_id:uploadId})
+  if(!data?.url||!data?.filename)throw new Error('Gespeichertes PDF-Original nicht verfügbar.')
+  const response=await fetch(data.url,{cache:'no-store'})
+  if(!response.ok)throw new Error('Original-PDF konnte nicht erneut geladen werden (HTTP '+response.status+').')
+  const blob=await response.blob()
+  return new File([blob],data.filename,{type:'application/pdf'})
+}
+
 export async function parseContractUpload(uploadId,ocrPages=null){
   // Der Backend-Parser erhält nur extrahierte Seiten. Das originale PDF bleibt im privaten Storage unverändert.
   if(Array.isArray(ocrPages)&&ocrPages.length){
