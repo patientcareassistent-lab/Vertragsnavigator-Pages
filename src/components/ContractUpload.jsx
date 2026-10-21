@@ -9,6 +9,7 @@ import {
   acceptContractUpload,getContractUploadStatus,getCurrentUploadId,
   markContractUploadReady,parseContractUpload,saveCurrentUploadId,
   uploadContractSource,validateContractFile,compareContractUpload,saveContractIkScopes,saveContractErpMapping,
+  fetchContractUploadOriginal,
 } from '../lib/contractUpload.js'
 import { ContractChangeList,formatUploadDate } from './ContractChangeList.jsx'
 import { supabase } from '../lib/supabase.js'
@@ -241,19 +242,50 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
     catch(e){setFile(null);setError(e.message)}
   }
 
+  async function analyzeExistingUpload(currentUploadId){
+    let prepared=null
+    const pdfExpected = file?.name?.toLowerCase().endsWith('.pdf')
+      ||(!file && detail?.upload?.filename?.toLowerCase().endsWith('.pdf'))
+    if(pdfExpected){
+      setBusy('ocr')
+      setOcrProgress({page:0,total:0,mode:'Original-PDF vorbereiten'})
+      setOcrWarnings([])
+      setOcrSummary(null)
+      // Bei Wiederholung/Seiten-Neuladen das bereits gespeicherte Original erneut lesen.
+      // Es ist niemals ein zweiter Upload erforderlich.
+      const sourceFile=file?.name?.toLowerCase().endsWith('.pdf')
+        ?file:await fetchContractUploadOriginal(currentUploadId)
+      prepared=await preparePdfForContractUpload(sourceFile,setOcrProgress)
+      setOcrSummary(prepared.summary)
+      setOcrWarnings(prepared.warnings||[])
+      if(!prepared.pages.some(p=>p.text.trim()))
+        throw new Error('Keine PDF-Seite konnte gelesen werden. Das Original bleibt für einen erneuten Versuch sicher gespeichert.')
+    }
+
+    setBusy('parse')
+    const parsed=await parseContractUpload(currentUploadId,prepared?.pages||null)
+    setParser(parsed)
+    const nextTypes=parsed?.result?.suggested_complete_entity_types||[]
+    setCompleteTypes(nextTypes)
+    if(!precheckMode&&!nextTypes.length&&parsed?.result?.pages!=null){
+      const {error:sourceOnlyError}=await supabase.rpc('vn_mark_upload_source_only',{p_upload_id:currentUploadId})
+      if(sourceOnlyError)throw sourceOnlyError
+    }
+    const current=await getContractUploadStatus(currentUploadId)
+    setDetail(current)
+    setMessage(nextTypes.length
+      ? 'Inhalt erkannt. Bitte prüfen, welche Bereiche vollständig geliefert wurden.'
+      : (precheckMode
+        ? 'Original-PDF und Text wurden für die Vertragsvorprüfung erfasst. Keine automatische Veröffentlichung.'
+        : 'Originalvertrag und erkannter Text wurden gespeichert. Vertragsregeln benötigen fachliche Freigabe; keine automatische Änderung des Livebestands.'))
+    if(precheckMode&&!nextTypes.length&&onPrecheckReady)
+      await onPrecheckReady(currentUploadId)
+  }
+
   async function startUpload(){
     setError('');setMessage('')
     try{
-      let prepared=null
-      if(file?.name?.toLowerCase().endsWith('.pdf')){
-        setBusy('ocr')
-        setOcrProgress({page:0,total:0,mode:'OCR-Modul laden'})
-        prepared=await preparePdfForContractUpload(file,setOcrProgress)
-        setOcrSummary(prepared.summary)
-        setOcrWarnings(prepared.warnings||[])
-        if(!prepared.pages.some(p=>p.text.trim()))
-          throw new Error('Keine PDF-Seite konnte gelesen werden. Bitte Scanqualität prüfen; das Original wurde noch nicht hochgeladen.')
-      }
+      // Erst SHA-256/Dublettenprüfung, dann OCR: identische Verträge werden nicht erneut erkannt.
       setBusy('upload')
       const completed=await uploadContractSource(contractId,file,selectedContract?.contract_name||'')
       setUploadId(completed.upload_id)
@@ -278,28 +310,22 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
           setMessage('Vertragsdatei unverändert. IK-/ERP-Zuordnungsänderungen wurden zur Prüfung gestellt.')
         }else{
           setDetail(await getContractUploadStatus(completed.upload_id))
-          setMessage('Diese Datei ist bereits im Vertragsbestand vorhanden. Keine IK-/ERP-Zuordnungsänderung erkannt.')
+          setMessage('Die Datei ist bereits vorhanden. Erneute OCR war nicht erforderlich.')
         }
         if(precheckMode&&onPrecheckReady)await onPrecheckReady(completed.upload_id)
         return
       }
 
-      setBusy('parse')
-      const parsed=await parseContractUpload(completed.upload_id,prepared?.pages||null)
-      setParser(parsed)
-      const nextTypes=parsed?.result?.suggested_complete_entity_types||[]
-      setCompleteTypes(nextTypes)
-      if(!precheckMode&&!nextTypes.length&&parsed?.result?.pages!=null){
-        const {error:sourceOnlyError}=await supabase.rpc('vn_mark_upload_source_only',{p_upload_id:completed.upload_id})
-        if(sourceOnlyError)throw sourceOnlyError
-      }
-      setDetail(await getContractUploadStatus(completed.upload_id))
-      setMessage(nextTypes.length
-        ? 'Inhalt erkannt. Bitte prüfen, welche Bereiche vollständig geliefert wurden.'
-        : (precheckMode
-          ? 'Quelle wurde sicher analysiert. Die Vertragsvorprüfung wird jetzt angelegt.'
-          : 'PDF-Teilquelle ist als Originaldokument archiviert. Kein automatischer Preis- oder Leistungskonditionenvergleich; ergänzende Strukturdaten erforderlich.'))
-      if(precheckMode&&!nextTypes.length&&onPrecheckReady)await onPrecheckReady(completed.upload_id)
+      await analyzeExistingUpload(completed.upload_id)
+    }catch(e){setError(e.message)}
+    finally{setBusy('')}
+  }
+
+  async function retryUploadAnalysis(){
+    setError('');setMessage('')
+    try{
+      if(!uploadId)throw new Error('Keine gespeicherte Upload-ID vorhanden.')
+      await analyzeExistingUpload(uploadId)
     }catch(e){setError(e.message)}
     finally{setBusy('')}
   }
@@ -467,6 +493,12 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
       {ocrSummary&&<div className="note">Automatische PDF-Aufbereitung: {ocrSummary.pages} Seiten, davon {ocrSummary.ocr_pages} mit OCR; {ocrSummary.failed_pages.length} Seiten nicht sicher lesbar. Das Original bleibt unverändert.</div>}
       {ocrWarnings.length>0&&<div className="alert error"><b>OCR-Prüfhinweise:</b> {ocrWarnings.slice(0,8).join(' · ')}{ocrWarnings.length>8?' · Weitere '+(ocrWarnings.length-8)+' Hinweise':''}</div>}
       {error&&<div className="alert error">{error}</div>}
+      {uploadId&&!busy&&!['DUPLICATE','ACCEPTED','REJECTED','REVIEW','BASELINE'].includes(status)
+        &&Boolean(file||detail?.upload?.filename?.toLowerCase().endsWith('.pdf'))&&<div className="upload-actions">
+          <button type="button" className="secondary inline-button" onClick={retryUploadAnalysis}>
+            <FileText size={16}/> Erkennung erneut starten – ohne erneuten Upload
+          </button>
+        </div>}
       {message&&<div className="alert success">{message}</div>}
     </section>
 
