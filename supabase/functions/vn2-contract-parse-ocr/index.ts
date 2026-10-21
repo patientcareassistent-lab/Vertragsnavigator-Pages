@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 import { extractExplicitPositionHint } from "./positionHints.mjs";
+import { extractOcrClauses } from "./clauseDiff.mjs";
 
 const MAX_PAGES = 250;
 const MAX_PAGE_CHARS = 16000;
@@ -73,6 +74,7 @@ Deno.serve(async (req: Request) => {
       .select("contract_name").eq("contract_id", upload.contract_id).single();
     if (contractError) throw contractError;
 
+    const ocrClauseIndex = extractOcrClauses(pages);
     const text = pages.map(p => p.text).join("\n");
     const lines = pages.flatMap(p => p.text.split(/\r?\n/).map(line => ({ page: p.page, line: line.replace(/\s+/g, " ").trim(), method: p.method }))).filter(x => x.line);
     const pgs = [...new Set([...text.matchAll(/\bPG\s*0?(\d{1,2})\b/gi)].map(m => m[1].padStart(2, "0")))].slice(0, 30);
@@ -132,6 +134,9 @@ Deno.serve(async (req: Request) => {
       contract_id: upload.contract_id,
       original_sha256: upload.source_sha256,
       created_at: new Date().toISOString(),
+      clauses: ocrClauseIndex.clauses.map(c => ({
+        key:c.key,section_id:c.section_id,heading:c.heading,page:c.page,end_page:c.end_page,category:c.category
+      })),
       pages: pages.map(p => ({
         page: p.page, method: p.method, confidence: p.confidence, text: p.text
       }))
@@ -146,6 +151,7 @@ Deno.serve(async (req: Request) => {
       parser: "pdf", ocr_pipeline: "browser-v2.1", ocr_text_storage_path: ocrStoragePath, pages: pages.length, product_groups: pgs, legs,
       valid_from: validFrom, component_type: componentType, position_hints: items.length - 1,
       ocr_pages: ocrPageCount, failed_pages: failed,
+      ocr_clauses: ocrClauseIndex.clauses.length, ocr_structured_clauses: ocrClauseIndex.quality.structured_clauses,
       extracted_characters: text.length, suggested_complete_entity_types: [],
       manual_review_required: true
     };
@@ -158,6 +164,7 @@ Deno.serve(async (req: Request) => {
         upload_id: uploadId, pages: pages.length, component_type: componentType,
         product_groups: pgs, legs, valid_from: validFrom,
         position_hints: items.length - 1, ocr_pages: ocrPageCount,
+        ocr_clauses: ocrClauseIndex.clauses.length, ocr_structured_clauses: ocrClauseIndex.quality.structured_clauses,
         failed_pages: failed, status: "PARSING", suggested_complete_entity_types: []
       }
     });
