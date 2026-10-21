@@ -109,19 +109,19 @@ export function extractAccessionDocumentHints(pages,{max=120}={}){
     // Adjacent lines only, not all content of the page: avoid scope/date bleed
     // between independent articles, headers and adjacent confirmation templates.
     const lines=raw.split(/\r?\n/).map(clean).filter(Boolean);
-    const dedup=new Set();
     for(let i=0;i<lines.length;i++){
-      for(const window of [1,2,3]){
-        const segment=lines.slice(i,i+window).join(' ');
+      for(const span of [1,2,3]){
+        const segment=lines.slice(i,i+span).join(' ');
         if(segment.length>1000)continue;
         const item=parseSegment(page.page,segment,i);
         if(!item)continue;
-        const canonical=item.kind+'|'+item.page+'|'+item.excerpt.slice(0,110);
-        // Prefer longer, more complete segments for a shared leading context.
-        if(dedup.has(canonical))continue;
-        dedup.add(canonical);
         item.source_method=page.method;
-        hints.push(item);
+        // Streaming de-dup: prefer the longest line context before counting
+        // the bounded result, so a long heading cannot hide a date on line 2.
+        const ix=hints.findIndex(x=>x.page===item.page && x.kind===item.kind &&
+          (item.excerpt.startsWith(x.excerpt)||x.excerpt.startsWith(item.excerpt)));
+        if(ix<0)hints.push(item);
+        else if(item.excerpt.length>hints[ix].excerpt.length)hints[ix]=item;
         if(hints.length>max)throw new Error('OCR_ACCESSION_HINT_LIMIT');
       }
     }
