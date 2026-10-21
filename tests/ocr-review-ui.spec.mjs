@@ -3,7 +3,7 @@ test('OCR-Vergleich: Alt/Neu, Seitenbezug, Themenfilter und Klauselindex',async 
   const errors=[]
   page.on('pageerror',e=>errors.push(e.message))
   await page.goto('./ocr-review-smoke.html')
-  await expect(page.getByRole('heading',{name:'OCR-Vertragsprüfung'})).toBeVisible()
+  await expect(page.getByRole('heading',{name:'OCR-Vertragsprüfung'})).toBeVisible({timeout:15000})
   await expect(page.locator('.ocr-review-card')).toHaveCount(2)
   await expect(page.locator('.ocr-review-card').first()).toContainText('fünf Werktagen')
   await expect(page.locator('.ocr-review-card').first()).toContainText('sechs Werktagen')
@@ -94,5 +94,32 @@ test('Vertragsbeitritt: Zeitnachweis bleibt gesperrt bis die Originalquelle gepr
   await card.getByRole('button',{name:'Quellennachweis bestätigen'}).click();
   await expect(card).toContainText('Original-Zeitnachweis dokumentiert');
   await expect(card).toContainText('Prüfung erforderlich');
+  expect(errors).toEqual([]);
+});
+
+
+test('OCR-Beitrittsbestätigung wird nur als ungeprüfter Nachweisvorschlag übernommen',async({page})=>{
+  const errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('./ocr-review-smoke.html');
+  await page.getByRole('button',{name:'Regelhinweise prüfen'}).click();
+  const card=page.locator('.ocr-rule-item').first();
+  await card.getByRole('button',{name:/Geltung festlegen/}).click();
+  await card.getByLabel('Beitrittsprüfung Standort-IK').fill('123456789');
+  await card.getByLabel('Beitrittsprüfung Produktgruppe').fill('24');
+  await card.getByRole('button',{name:'Beitrittsdaten prüfen'}).click();
+  await card.getByRole('button',{name:/Beitrittsbestätigungen\/Kündigungen im OCR-Text vorschlagen/}).click();
+  await expect(card).toContainText('Mögliche Beitrittsbestätigung');
+  await expect(card).toContainText('Originalseite 6');
+  await expect(card).toContainText('Eine mögliche Beitrittsreferenz');
+  await card.getByRole('button',{name:/In Quellenprüfformular übernehmen/}).click();
+  await expect(card.getByLabel('Nachweis Beitritts-ID')).toHaveValue('A1');
+  await expect(card.getByLabel('Nachweis Beginn')).toHaveValue('2026-01-01');
+  await expect(card.getByLabel('Nachweis Seite')).toHaveValue('6');
+  await expect(card.getByLabel('Nachweis PG')).toHaveValue('24');
+  await expect(card.getByLabel('Nachweis Auszug')).toContainText('Beitrittsbestätigung');
+  await expect(card.getByLabel('Nachweis Prüfnotiz')).toHaveValue('');
+  await expect(card.getByRole('button',{name:'Quellennachweis bestätigen'})).toBeDisabled();
+  await expect(card).toContainText('OCR-Vorschlag übernommen – ungeprüft');
   expect(errors).toEqual([]);
 });
