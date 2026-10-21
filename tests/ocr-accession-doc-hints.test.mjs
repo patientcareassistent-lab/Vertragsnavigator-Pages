@@ -56,3 +56,11 @@ test('unreadable pages are reported but never parsed',()=>{
   assert.deepEqual(d.quality.unreadable_pages,[1]);
   assert(d.hints.every(x=>x.page===2));
 });
+
+
+test('long confirmation heading must not suppress date on following line',()=>{
+  const heading='Beitrittsbestätigung für Institutionskennzeichen 123456789 und Produktgruppe 24 '+('zusätzlicher erklärender Formulartext '.repeat(4));
+  const r=extractAccessionDocumentHints([page(heading+'\nWir bestätigen den Beitritt mit Wirkung ab 01.10.2026.')]);
+  assert(r.hints.some(h=>h.suggested_effective_from==='2026-10-01'));
+  assert(r.hints.every(h=>h.auto_verified===false));
+});
