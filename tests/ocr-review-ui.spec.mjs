@@ -1,0 +1,20 @@
+import {test,expect} from '@playwright/test'
+test('OCR-Vergleich: Alt/Neu, Seitenbezug, Themenfilter und Klauselindex',async ({page})=>{
+  const errors=[]
+  page.on('pageerror',e=>errors.push(e.message))
+  await page.goto('./ocr-review-smoke.html')
+  await expect(page.getByRole('heading',{name:'OCR-Vertragsprüfung'})).toBeVisible()
+  await expect(page.locator('.ocr-review-card')).toHaveCount(2)
+  await expect(page.locator('.ocr-review-card').first()).toContainText('fünf Werktagen')
+  await expect(page.locator('.ocr-review-card').first()).toContainText('sechs Werktagen')
+  await expect(page.locator('.ocr-review-card').first()).toContainText('Seite 5')
+  await expect(page.locator('.ocr-review-card').first()).toContainText('Seite 6')
+  await expect(page.locator('.ocr-review-card').nth(1)).toContainText('keine Löschung')
+  await page.getByLabel('OCR-Klauselthema').selectOption('GENEHMIGUNG')
+  await expect(page.locator('.ocr-review-card')).toHaveCount(1)
+  await page.getByLabel('OCR-Vergleichsfassung').selectOption('NONE')
+  await expect(page.locator('.ocr-review-card')).toHaveCount(1)
+  await expect(page.locator('.ocr-review-card').first()).toContainText('ERKANNTER TEXT')
+  await expect(page.getByText('kein rechtsverbindlich',{exact:false})).toHaveCount(0)
+  expect(errors).toEqual([])
+})
