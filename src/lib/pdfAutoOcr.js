@@ -143,12 +143,13 @@ export async function preparePdfForContractUpload(file, onProgress = () => {}) {
           text = "";
           warnings.push("Seite " + index + ": OCR fehlgeschlagen (" + String(error?.message || error) + ").");
         }
-        if (text.length < 15) {
+        if (text.length < 15 || confidence < 35) {
           method = "failed";
-          warnings.push("Seite " + index + ": Keine verlässliche Texterkennung möglich – fachlich prüfen.");
+          warnings.push("Seite " + index + ": OCR nicht sicher lesbar (Konfidenz " + confidence + ") – fachlich prüfen.");
         }
       }
-      text = text.slice(0, MAX_PAGE_TEXT);
+      if(text.length > MAX_PAGE_TEXT)
+        throw new Error("Seite " + index + " enthält ungewöhnlich viel Text. Kein stilles Abschneiden von Vertragsinhalten.");
       if (totalText + text.length > MAX_TOTAL_TEXT)
         throw new Error("OCR-Textmenge zu groß. Das Dokument erfordert eine gestaffelte Verarbeitung.");
       totalText += text.length;
