@@ -84,7 +84,8 @@ Deno.serve(async(req:Request)=>{
       const id=txt(request?.candidate_id);
       const ik=txt(request?.ik);
       const pg=txt(request?.pg);
-      if(!uuid(id)||!/^\d{9}$/.test(ik)||pg && !/^\d{2}$/.test(pg))
+      const onDate=txt(request?.on_date);
+      if(!uuid(id)||!/^\d{9}$/.test(ik)||pg && !/^\d{2}$/.test(pg)||onDate && !/^\d{4}-\d{2}-\d{2}$/.test(onDate))
         return respond({error:"Kandidat, gültige neunstellige IK und optionale zweistellige PG erforderlich."},400);
       const {data:belongs,error:be}=await admin.from("vn_ocr_rule_candidates")
         .select("candidate_id").eq("candidate_id",id).eq("upload_id",uploadId).maybeSingle();
@@ -97,7 +98,7 @@ Deno.serve(async(req:Request)=>{
         .select("contract_id,record_status,archive_state").eq("contract_id",upload.contract_id).single();
       if(ce)throw ce;
       if((siteRows||[]).length!==1){
-        const result=evaluateAccessionEvidence({site:null,contract,pg});
+        const result=evaluateAccessionEvidence({site:null,contract,pg,onDate});
         if((siteRows||[]).length>1)result.reasons.unshift("IK ist mehreren Standortstammsätzen zugeordnet; eindeutigen Standort klären.");
         return respond({available:true,ik,pg,contract_id:upload.contract_id,site:null,evidence:result});
       }
@@ -115,7 +116,7 @@ Deno.serve(async(req:Request)=>{
       const accessions=accRes.data||[],scopes=scopeRes.data||[];
       const result=evaluateAccessionEvidence({
         site,contract,accessions:accessions.slice(0,50),scopes:scopes.slice(0,150),pg,
-        truncatedAccessions:accessions.length>50,truncatedScopes:scopes.length>150
+        truncatedAccessions:accessions.length>50,truncatedScopes:scopes.length>150,onDate
       });
       const ids=accessions.slice(0,50).map((x:any)=>x.accession_id);
       let proofs:any[]=[];
@@ -128,7 +129,7 @@ Deno.serve(async(req:Request)=>{
         if(proofError)throw proofError;
         proofs=proofRows||[];
       }
-      const temporal=evaluateTemporalProofs(proofs,{pg,onDate:txt(request?.on_date)});
+      const temporal=evaluateTemporalProofs(proofs,{pg,onDate});
       if(temporal.status==="SOURCE_DATE_NOT_PROVEN")
         result.reasons.unshift("Kein zeitlich geprüfter Originalnachweis für den ausgewählten Beitritt und Prüftag.");
       if(temporal.status==="SOURCE_CONFLICT"){
