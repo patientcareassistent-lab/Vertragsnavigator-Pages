@@ -2,6 +2,7 @@ import React,{useEffect,useState} from 'react'
 import {AlertTriangle,CheckCircle2,LoaderCircle,ShieldCheck,Save,ChevronDown} from 'lucide-react'
 import {getOcrRuleScopeOptions,saveOcrRuleScope} from '../lib/contractUpload.js'
 import {ocrScopeIssues} from '../lib/ocrRuleScopePolicy.js'
+import OcrIkAccessionEvidence from './OcrIkAccessionEvidence.jsx'
 import './OcrRuleScopeEditor.css'
 
 const EMPTY={
@@ -132,6 +133,10 @@ export default function OcrRuleScopeEditor({uploadId,item,onUpdated=()=>{}}){
               onChange={e=>update('valid_to',e.target.value)}/>
           </label>
         </div>
+        <OcrIkAccessionEvidence uploadId={uploadId} candidateId={item.candidate_id}
+          selectedIk={scope.ik_mode==='EXACT'?scope.ik:''}
+          selectedPg={scope.pg_mode==='EXACT'?scope.pg:''}
+          siteOptions={options.active_sites||[]} pgOptions={options.product_groups||[]}/>
         <label className="ocr-scope-evidence">Quellennachweis und Begründung
           <textarea aria-label="Geltungsbereich Quellennachweis" maxLength={2000} value={scope.evidence_note}
             placeholder="Welche Vertragsstelle belegt PG, Kostenträger, IK-Umfang, LEGS und den Gültigkeitszeitraum? Wo ist ggf. ein gesonderter Vertragsbeitritt zu prüfen?"
