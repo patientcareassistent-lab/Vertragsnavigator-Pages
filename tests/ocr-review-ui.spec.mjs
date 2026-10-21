@@ -69,3 +69,30 @@ test('OCR-Regelhinweise: ausschließlich bestätigter Kandidat darf als DRAFT ü
   await expect(card.getByRole('button',{name:/Fachlich formulierten Wissensentwurf anlegen/})).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test('Vertragsbeitritt: Zeitnachweis bleibt gesperrt bis die Originalquelle geprüft ist',async({page})=>{
+  const errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('./ocr-review-smoke.html');
+  await page.getByRole('button',{name:'Regelhinweise prüfen'}).click();
+  const card=page.locator('.ocr-rule-item').first();
+  await card.getByRole('button',{name:/Geltung festlegen/}).click();
+  await card.getByLabel('Beitrittsprüfung Standort-IK').fill('123456789');
+  await card.getByLabel('Beitrittsprüfung Produktgruppe').fill('24');
+  await card.getByRole('button',{name:'Beitrittsdaten prüfen'}).click();
+  await expect(card).toContainText('Nicht durch Originalnachweis belegt');
+  await card.getByText('Beitrittszeitraum aus Original belegen').click();
+  await card.getByLabel('Nachweis Beitritts-ID').selectOption('A1');
+  await card.getByLabel('Nachweis Beginn').fill('2026-01-01');
+  await card.getByLabel('Nachweis Seite').fill('6');
+  await card.getByLabel('Nachweis Auszug').fill('Die Vertragsparteien bestätigen den Beitritt zum 1. Januar 2026.');
+  await card.getByLabel('Nachweis Prüfnotiz').fill(
+    'Testnachweis: Ursprungsausfertigung, Standort-IK und Vertrag wurden fachlich abgeglichen.'
+  );
+  await expect(card.getByRole('button',{name:'Quellennachweis bestätigen'})).toBeDisabled();
+  await card.getByLabel('Originalbeleg kontrolliert').check();
+  await card.getByRole('button',{name:'Quellennachweis bestätigen'}).click();
+  await expect(card).toContainText('Original-Zeitnachweis dokumentiert');
+  await expect(card).toContainText('Prüfung erforderlich');
+  expect(errors).toEqual([]);
+});
