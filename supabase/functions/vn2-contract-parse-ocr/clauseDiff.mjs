@@ -47,6 +47,7 @@ export function extractOcrClauses(pages){
   const readable=pages.filter(p=>p.method!=="failed"&&String(p.text||"").trim()).length;
   const candidates=[];
   let current=null;
+  let parentSection=null;
   let total=0;
   const counts=new Map();
   function finish(){
@@ -57,7 +58,7 @@ export function extractOcrClauses(pages){
       counts.set(current.key,number);
       const sectionKey=current.key+"#"+number;
       candidates.push({
-        key:sectionKey, section_id:current.key, heading:current.heading,
+        key:sectionKey, section_id:current.comparable?current.key:"unstructured", heading:current.heading,
         page:current.page, end_page:current.end_page,
         text:content, category:clauseCategory(current.heading+" "+content),
         source_method:current.methods.includes("ocr")?"ocr":"text"
@@ -79,7 +80,12 @@ export function extractOcrClauses(pages){
       if(title){
         finish();
         foundHeading=true;
-        current={key:title.key,heading:title.heading,page:page.page,end_page:page.page,parts:[],methods:[page.method]};
+        const primary=/^(?:§|artikel|art)/i.test(title.key)
+        if(primary)parentSection=title.key
+        // Unterziffern dürfen nur innerhalb desselben Paragraphen verglichen werden.
+        // Ohne sicheren Paragraphenanker bleiben sie im Klauselindex, nicht im automatischen Diff.
+        const anchoredKey=primary?title.key:(parentSection?parentSection+"/"+title.key:"unanchored:"+title.key+"@"+page.page)
+        current={key:anchoredKey,comparable:Boolean(primary||parentSection),heading:title.heading,page:page.page,end_page:page.page,parts:[],methods:[page.method]};
       }else if(current){
         current.parts.push(line);
         current.end_page=page.page;
@@ -130,6 +136,11 @@ export function compactClauses(list){
 export function compareOcrClauses(newParsed,oldParsed,{maxResults=800}={}){
   const old=(oldParsed?.clauses||[]).filter(x=>x.section_id!=="unstructured");
   const current=(newParsed?.clauses||[]).filter(x=>x.section_id!=="unstructured");
+  if(!old.length||!current.length){
+    return {changes:[],summary:{old_count:old.length,new_count:current.length,
+      added:0,modified:0,uncertain:0,not_found:0,unchanged:0,
+      review_required:false,document_comparable:false}};
+  }
   const oldByKey=new Map(old.map((c,i)=>[c.key,{c,i}]));
   const seen=new Set();
   const changes=[];
