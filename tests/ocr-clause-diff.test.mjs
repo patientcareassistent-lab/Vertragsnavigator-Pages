@@ -68,3 +68,36 @@ test('Pseudo-Überschrift wie Betrag wird verworfen',()=>{
   assert.equal(normalizeClauseText('Versor-\ngung'),'Versorgung')
   assert.equal(clauseCategory('Genehmigungsfreigrenze des Kostenträgers'),'GENEHMIGUNG')
 })
+
+
+test('gleich nummerierte Unterziffern werden über ihre Paragraphen verankert',()=>{
+  const base=extractOcrClauses([page(1,
+    '§ 1 Lieferpflicht\nDer Vertragsgegenstand betrifft die Versorgung der Versicherten.\n1.1 Berechnung\nDie Frist beträgt 5 Kalendertage laut Vertragsanlage.\n§ 2 Abrechnung\nAbrechnung durch die Krankenkasse erfolgt monatlich.\n1.1 Berechnung\nDie Frist beträgt 15 Kalendertage laut Vertragsanlage.'
+  )])
+  const neu=extractOcrClauses([page(1,
+    '§ 1 Lieferpflicht\nDer Vertragsgegenstand betrifft die Versorgung der Versicherten.\n1.1 Berechnung\nDie Frist beträgt 5 Kalendertage laut Vertragsanlage.\n§ 2 Abrechnung\nAbrechnung durch die Krankenkasse erfolgt monatlich.\n1.1 Berechnung\nDie Frist beträgt 16 Kalendertage laut Vertragsanlage.'
+  )])
+  assert(base.clauses.some(x=>x.section_id==='§1/1.1'))
+  assert(base.clauses.some(x=>x.section_id==='§2/1.1'))
+  const diff=compareOcrClauses(neu,base)
+  assert.equal(diff.summary.modified,1)
+  assert.equal(diff.changes[0].section_key,'§2/1.1#1')
+  assert.equal(diff.summary.unchanged,3)
+})
+
+test('unverankerte nummerierte Absätze lösen keine fingierten Vertragsstreichungen aus',()=>{
+  const alt=extractOcrClauses([page(16,'7. Abrechnungsfehlverhalten\nEine Vertragsstrafe ist nach vorheriger Anhörung möglich.')])
+  assert.equal(alt.quality.structured_clauses,0)
+  const neu=extractOcrClauses([page(16,'8. Abrechnungsfehlverhalten\nEine Vertragsstrafe ist nach vorheriger Anhörung möglich.')])
+  const diff=compareOcrClauses(neu,alt)
+  assert.equal(diff.summary.not_found,0)
+  assert.equal(diff.summary.document_comparable,false)
+})
+
+test('unlesbare Neu-Fassung ohne sichere Überschriften ergibt keinen Löschalarm',()=>{
+  const alt=extractOcrClauses([page(1,'§ 1 Vertragsgegenstand\nDie Versorgung der Versicherten erfolgt gemäß Hilfsmittelvertrag.')])
+  const neu=extractOcrClauses([page(1,'Hier ist die Vertragsscankopie nicht zuverlässig strukturiert lesbar.')])
+  const diff=compareOcrClauses(neu,alt)
+  assert.equal(diff.changes.length,0)
+  assert.equal(diff.summary.document_comparable,false)
+})
