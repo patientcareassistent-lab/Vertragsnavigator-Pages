@@ -147,8 +147,10 @@ Deno.serve(async(req:Request)=>{
       };
       if(temporal.status==="SOURCE_DATE_NOT_PROVEN")
         result.reasons.unshift("Kein zeitlich geprüfter Originalnachweis für den ausgewählten Beitritt und Prüftag.");
-      if(temporal.status==="SOURCE_CONFLICT")
+      if(temporal.status==="SOURCE_CONFLICT"){
         result.reasons.unshift("Quellenbeleg für Kündigung/Einschränkung: manuelle Beitrittsprüfung erforderlich.");
+        if(result.indicator==="POSITIVE_ACCESSION_HINT")result.indicator="DOCUMENTED_SOURCE_CONFLICT";
+      }
       if(temporal.status==="SOURCE_DATE_DOCUMENTED")
         result.reasons.unshift("Originalquelle enthält einen geprüften Zeitbezug; alle übrigen Vertrags-/Standortvoraussetzungen bleiben offen.");
       return respond({
