@@ -6,6 +6,7 @@ import {
   listContractUploads,saveCurrentUploadId,
 } from '../lib/contractUpload.js'
 import { ContractChangeList,formatUploadDate } from './ContractChangeList.jsx'
+import ContractOcrReview from './ContractOcrReview.jsx'
 
 const TYPE_LABELS={CONTRACT:'Vertragskopf',VERSION:'Vertragsversionen',POSITION:'Preis-/Versorgungspositionen'}
 const STATUS_LABELS={
@@ -113,6 +114,7 @@ export default function ContractChanges({canFach=false}){
       </div>}
       {detail.upload.upload_status==='ACCEPTED'&&<div className="alert success inline-alert"><CheckCircle2 size={17}/> Veröffentlicht am {formatUploadDate(detail.upload.accepted_at)}.</div>}
       <ContractChangeList changes={detail.changes||[]}/>
+      <ContractOcrReview upload={detail.upload}/>
     </section>:<section className="panel change-detail"><div className="empty-panel">Links einen Upload auswählen, um das Änderungsprotokoll zu öffnen.</div></section>}
   </div>
 }
