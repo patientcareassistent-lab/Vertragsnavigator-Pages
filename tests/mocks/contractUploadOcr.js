@@ -29,7 +29,7 @@ export async function getContractUploadOriginalLink(){return {url:'https://examp
 
 
 // Isolierter OCR-Regelkandidaten-Test. Keine Netzwerkzugriffe auf echte Verträge.
-let ruleStatus='PENDING',ruleNote='',knowledgeId=null;
+let ruleStatus='PENDING',ruleNote='',knowledgeId=null,scopeState=null;
 const ruleCandidate={
   candidate_id:'33333333-3333-4333-8333-333333333333',
   rule_kind:'GENEHMIGUNG',source_page:6,source_end_page:6,
@@ -42,7 +42,7 @@ const ruleCandidate={
   ocr_quality:'OCR'
 }
 export async function getOcrRuleCandidates(_uploadId,{offset=0,limit=25,status='',kind=''}={}){
-  const row={...ruleCandidate,status:ruleStatus,review_note:ruleNote,knowledge_id:knowledgeId};
+  const row={...ruleCandidate,status:ruleStatus,review_note:ruleNote,knowledge_id:knowledgeId,scope:scopeState};
   const list=(!status||status===ruleStatus)&&(!kind||kind===row.rule_kind)?[row]:[];
   return {available:true,candidates:list.slice(offset,offset+limit),
     pagination:{offset,limit,total:list.length,has_more:false},
@@ -53,8 +53,26 @@ export async function decideOcrRuleCandidate(_uploadId,_candidateId,status,note)
   if(ruleStatus!=='PENDING')throw new Error('Bereits entschieden')
   ruleStatus=status;ruleNote=note;return{candidate:{status,review_note:note}}
 }
+export async function getOcrRuleScopeOptions(){
+  return {
+    contract_id:'CON-TEST',payer_families:['BARMER'],product_groups:['24'],
+    legs:['1593114'],active_sites:[{ik:'123456789',branch:'TEST Standort'}],
+    versions:[{contract_version_id:'VER-TEST',version_name:'Rahmenvertrag 2026',
+      valid_from:'2026-01-01',valid_to:null}],contract_record_status:'ACTIVE',
+    warning:'IK-Stamm und vertragliche Berechtigung getrennt prüfen.'
+  }
+}
+export async function saveOcrRuleScope(_uploadId,_candidateId,scope,verify){
+  if(verify&&(!scope.source_confirmed||!scope.contract_version_id||!scope.valid_from
+    ||['payer','pg','ik','legs'].some(key=>scope[key+'_mode']==='UNRESOLVED')
+    ||String(scope.evidence_note||'').length<30))
+    throw new Error('Geltung nicht verifiziert')
+  scopeState={...scope,scope_status:verify?'VERIFIED':'DRAFT',updated_at:new Date().toISOString()}
+  return {scope:scopeState,message:verify?'Geltungsbereich verifiziert':'Arbeitsstand gespeichert'}
+}
+
 export async function createOcrKnowledgeDraft(_uploadId,_candidateId,decisionText){
-  if(ruleStatus!=='CONFIRMED'||String(decisionText||'').length<20)throw new Error('Fachfreigabe erforderlich')
+  if(ruleStatus!=='CONFIRMED'||scopeState?.scope_status!=='VERIFIED'||String(decisionText||'').length<20)throw new Error('Fachfreigabe erforderlich')
   knowledgeId='44444444-4444-4444-8444-444444444444';
   return{knowledge_id:knowledgeId,status:'DRAFT'}
 }
