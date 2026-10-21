@@ -109,9 +109,9 @@ export async function saveAccessionSourceProof(uploadId,candidateId,accessionId,
   })
 }
 
-export async function getOcrIkAccessionEvidence(uploadId,candidateId,ik,pg=''){
+export async function getOcrIkAccessionEvidence(uploadId,candidateId,ik,pg='',onDate=''){
   return invoke('vn2-contract-ocr-rules',{
-    upload_id:uploadId,action:'evidence',candidate_id:candidateId,ik,pg
+    upload_id:uploadId,action:'evidence',candidate_id:candidateId,ik,pg,on_date:onDate
   })
 }
 
