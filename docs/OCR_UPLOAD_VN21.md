@@ -82,3 +82,26 @@ Stand: 21.10.2026 · Implementierung im Repository \`Vertragsnavigator-Pages\`
 ### Abgrenzung / Abnahme
 
 Dies ist ein **unverbindlicher Text- und Klauselvergleich**, kein juristisch gesicherter Vertrags-Diff. Er setzt keine Genehmigungs-, Abrechnungs- oder Versorgungsregel automatisch in Kraft. Noch ausstehend ist der vollständig angemeldete End-to-End-Praxistest mit dem realen 34-seitigen BARMER/TK-Scan einschließlich privater Supabase-Speicherung.
+
+
+## Ausbaustufe 3 – OCR-Regelkandidaten und Wissensentwürfe (21.10.2026)
+
+Implementiert: Der OCR-Vertragsupload erzeugt nach der Texterkennung automatisch **Prüfkandidaten** für Vertragsregeln. Die Verarbeitung benötigt keinen erneuten Download/Upload.
+
+**Regelkandidaten** werden ohne KI-API anhand eindeutiger Textindikatoren zugeordnet: Genehmigung/KVA, Fristen, LEGS, Abrechnung, Versorgung, Verordnung, Dokumentation. Erfasste HMV-Codes, ausdrücklich gekennzeichnete LEGS, Fristangaben und EUR-Beträge sind nur Fundstellen; es werden keine verbindlichen Genehmigungsentscheidungen, Abrechnungspositionen oder IK-/PG-Geltungsbereiche daraus abgeleitet. Unstrukturierte OCR-Seiten sind ausgeschlossen.
+
+**Prüfung:** Aktive Bearbeiter können eigene Kandidaten sehen. Eine Entscheidung CONFIRMED oder REJECTED ist ausschließlich mit aktiver ADMIN-Rolle und mindestens zwölf Zeichen Prüfbegründung möglich. Entscheidungen bleiben bei erneuter identischer OCR-Erkennung erhalten; nicht mehr identische Kandidaten werden als SUPERSEDED gekennzeichnet. Die Originalseiten sind per kurzzeitigem signierten Link erreichbar.
+
+**Wissensbasis:** Ein von einem Administrator bestätigter Kandidat kann nach zusätzlicher manueller Formulierung und Bestätigung ausschließlich als Datensatz vn_contract_knowledge.status=DRAFT überführt werden. revalidation_required=true ist zwingend. Die atomare Übernahme erfolgt über die PostgreSQL-Funktion vn_ocr_create_knowledge_draft mit erneut geprüfter ADMIN-Rolle und Zeilensperre gegen doppelte Übernahme. **OCR darf niemals APPROVED automatisch setzen.**
+
+**Zugriffsgrenze:** public.vn_ocr_rule_candidates ist RLS-geschützt, anon und authenticated besitzen keine direkten Lese- oder Schreibrechte. Nur die authentifizierte Edge Function liest/schreibt mit serverseitiger Service-Rolle und dokumentierter Eigentümerschaft-/Rollenprüfung. Die Migration enthält explizite GRANTs, unabhängig von der geänderten Supabase Data-API-Vergabe für neue Tabellen ab 30.10.2026.
+
+**Dateien:**
+- supabase/migrations/20261021_vn21_ocr_rule_candidates.sql
+- supabase/migrations/20261021_vn21_ocr_rule_draft_atomic.sql
+- supabase/functions/vn2-contract-ocr-rules/index.ts
+- supabase/functions/vn2-contract-ocr-rules/ruleHints.mjs
+- src/components/ContractOcrRuleReview.jsx und .css
+- tests/ocr-rule-hints.test.mjs und Browser-Prüfung tests/ocr-review-ui.spec.mjs
+
+**Offene Abnahme:** Keine produktive OCR-Arbeitskopie eines echten Vertrags ist bislang in der Datenbank vorhanden. Auswertungen/Tabellen und UI-Tests wurden mit synthetischen Texten nachgewiesen. Der gesamte Ablauf mit realem Scan, Anmeldung, privaten OCR-Daten und manueller DRAFT-Übernahme muss gesondert getestet werden, ohne eine produktive Vertragsfreigabe auszulösen.
