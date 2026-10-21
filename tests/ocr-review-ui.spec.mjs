@@ -18,3 +18,32 @@ test('OCR-Vergleich: Alt/Neu, Seitenbezug, Themenfilter und Klauselindex',async 
   await expect(page.getByText('kein rechtsverbindlich',{exact:false})).toHaveCount(0)
   expect(errors).toEqual([])
 })
+
+
+test('OCR-Regelhinweise: ausschließlich bestätigter Kandidat darf als DRAFT übernommen werden',async({page})=>{
+  const errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  page.on('dialog',d=>d.accept());
+  await page.goto('./ocr-review-smoke.html');
+  await page.getByRole('button',{name:'Regelhinweise prüfen'}).click();
+  await expect(page.locator('.ocr-rule-item')).toHaveCount(1);
+  const card=page.locator('.ocr-rule-item').first();
+  await expect(card).toContainText('Genehmigung / KVA');
+  await expect(card).toContainText('Erkannte LEGS');
+  await expect(card).toContainText('1234567');
+  await expect(card.getByRole('button',{name:/Als Prüfkandidat bestätigen/})).toBeDisabled();
+  await card.getByPlaceholder('Quellenprüfung, Geltungsbereich und Entscheidung dokumentieren …')
+    .fill('Quellenlage geprüft; Regel mit nachgewiesenem Fristbezug in der Originalseite.');
+  await card.getByRole('button',{name:/Als Prüfkandidat bestätigen/}).click();
+  await expect(card).toContainText('Fachlich bestätigt');
+  await expect(card).not.toContainText('Wissensentwurf angelegt');
+  await card.getByRole('button',{name:/Fachlich formulierten Wissensentwurf anlegen/}).click();
+  await expect(card.getByRole('button',{name:/Als DRAFT speichern/})).toBeDisabled();
+  await card.getByPlaceholder('Vertraglich gesicherte Aussage mit allen relevanten Einschränkungen formulieren …')
+    .fill('Fachlich geprüfte Genehmigungsfrist gemäß Originalseite; gilt nur bei eindeutigem Vertragsumfang.');
+  await card.getByRole('button',{name:/Als DRAFT speichern/}).click();
+  await expect(card).toContainText('Wissensentwurf angelegt');
+  await expect(card).toContainText('noch nicht freigegeben');
+  await expect(card.getByRole('button',{name:/Fachlich formulierten Wissensentwurf anlegen/})).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
