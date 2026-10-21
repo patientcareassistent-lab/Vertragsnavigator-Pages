@@ -102,6 +102,13 @@ export async function getOcrRuleCandidates(uploadId,{offset=0,limit=25,status=''
   return invoke('vn2-contract-ocr-rules',{upload_id:uploadId,action:'list',offset,limit,status,kind})
 }
 
+export async function saveAccessionSourceProof(uploadId,candidateId,accessionId,details,verify=false){
+  return invoke('vn2-contract-ocr-rules',{
+    upload_id:uploadId,action:'proof',candidate_id:candidateId,
+    accession_id:accessionId,details,verify
+  })
+}
+
 export async function getOcrIkAccessionEvidence(uploadId,candidateId,ik,pg=''){
   return invoke('vn2-contract-ocr-rules',{
     upload_id:uploadId,action:'evidence',candidate_id:candidateId,ik,pg
