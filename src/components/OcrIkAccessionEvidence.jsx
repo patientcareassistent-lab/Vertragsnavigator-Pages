@@ -2,6 +2,7 @@ import React,{useEffect,useState} from 'react'
 import {AlertTriangle,Search,LoaderCircle} from 'lucide-react'
 import {getOcrIkAccessionEvidence} from '../lib/contractUpload.js'
 import './OcrIkAccessionEvidence.css'
+import OcrAccessionProofEditor from './OcrAccessionProofEditor.jsx'
 
 const LABEL={
   POSITIVE_ACCESSION_HINT:'Positiver Beitrittshinweis – keine Versorgungsfreigabe',
@@ -68,6 +69,14 @@ export default function OcrIkAccessionEvidence({
         <span>{evidence.decision==='PRUEFUNG_ERFORDERLICH'?'Prüfung erforderlich':evidence.decision}</span>
       </div>
       <small>{result.site?.branch||'Standort nicht eindeutig'} · IK {result.ik} · Vertragsbezug {result.contract_id}</small>
+      <div className="ocr-temporal-evidence">
+        <b>Zeitliche Vertragsgeltung:</b> {result.temporal?.status==='SOURCE_DATE_DOCUMENTED'
+          ?'Original-Zeitnachweis dokumentiert, Einzelfallprüfung offen'
+          :result.temporal?.status==='SOURCE_CONFLICT'
+          ?'Zeitlicher Kündigungs- oder Einschränkungshinweis'
+          :'Nicht durch Originalnachweis belegt'}
+        <small>Prüftag: {result.temporal?.on_date||'—'} · Verifizierte Quellenbelege: {result.temporal?.verified_proofs??0}</small>
+      </div>
       <div className="ocr-accession-counts">
         <span><b>{evidence.stats.accession_rows}</b> Beitrittszeilen</span>
         <span><b>{evidence.stats.positive_accessions}</b> positive Hinweise</span>
@@ -96,6 +105,19 @@ export default function OcrIkAccessionEvidence({
           {r.review_required?' · Prüfung offen':''}
         </p>)}
       </details>}
+      {(result.proofs||[]).length>0&&<details>
+        <summary>Dokumentierte Originalnachweise ({result.proofs.length})</summary>
+        <div className="ocr-accession-scroll"><table><thead><tr>
+          <th>Status</th><th>Belegart</th><th>Zeitraum</th><th>PG</th><th>Seite</th>
+        </tr></thead><tbody>{result.proofs.map(x=><tr key={x.proof_id}>
+          <td>{x.status}</td><td>{x.proof_kind}</td>
+          <td>{x.effective_from||'—'} bis {x.effective_to||'offen'}</td>
+          <td>{x.pg||'nicht eingegrenzt'}</td><td>{x.source_page}</td>
+        </tr>)}</tbody></table></div>
+      </details>}
+      {result.can_edit_proofs&&<OcrAccessionProofEditor
+        uploadId={uploadId} candidateId={candidateId} pg={checkPg}
+        accessions={evidence.accessions||[]} onSaved={check}/>}
       <div className="ocr-accession-warning">Dieser Befund ist kein Versorgungsentscheid. Positive Beitrittszeilen ersetzen weder den Nachweis des zeitlichen und sachlichen Vertragsumfangs noch PQ, Positions-/Genehmigungsprüfung oder Verordnung.</div>
     </div>}
   </section>
