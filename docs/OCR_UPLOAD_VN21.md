@@ -130,3 +130,29 @@ Zur fachlichen Bestätigung sind erforderlich: gültige Vertragsversion aus dems
 ### Offene Punkte
 
 Die datenbasierte automatische Prüfung konkreter IK-Vertragsbeitritte ist wegen fehlender belastbarer Vertrags-IK-Geltungsdaten noch nicht möglich. Keine OCR-Texte oder -Regelkandidaten aus einem echten Produktivupload liegen vor. Ein End-to-End-Vertragstest mit Login, Scope-Prüfung, Entwurfsübergabe und erneuter Quellenkontrolle steht aus.
+
+
+## Ausbaustufe 5 – IK-Vertragsbeitritt aus Bestandsdaten abgleichen (21.10.2026)
+
+Die Bestandsdaten enthalten bereits:
+- 20.764 Komponenten-/Standortgeltungszeilen (site_contract_scope), davon 5.631 mit offenem Prüfhinweis.
+- 4.967 Vertragsbeitrittszeilen (site_contract_eligibility) für 4.491 eindeutige Standort/Vertrag-Kombinationen.
+- 362 Kombinationen mit mehreren Beitrittszeilen.
+- 929 Beitrittszeilen mit streng positivem Statusfilter: EXACT, active, Beigetreten, Voraussetzungen Ja, VTV Gemeldet und kein review_required.
+- 0/4.967 Beitrittszeilen mit strukturierten valid_from/valid_to-Daten. Positive Statusmeldungen erlauben damit keine zeitliche Vertragsfreigabe.
+
+**Neu:** Authentifizierter, lesender Abgleich eines konkret gewählten Vertrags mit Standort-IK und optionaler PG.
+Das Backend-Kommando vn2-contract-ocr-rules (action=evidence) beschränkt den Zugriff auf den OCR-Upload und einen zugeordneten Regelkandidaten (EDITOR: eigene Uploads, ADMIN: berechtigt).
+Der Abgleich:
+1. Prüft Upload- und Kandidatenzugehörigkeit sowie Standort-IK.
+2. Liest ausschließlich Zeilen für die Standort/Vertrag-Paarung.
+3. Erkennt positive Hinweise, gekündigte/negative Beitritte, widersprüchliche Mehrfachzuordnungen sowie PG-Komponentenwidersprüche.
+4. Kontrolliert inaktive Standorte und archivierte Verträge.
+5. Kennzeichnet fehlende Gültigkeitsdaten und nicht PG-spezifisch nachgewiesene Beitritte.
+6. Liefert ausnahmslos decision=PRUEFUNG_ERFORDERLICH. Ein positiver Datensatz ist keine Versorgungsfreigabe.
+7. Zeigt Datensatz- und Quellenreferenzen in einer lesenden Prüfansicht im OCR-Geltungsbereichseditor.
+8. Ändert keine Stammdaten, Beitritte, OCR-Freigaben oder Versorgungsentscheidungen.
+
+**Dateien:** supabase/functions/vn2-contract-ocr-rules/accessionEvidence.mjs, src/components/OcrIkAccessionEvidence.jsx und .css, tests/ocr-ik-accession-evidence.test.mjs, ergänzte Browser-UI-Tests.
+
+**Weiter offen:** Strukturierte Zeiträume aus Beitrittsdokumenten, PG-/IK-Geltung aus originären Vertragsquellen, PQ und Positionsprüfung. Der echte OCR-End-to-End-Test mit Anmeldung bleibt offen.
