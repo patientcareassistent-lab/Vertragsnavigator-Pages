@@ -97,6 +97,27 @@ export async function getContractUploadOriginalLink(uploadId){
   return invoke('vn2-contract-upload-original',{upload_id:uploadId})
 }
 
+// Nur Authenticated Edge Functions dürfen OCR-Kandidaten lesen oder bearbeiten.
+export async function getOcrRuleCandidates(uploadId,{offset=0,limit=25,status='',kind=''}={}){
+  return invoke('vn2-contract-ocr-rules',{upload_id:uploadId,action:'list',offset,limit,status,kind})
+}
+
+export async function scanOcrRuleCandidates(uploadId){
+  return invoke('vn2-contract-ocr-rules',{upload_id:uploadId,action:'scan'})
+}
+
+export async function decideOcrRuleCandidate(uploadId,candidateId,status,reviewNote){
+  return invoke('vn2-contract-ocr-rules',{
+    upload_id:uploadId,action:'decide',candidate_id:candidateId,status,review_note:reviewNote
+  })
+}
+
+export async function createOcrKnowledgeDraft(uploadId,candidateId,decisionText){
+  return invoke('vn2-contract-ocr-rules',{
+    upload_id:uploadId,action:'draft',candidate_id:candidateId,decision_text:decisionText
+  })
+}
+
 export async function getContractOcrReview(uploadId,{baselineUploadId='',offset=0,limit=20,category=''}={}){
   return invoke('vn2-contract-ocr-review',{
     upload_id:uploadId,
