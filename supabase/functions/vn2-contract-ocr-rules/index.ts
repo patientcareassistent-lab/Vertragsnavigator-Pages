@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 import { extractOcrClauses } from "./clauseDiff.mjs";
 import { extractOcrRuleCandidates } from "./ruleHints.mjs";
+import { evaluateAccessionEvidence } from "./accessionEvidence.mjs";
 
 const BUCKET="contract-sources",MAX_BYTES=6000000;
 const KINDS=["GENEHMIGUNG","FRIST","LEGS","ABRECHNUNG","VERSORGUNG","VERORDNUNG","DOKUMENTATION"];
@@ -31,7 +32,7 @@ Deno.serve(async(req:Request)=>{
     const request=await req.json();
     const uploadId=txt(request?.upload_id),action=txt(request?.action)||"list";
     if(!uuid(uploadId))return respond({error:"Ungültige Upload-ID"},400);
-    if(!["list","scan","decide","draft","scope","options"].includes(action))return respond({error:"Unbekannte OCR-Regelaktion"},400);
+    if(!["list","scan","decide","draft","scope","options","evidence"].includes(action))return respond({error:"Unbekannte OCR-Regelaktion"},400);
     if(["decide","draft","scope","options"].includes(action)&&profile.role!=="ADMIN")
       return respond({error:"Nur ein VN-Administrator darf Regelhinweise entscheiden oder als Entwurf übernehmen."},403);
 
@@ -49,6 +50,51 @@ Deno.serve(async(req:Request)=>{
     if(["REJECTED","ERROR","BASELINE"].includes(upload.upload_status))
       return respond({error:"Dieser Upload ist für die OCR-Regelprüfung gesperrt."},409);
 
+    if(action==="evidence"){
+      // Query is restricted to this authenticated upload and one real site/contract.
+      const id=txt(request?.candidate_id);
+      const ik=txt(request?.ik);
+      const pg=txt(request?.pg);
+      if(!uuid(id)||!/^\d{9}$/.test(ik)||pg && !/^\d{2}$/.test(pg))
+        return respond({error:"Kandidat, gültige neunstellige IK und optionale zweistellige PG erforderlich."},400);
+      const {data:belongs,error:be}=await admin.from("vn_ocr_rule_candidates")
+        .select("candidate_id").eq("candidate_id",id).eq("upload_id",uploadId).maybeSingle();
+      if(be)throw be;
+      if(!belongs)return respond({error:"Kandidat ist diesem Upload nicht zugeordnet"},404);
+      const {data:siteRows,error:se}=await admin.from("sites")
+        .select("site_id,ik,branch,active").eq("ik",ik).limit(3);
+      if(se)throw se;
+      const {data:contract,error:ce}=await admin.from("contracts")
+        .select("contract_id,record_status,archive_state").eq("contract_id",upload.contract_id).single();
+      if(ce)throw ce;
+      if((siteRows||[]).length!==1){
+        const result=evaluateAccessionEvidence({site:null,contract,pg});
+        if((siteRows||[]).length>1)result.reasons.unshift("IK ist mehreren Standortstammsätzen zugeordnet; eindeutigen Standort klären.");
+        return respond({available:true,ik,pg,contract_id:upload.contract_id,site:null,evidence:result});
+      }
+      const site=siteRows![0];
+      const [accRes,scopeRes]=await Promise.all([
+        admin.from("site_contract_eligibility")
+          .select("accession_id,status,active,prerequisites_met,vtv_status,contract_match_status,review_required,valid_from,valid_to,source")
+          .eq("site_id",site.site_id).eq("contract_id",upload.contract_id).limit(51),
+        admin.from("site_contract_scope")
+          .select("accession_detail_id,accession_level,accession_type,status,vtv_status,contract_match_status,accession_match_status,review_required,source")
+          .eq("site_id",site.site_id).eq("contract_id",upload.contract_id).limit(151)
+      ]);
+      if(accRes.error)throw accRes.error;
+      if(scopeRes.error)throw scopeRes.error;
+      const accessions=accRes.data||[],scopes=scopeRes.data||[];
+      const result=evaluateAccessionEvidence({
+        site,contract,accessions:accessions.slice(0,50),scopes:scopes.slice(0,150),pg,
+        truncatedAccessions:accessions.length>50,truncatedScopes:scopes.length>150
+      });
+      return respond({
+        available:true,contract_id:upload.contract_id,ik,pg,
+        site:{site_id:site.site_id,branch:site.branch,active:site.active},
+        evidence:result,
+        warning:"Keine Versorgungserlaubnis. Prüft lediglich strukturierte Beitritts-/Widerspruchshinweise für Vertrag und IK; PQ, tatsächliche Vertragsgeltung, Position und Verordnung gesondert prüfen."
+      });
+    }
     if(action==="options"){
       const {data:contract,error:contractError}=await admin.from("contracts")
         .select("payer_families,product_groups,legs,record_status")
