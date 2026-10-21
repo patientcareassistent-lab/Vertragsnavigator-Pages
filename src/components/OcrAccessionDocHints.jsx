@@ -14,7 +14,7 @@ const MATCH={
   TOO_MANY_ACCESSIONS:'Zu viele Beitritte für eine sichere Zuordnung',
   NO_ACCESSION:'Keine passende Beitrittsreferenz gefunden'
 }
-export default function OcrAccessionDocHints({uploadId,candidateId,onSelect}){
+export default function OcrAccessionDocHints({uploadId,candidateId=null,onSelect=()=>{},onReport=()=>{}}){
   const [expanded,setExpanded]=useState(false)
   const [report,setReport]=useState(null)
   const [busy,setBusy]=useState(false)
@@ -22,7 +22,9 @@ export default function OcrAccessionDocHints({uploadId,candidateId,onSelect}){
   async function load(){
     setExpanded(true);setBusy(true);setError('')
     try{
-      setReport(await scanAccessionDocumentHints(uploadId,candidateId))
+      const current=await scanAccessionDocumentHints(uploadId,candidateId)
+      setReport(current)
+      onReport(current)
     }catch(e){setError(e.message)}
     finally{setBusy(false)}
   }
