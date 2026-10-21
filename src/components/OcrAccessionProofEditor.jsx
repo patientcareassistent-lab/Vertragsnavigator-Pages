@@ -2,8 +2,16 @@ import React,{useState} from 'react'
 import {saveAccessionSourceProof,getContractUploadOriginalLink} from '../lib/contractUpload.js'
 import './OcrAccessionProofEditor.css'
 
-export default function OcrAccessionProofEditor({uploadId,candidateId,accessions=[],pg='',onSaved}){
-  const [form,setForm]=useState({accession_id:'',proof_kind:'BEITRITT',effective_from:'',effective_to:'',pg,source_page:'',source_excerpt:'',evidence_note:''})
+export default function OcrAccessionProofEditor({uploadId,candidateId,accessions=[],pg='',onSaved,suggestion=null}){
+  const prefill={
+    accession_id:suggestion?.proposed_accession_id||'',
+    proof_kind:suggestion?.kind||'BEITRITT',
+    effective_from:suggestion?.suggested_effective_from||'',
+    effective_to:'',pg:suggestion?.pg_candidates?.length===1?suggestion.pg_candidates[0]:pg,
+    source_page:suggestion?.page?String(suggestion.page):'',
+    source_excerpt:suggestion?.excerpt||'',evidence_note:''
+  }
+  const [form,setForm]=useState(prefill)
   const [checked,setChecked]=useState(false)
   const [busy,setBusy]=useState(false)
   const [message,setMessage]=useState('')
@@ -33,8 +41,9 @@ export default function OcrAccessionProofEditor({uploadId,candidateId,accessions
       setChecked(false)
     }catch(e){setMessage(e.message)}finally{setBusy(false)}
   }
-  return <details className="ocr-proof-entry"><summary>Beitrittszeitraum aus Original belegen</summary>
+  return <details className="ocr-proof-entry" open={Boolean(suggestion)||undefined}><summary>Beitrittszeitraum aus Original belegen</summary>
     <p>Nur nach tatsächlich geprüftem Originalnachweis. Keine automatische Freigabe.</p>
+    {suggestion&&<p><b>OCR-Vorschlag übernommen – ungeprüft.</b> Prüfen Sie insbesondere Originaldatum, IK, PG und Beitrittsreferenz; der Prüfvermerk muss von Ihnen formuliert werden.</p>}
     {message&&<div role="status">{message}</div>}
     <label>Beitritt<select aria-label="Nachweis Beitritts-ID" value={form.accession_id} onChange={e=>set('accession_id',e.target.value)}>
       <option value="">Bitte auswählen</option>
