@@ -101,3 +101,18 @@ export async function getOcrIkAccessionEvidence(_uploadId,_candidateId,ik,pg='')
     warning:'Kein Versorgungsentscheid'
   }
 }
+
+export async function saveAccessionSourceProof(_uploadId,_candidateId,accessionId,details,verify=false){
+  if(!['A1','A2'].includes(accessionId))throw new Error('Beitritt fehlt');
+  if(verify&&!details.source_checked)throw new Error('Quellenprüfung erforderlich');
+  sourceProof={
+    proof_id:'55555555-5555-4555-8555-555555555555',
+    accession_id:accessionId,source_upload_id:_uploadId,
+    source_page:details.source_page,source_excerpt:details.source_excerpt,
+    evidence_note:details.evidence_note,pg:details.pg||'',
+    status:verify?'VERIFIED':'DRAFT',
+    effective_from:details.effective_from,effective_to:details.effective_to||null,
+    proof_kind:details.proof_kind
+  };
+  return {proof:sourceProof,message:verify?'Quellennachweis verifiziert':'Entwurf gespeichert'}
+}
