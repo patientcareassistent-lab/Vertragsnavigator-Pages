@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 import { extractOcrClauses } from "./clauseDiff.mjs";
 import { extractOcrRuleCandidates } from "./ruleHints.mjs";
 import { evaluateAccessionEvidence } from "./accessionEvidence.mjs";
+import { evaluateTemporalProofs } from "./temporalEvidence.mjs";
 
 const BUCKET="contract-sources",MAX_BYTES=6000000;
 const KINDS=["GENEHMIGUNG","FRIST","LEGS","ABRECHNUNG","VERSORGUNG","VERORDNUNG","DOKUMENTATION"];
@@ -125,26 +126,7 @@ Deno.serve(async(req:Request)=>{
         if(proofError)throw proofError;
         proofs=proofRows||[];
       }
-      const verified=proofs.filter(x=>x.status==="VERIFIED"&&
-        (x.pg===""||x.pg===pg));
-      const today=new Date().toISOString().slice(0,10);
-      const date=request?.on_date&&/^\d{4}-\d{2}-\d{2}$/.test(txt(request.on_date))
-        ?txt(request.on_date):today;
-      const applicable=verified.filter(x=>x.effective_from<=date&&
-        (!x.effective_to||x.effective_to>=date));
-      const ended=verified.filter(x=>x.proof_kind==="KUENDIGUNG"&&x.effective_from<=date);
-      const restricted=applicable.filter(x=>x.proof_kind==="EINSCHRAENKUNG");
-      const positive=applicable.filter(x=>x.proof_kind==="BEITRITT");
-      const temporal={
-        on_date:date,
-        status:ended.length||restricted.length?"SOURCE_CONFLICT":
-          positive.length?"SOURCE_DATE_DOCUMENTED":"SOURCE_DATE_NOT_PROVEN",
-        verified_proofs:verified.length,
-        matching_join_proofs:positive.length,
-        ending_proofs:ended.length,
-        restriction_proofs:restricted.length,
-        note:"Historische Originalnachweise: keine automatisierte Feststellung eines aktuellen Vertragsbeitritts oder einer Versorgungszulässigkeit."
-      };
+      const temporal=evaluateTemporalProofs(proofs,{pg,onDate:txt(request?.on_date)});
       if(temporal.status==="SOURCE_DATE_NOT_PROVEN")
         result.reasons.unshift("Kein zeitlich geprüfter Originalnachweis für den ausgewählten Beitritt und Prüftag.");
       if(temporal.status==="SOURCE_CONFLICT"){
