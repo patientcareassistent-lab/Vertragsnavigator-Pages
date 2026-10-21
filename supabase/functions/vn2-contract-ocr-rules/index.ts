@@ -4,6 +4,7 @@ import { extractOcrClauses } from "./clauseDiff.mjs";
 import { extractOcrRuleCandidates } from "./ruleHints.mjs";
 import { evaluateAccessionEvidence } from "./accessionEvidence.mjs";
 import { evaluateTemporalProofs } from "./temporalEvidence.mjs";
+import { extractAccessionDocumentHints } from "./accessionDocHints.mjs";
 
 const BUCKET="contract-sources",MAX_BYTES=6000000;
 const KINDS=["GENEHMIGUNG","FRIST","LEGS","ABRECHNUNG","VERSORGUNG","VERORDNUNG","DOKUMENTATION"];
@@ -33,7 +34,7 @@ Deno.serve(async(req:Request)=>{
     const request=await req.json();
     const uploadId=txt(request?.upload_id),action=txt(request?.action)||"list";
     if(!uuid(uploadId))return respond({error:"Ungültige Upload-ID"},400);
-    if(!["list","scan","decide","draft","scope","options","evidence","proof"].includes(action))return respond({error:"Unbekannte OCR-Regelaktion"},400);
+    if(!["list","scan","decide","draft","scope","options","evidence","proof","doc_hints"].includes(action))return respond({error:"Unbekannte OCR-Regelaktion"},400);
     if(["decide","draft","scope","options","proof"].includes(action)&&profile.role!=="ADMIN")
       return respond({error:"Nur ein VN-Administrator darf Regelhinweise entscheiden oder als Entwurf übernehmen."},403);
 
@@ -50,6 +51,58 @@ Deno.serve(async(req:Request)=>{
       return respond({available:false,reason:"OCR_NOT_AVAILABLE",candidates:[]});
     if(["REJECTED","ERROR","BASELINE"].includes(upload.upload_status))
       return respond({error:"Dieser Upload ist für die OCR-Regelprüfung gesperrt."},409);
+
+    if(action==="doc_hints"){
+      const candidateId=txt(request?.candidate_id);
+      if(!uuid(candidateId))return respond({error:"Gültige Kandidatenreferenz erforderlich"},400);
+      const {data:belongs,error:belongsError}=await admin.from("vn_ocr_rule_candidates")
+        .select("candidate_id").eq("candidate_id",candidateId)
+        .eq("upload_id",uploadId).maybeSingle();
+      if(belongsError)throw belongsError;
+      if(!belongs)return respond({error:"OCR-Kandidat gehört nicht zum Originalupload"},404);
+      const {data:blob,error:blobError}=await admin.storage.from(BUCKET).download(ocrPath);
+      if(blobError||!blob)throw blobError??new Error("OCR-Arbeitskopie fehlt");
+      if(blob.size>MAX_BYTES)return respond({error:"OCR-Arbeitskopie überschreitet das Limit"},413);
+      const doc=JSON.parse(await blob.text());
+      if(doc?.upload_id!==uploadId||doc?.contract_id!==upload.contract_id||
+          doc?.original_sha256!==upload.source_sha256||!Array.isArray(doc.pages))
+        return respond({error:"OCR-Arbeitskopie nicht dem Originalvertrag zuzuordnen"},409);
+      const result=extractAccessionDocumentHints(doc.pages,{max:160});
+      const allIks=[...new Set(result.hints.flatMap((h:any)=>h.ik_candidates||[]))];
+      // One source may mention many sites. Never query across unrelated projects,
+      // and never automatically choose a historical accession by filename.
+      const rowsByIk=new Map<string,any[]>();
+      for(const ik of allIks.slice(0,12)){
+        const {data:rows,error:findError}=await admin.from("site_contract_eligibility")
+          .select("accession_id,ik,status,active,review_required,contract_match_status")
+          .eq("contract_id",upload.contract_id).eq("ik",ik).limit(21);
+        if(findError)throw findError;
+        rowsByIk.set(ik,rows||[]);
+      }
+      const candidates=result.hints.map((hint:any)=>{
+        const distinctIk=hint.ik_candidates?.length===1?hint.ik_candidates[0]:null;
+        const rows=distinctIk&&rowsByIk.has(distinctIk)?rowsByIk.get(distinctIk)||[]:[];
+        const capped=rows.length>20;
+        const unique=Boolean(distinctIk&&allIks.indexOf(distinctIk)<12&&!capped&&rows.length===1
+          &&rows[0].contract_match_status==="EXACT");
+        return {...hint,
+          matches:rows.slice(0,20).map((row:any)=>({
+            accession_id:row.accession_id,status:row.status,
+            active:row.active,review_required:row.review_required
+          })),
+          proposed_accession_id:unique?rows[0].accession_id:null,
+          match_status:!distinctIk?"IK_UNRESOLVED":
+            allIks.indexOf(distinctIk)>=12?"IK_LOOKUP_SKIPPED":
+            capped?"TOO_MANY_ACCESSIONS":
+            !rows.length?"NO_ACCESSION":
+            unique?"SINGLE_ACCESSION_HINT":"AMBIGUOUS_ACCESSIONS"
+        };
+      });
+      return respond({available:true,action:"doc_hints",hints:candidates,quality:result.quality,
+        source_upload_id:uploadId,
+        message:"OCR-Vorschläge sind keine Nachweise. Originalseite, wirksames Datum, PG, IK und Beitrittsreferenz müssen vor einer fachlichen Bestätigung einzeln geprüft werden."
+      });
+    }
 
     if(action==="proof"){
       const candidateId=txt(request?.candidate_id);
