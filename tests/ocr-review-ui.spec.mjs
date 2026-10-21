@@ -37,6 +37,21 @@ test('OCR-Regelhinweise: ausschließlich bestätigter Kandidat darf als DRAFT ü
   await card.getByRole('button',{name:/Als Prüfkandidat bestätigen/}).click();
   await expect(card).toContainText('Fachlich bestätigt');
   await expect(card).not.toContainText('Wissensentwurf angelegt');
+  await expect(card.getByRole('button',{name:/Fachlich formulierten Wissensentwurf anlegen/})).toHaveCount(0);
+  await card.getByRole('button',{name:/Geltung festlegen/}).click();
+  await expect(card.getByLabel('Geltungsbereich Vertragsversion')).toBeVisible();
+  for (const label of ['Kostenträgerfamilie','Produktgruppe (PG)','Standort-IK','LEGS']){
+    await card.getByLabel(label+' Geltungsart').selectOption('ALL_IN_CONTRACT');
+  }
+  await card.getByLabel('Geltungsbereich Vertragsversion').selectOption('VER-TEST');
+  await card.getByLabel('Geltungsbereich gültig ab').fill('2026-01-01');
+  await card.getByLabel('Geltungsbereich Quellennachweis').fill(
+    'TEST: Originalseite 6 geprüft; Rahmenvertrag ohne weitere PG-, LEGS- oder IK-Einschränkung.'
+  );
+  await expect(card.getByRole('button',{name:/Geltung anhand Quelle bestätigen/})).toBeDisabled();
+  await card.locator('.ocr-scope-attest input[type=checkbox]').check();
+  await card.getByRole('button',{name:/Geltung anhand Quelle bestätigen/}).click();
+  await expect(card).toContainText('Geltungsbereich bestätigt');
   await card.getByRole('button',{name:/Fachlich formulierten Wissensentwurf anlegen/}).click();
   await expect(card.getByRole('button',{name:/Als DRAFT speichern/})).toBeDisabled();
   await card.getByPlaceholder('Vertraglich gesicherte Aussage mit allen relevanten Einschränkungen formulieren …')
