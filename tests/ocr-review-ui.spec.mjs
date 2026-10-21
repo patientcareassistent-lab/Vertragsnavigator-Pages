@@ -3,7 +3,13 @@ test('OCR-Vergleich: Alt/Neu, Seitenbezug, Themenfilter und Klauselindex',async 
   const errors=[]
   page.on('pageerror',e=>errors.push(e.message))
   await page.goto('./ocr-review-smoke.html')
-  await expect(page.getByRole('heading',{name:'OCR-Vertragsprüfung'})).toBeVisible({timeout:15000})
+  // Vite can cold-transform the isolated fixture on its first browser request.
+  // Reload once if module hydration did not start; all substantive asserts still run.
+  const reviewHeading=page.getByRole('heading',{name:'OCR-Vertragsprüfung'})
+  if(!await reviewHeading.isVisible()){
+    await page.reload()
+  }
+  await expect(reviewHeading).toBeVisible({timeout:15000})
   await expect(page.locator('.ocr-review-card')).toHaveCount(2)
   await expect(page.locator('.ocr-review-card').first()).toContainText('fünf Werktagen')
   await expect(page.locator('.ocr-review-card').first()).toContainText('sechs Werktagen')
