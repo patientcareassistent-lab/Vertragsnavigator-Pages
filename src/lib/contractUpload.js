@@ -93,7 +93,11 @@ export async function uploadContractSource(contractId,file,contractName=''){
   return completed
 }
 
-export async function parseContractUpload(uploadId){
+export async function parseContractUpload(uploadId,ocrPages=null){
+  // Der Backend-Parser erhält nur extrahierte Seiten. Das originale PDF bleibt im privaten Storage unverändert.
+  if(Array.isArray(ocrPages)&&ocrPages.length){
+    return invoke('vn2-contract-parse-ocr',{upload_id:uploadId,pages:ocrPages})
+  }
   return invoke('vn2-contract-parse',{upload_id:uploadId,mark_ready:false})
 }
 
