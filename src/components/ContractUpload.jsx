@@ -9,12 +9,13 @@ import {
   acceptContractUpload,getContractUploadStatus,getCurrentUploadId,
   markContractUploadReady,parseContractUpload,saveCurrentUploadId,
   uploadContractSource,validateContractFile,compareContractUpload,saveContractIkScopes,saveContractErpMapping,
-  fetchContractUploadOriginal,
+  fetchContractUploadOriginal,scanOcrRuleCandidates,
 } from '../lib/contractUpload.js'
 import { ContractChangeList,formatUploadDate } from './ContractChangeList.jsx'
 import { supabase } from '../lib/supabase.js'
 import { preparePdfForContractUpload } from '../lib/pdfAutoOcr.js'
 import ContractOcrReview from './ContractOcrReview.jsx'
+import ContractOcrRuleReview from './ContractOcrRuleReview.jsx'
 
 const TYPE_LABELS={CONTRACT:'Vertragskopf',VERSION:'Vertragsversionen',POSITION:'Preis-/Versorgungspositionen'}
 const STATUS_LABELS={
@@ -272,13 +273,23 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
       const {error:sourceOnlyError}=await supabase.rpc('vn_mark_upload_source_only',{p_upload_id:currentUploadId})
       if(sourceOnlyError)throw sourceOnlyError
     }
+    let ruleHintText=''
+    if(prepared?.pages?.length){
+      try{
+        const hints=await scanOcrRuleCandidates(currentUploadId)
+        ruleHintText=' · '+Number(hints.generated||0)+' OCR-Regelhinweise zur Prüfung vorgemerkt.'
+      }catch(ocrError){
+        setOcrWarnings(old=>[...old,'Regelhinweise konnten nicht erzeugt werden: '+String(ocrError?.message||ocrError)])
+        ruleHintText=' · Regelhinweise können später ohne neuen Upload erzeugt werden.'
+      }
+    }
     const current=await getContractUploadStatus(currentUploadId)
     setDetail(current)
-    setMessage(nextTypes.length
+    setMessage((nextTypes.length
       ? 'Inhalt erkannt. Bitte prüfen, welche Bereiche vollständig geliefert wurden.'
       : (precheckMode
         ? 'Original-PDF und Text wurden für die Vertragsvorprüfung erfasst. Keine automatische Veröffentlichung.'
-        : 'Originalvertrag und erkannter Text wurden gespeichert. Vertragsregeln benötigen fachliche Freigabe; keine automatische Änderung des Livebestands.'))
+        : 'Originalvertrag und erkannter Text wurden gespeichert. Vertragsregeln benötigen fachliche Freigabe; keine automatische Änderung des Livebestands.'))+ruleHintText)
     if(precheckMode&&!nextTypes.length&&onPrecheckReady)
       await onPrecheckReady(currentUploadId)
   }
@@ -544,6 +555,7 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
 
     <UploadStatusCard detail={detail} canFach={canFach} onAccept={acceptNow} busy={Boolean(busy)} precheckMode={precheckMode}/>
     <ContractOcrReview upload={detail?.upload}/>
+    <ContractOcrRuleReview upload={detail?.upload}/>
 
     {uploadId&&<div className="workflow-footer">
       <span>Upload-ID <code>{uploadId}</code></span>
