@@ -20,3 +20,6 @@
 .ocr-accession-results td,.ocr-accession-results th{padding:6px;border-bottom:1px solid #d7dfea;text-align:left}
 .ocr-accession-warning{border-top:1px solid #d7dfea;margin-top:11px;padding-top:10px;color:#775119;line-height:1.5;font-size:12px}
 @media(max-width:730px){.ocr-accession-inputs{grid-template-columns:1fr}.ocr-accession-inputs button{justify-content:center}}
+
+.ocr-temporal-evidence{margin:12px 0;padding:10px 12px;background:#fff5e7;border:1px solid #ead8be;border-radius:7px;color:#704811;font-size:12px;line-height:1.5}
+.ocr-temporal-evidence small{display:block;margin-top:3px;color:#775f45}
