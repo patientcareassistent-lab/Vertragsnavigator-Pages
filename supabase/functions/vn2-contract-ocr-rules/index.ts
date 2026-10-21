@@ -108,33 +108,18 @@ Deno.serve(async(req:Request)=>{
     }
 
     if(action==="draft"){
-      const candidateId=txt(request?.candidate_id),decisionText=txt(request?.decision_text);
+      const candidateId=txt(request?.candidate_id);
+      const decisionText=txt(request?.decision_text);
       if(!uuid(candidateId)||decisionText.length<20||decisionText.length>2500)
         return respond({error:"Bitte einen fachlich formulierten Regeltext (20–2500 Zeichen) eingeben."},400);
-      const {data:candidate,error:ce}=await admin.from("vn_ocr_rule_candidates")
-        .select("candidate_id,display_title,rule_kind,source_page,source_end_page,status,review_note,knowledge_id")
-        .eq("candidate_id",candidateId).eq("upload_id",uploadId).maybeSingle();
-      if(ce)throw ce;
-      if(!candidate||candidate.status!=="CONFIRMED"||candidate.knowledge_id)
-        return respond({error:"Nur bestätigte, noch nicht übernommene Regelkandidaten dürfen als Entwurf angelegt werden."},409);
-      const title=(candidate.rule_kind+" · "+candidate.display_title).slice(0,200);
-      const attribution="OCR-Hinweis aus "+upload.filename+" · Originalseite "+
-        candidate.source_page+(candidate.source_end_page!==candidate.source_page?"–"+candidate.source_end_page:"")+
-        " · fachlich verifizieren: Kostenträger, PG, IK, LEGS, Laufzeit.";
-      const {data:knowledge,error:ke}=await admin.from("vn_contract_knowledge")
-        .insert({title,question_text:attribution,decision_text:decisionText,
-          contract_id:upload.contract_id,source_id:upload.source_id||null,
-          status:"DRAFT",revalidation_required:true,created_by:currentUser.user.id})
-        .select("knowledge_id,status").single();
-      if(ke)throw ke;
-      const {data:linked,error:le}=await admin.from("vn_ocr_rule_candidates")
-        .update({knowledge_id:knowledge.knowledge_id,updated_at:new Date().toISOString()})
-        .eq("candidate_id",candidateId).eq("upload_id",uploadId).eq("status","CONFIRMED")
-        .is("knowledge_id",null).select("candidate_id").maybeSingle();
-      if(le)throw le;
-      if(!linked)return respond({error:"Wissensentwurf erstellt, Zuordnung konnte nicht bestätigt werden. Bitte Administration prüfen.",knowledge_id:knowledge.knowledge_id},409);
-      return respond({knowledge_id:knowledge.knowledge_id,status:knowledge.status,
-        message:"Als DRAFT gespeichert. Revalidierung und eigenständige Freigabe bleiben erforderlich."});
+      // Transaktionale SECURITY-DEFINER-RPC prüft die ADMIN-Rolle erneut anhand
+      // auth.uid(), sperrt den Kandidaten FOR UPDATE und erstellt nur DRAFT.
+      const {data:knowledgeId,error:draftError}=await client.rpc("vn_ocr_create_knowledge_draft",{
+        p_upload_id:uploadId,p_candidate_id:candidateId,p_decision_text:decisionText
+      });
+      if(draftError)return respond({error:draftError.message},409);
+      return respond({knowledge_id:knowledgeId,status:"DRAFT",
+        message:"Wissensentwurf erstellt (DRAFT). Separate Revalidierung und Freigabe erforderlich."});
     }
 
     const offset=Number(request?.offset??0),limit=Number(request?.limit??25);
