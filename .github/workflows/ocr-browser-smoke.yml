@@ -1,0 +1,36 @@
+name: VN 2.1 OCR Browser Smoke
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/lib/pdfAutoOcr.js'
+      - 'supabase/functions/vn2-contract-parse-ocr/**'
+      - 'tests/ocr-browser-smoke.spec.mjs'
+      - 'tests/ocr-playwright.config.mjs'
+      - 'ocr-smoke.html'
+      - 'package.json'
+      - '.github/workflows/ocr-browser-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  browser-ocr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --no-package-lock --no-audit --no-fund @playwright/test@1.55.0 pdf-lib@1.17.1
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --config tests/ocr-playwright.config.mjs
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vn21-ocr-browser-failure
+          path: |
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
