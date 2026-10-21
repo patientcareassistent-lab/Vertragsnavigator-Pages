@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: 20
       - run: npm install
-      - run: node --test tests/pdf-auto-ocr.test.mjs tests/ocr-position-hints.test.mjs
+      - run: node --test tests/pdf-auto-ocr.test.mjs tests/ocr-position-hints.test.mjs tests/ocr-clause-diff.test.mjs
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
