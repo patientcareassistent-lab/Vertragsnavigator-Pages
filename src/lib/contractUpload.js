@@ -93,8 +93,20 @@ export async function uploadContractSource(contractId,file,contractName=''){
   return completed
 }
 
+export async function getContractUploadOriginalLink(uploadId){
+  return invoke('vn2-contract-upload-original',{upload_id:uploadId})
+}
+
+export async function getContractOcrReview(uploadId,{baselineUploadId='',offset=0,limit=20,category=''}={}){
+  return invoke('vn2-contract-ocr-review',{
+    upload_id:uploadId,
+    baseline_upload_id:baselineUploadId||null,
+    offset,limit,category,
+  })
+}
+
 export async function fetchContractUploadOriginal(uploadId){
-  const data=await invoke('vn2-contract-upload-original',{upload_id:uploadId})
+  const data=await getContractUploadOriginalLink(uploadId)
   if(!data?.url||!data?.filename)throw new Error('Gespeichertes PDF-Original nicht verfügbar.')
   const response=await fetch(data.url,{cache:'no-store'})
   if(!response.ok)throw new Error('Original-PDF konnte nicht erneut geladen werden (HTTP '+response.status+').')
