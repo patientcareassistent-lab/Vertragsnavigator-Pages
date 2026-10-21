@@ -1,0 +1,7 @@
+.vn-accession-doc-review{margin-top:16px}
+.vn-accession-doc-review .sectionbar h2{display:flex;align-items:center;gap:8px}
+.vn-accession-doc-note{padding:12px;display:flex;align-items:flex-start;gap:10px;border:1px solid #e2d2aa;background:#fff9ed;border-radius:8px;font-size:12px;line-height:1.55;color:#684912;margin:12px 0}
+.vn-accession-doc-note svg{flex:none}
+.vn-accession-doc-selection{padding:12px;border:1px solid #cfddef;border-radius:9px;margin-top:14px}
+.vn-accession-doc-selection>b{font-size:13px;display:block;color:#002c8a}
+.vn-accession-doc-selection>small{display:block;margin-top:6px;color:#566883;font-size:12px}
