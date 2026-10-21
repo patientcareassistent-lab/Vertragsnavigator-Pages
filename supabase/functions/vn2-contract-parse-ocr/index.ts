@@ -11,10 +11,10 @@ const isoDate = (value: string) => {
   return m ? [m[3], m[2].padStart(2, "0"), m[1].padStart(2, "0")].join("-") : null;
 };
 const parseEuro = (line: string) => {
-  const m = [...line.matchAll(/(?:EUR|€)?\s*(\d{1,5}(?:[.,]\d{2}))\s*(?:EUR|€)?/gi)];
+  const m = [...line.matchAll(/(?:EUR\s*|€\s*)?(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2}|\d+\.\d{2})(?![\d.])\s*(?:EUR|€)?/gi)];
   if (!m.length) return null;
   const raw = m[m.length - 1][1];
-  const n = Number(raw.replace(".", "").replace(",", "."));
+  const n = Number(raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw);
   return Number.isFinite(n) ? n : null;
 };
 const key = async (value: string) => {
@@ -106,7 +106,7 @@ Deno.serve(async (req: Request) => {
       if (row.method === "failed") continue; // Nicht lesbare Seiten liefern keine abrechnungsrelevanten Kandidaten.
       const match = row.line.match(/\b(\d{2}\.\d{2}\.\d{2}\.\d{1,4})\b/);
       if (!match) continue;
-      const price = parseEuro(row.line);
+      const price = parseEuro(row.line.replace(code, " ")); // Positionsnummer darf nie als Betrag interpretiert werden.
       if (price === null) continue;
       const code = match[1];
       const last = code.split(".").pop() ?? "";
