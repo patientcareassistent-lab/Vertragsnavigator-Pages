@@ -133,8 +133,8 @@ export function compareOcrClauses(newParsed,oldParsed,{maxResults=800}={}){
     const existing=oldByKey.get(next.key);
     if(existing){
       seen.add(existing.i);
-      const score=similarity(existing.c.text,next.text);
-      if(normalizeClauseText(existing.c.text).toLocaleLowerCase("de-DE")===normalizeClauseText(next.text).toLocaleLowerCase("de-DE")){
+      const score=similarity(existing.c.heading+" "+existing.c.text,next.heading+" "+next.text);
+      if(normalizeClauseText(existing.c.heading+" "+existing.c.text).toLocaleLowerCase("de-DE")===normalizeClauseText(next.heading+" "+next.text).toLocaleLowerCase("de-DE")){
         unchanged++;continue;
       }
       changes.push({
@@ -179,8 +179,8 @@ export function compareOcrClauses(newParsed,oldParsed,{maxResults=800}={}){
 export function normalizedDocumentKey(filename){
   return String(filename||"").toLocaleLowerCase("de-DE")
     .replace(/\.[^.]+$/,"")
-    .replace(/\b(?:19|20)\d{2}\b/g," ")
-    .replace(/(?:v(?:ersion)?[\s_-]*\d+(?:\.\d+)*|stand[\s_-]*\d{1,2}[\s_.-]*\d{1,2}[\s_.-]*(?:19|20)\d{2})/g," ")
     .replace(/[^a-zäöüß0-9]+/g," ")
+    .replace(/\b(?:19|20)\d{2}\b/g," ")
+    .replace(/\b(?:v|version|stand)\s*\d+(?:\s+\d+)*\b/g," ")
     .trim().replace(/\s+/g," ");
 }
