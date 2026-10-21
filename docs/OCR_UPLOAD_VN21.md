@@ -156,3 +156,21 @@ Der Abgleich:
 **Dateien:** supabase/functions/vn2-contract-ocr-rules/accessionEvidence.mjs, src/components/OcrIkAccessionEvidence.jsx und .css, tests/ocr-ik-accession-evidence.test.mjs, ergänzte Browser-UI-Tests.
 
 **Weiter offen:** Strukturierte Zeiträume aus Beitrittsdokumenten, PG-/IK-Geltung aus originären Vertragsquellen, PQ und Positionsprüfung. Der echte OCR-End-to-End-Test mit Anmeldung bleibt offen.
+
+
+## Ausbaustufe 6 – Zeitlicher Vertragsbeitrittsnachweis (21.10.2026)
+
+Ausgangslage: Die 4.967 strukturierten Beitrittszeilen besitzen bislang keine auswertbaren Beginn-/Enddaten. Der positive Beitrittsstatus allein ist keine Freigabe.
+
+**Implementierung:**
+- Neue Tabelle vn_contract_accession_proofs mit RLS und expliziten Grants nur für service_role. Die zugehörige PostgreSQL-Funktion vn_save_accession_proof prüft die aktive ADMIN-Rolle zusätzlich serverseitig.
+- Jeder Nachweis verweist auf eine vorhandene, eindeutig dem Vertrag zugeordnete Beitritts-ID und ein als Original gespeichertes PDF desselben Vertrags. Er enthält Fundseite, Originalauszug, Quellenprüfvermerk, Belegart (Beitritt, Kündigung, Einschränkung) sowie dokumentierten Wirksamkeitszeitraum und optional PG.
+- Ein Nachweis kann als DRAFT erfasst werden. VERIFIED verlangt zusätzlich die ausdrückliche Bestätigung, dass die Originalquelle kontrolliert wurde. Bereits verifizierte Nachweise werden nicht stillschweigend überschrieben.
+- Die neue, authentifizierte OCR-Backend-Aktion proof verwendet den aktuellen Originalupload und die zugehörige Kandidaten-ID. Die read-only Aktion evidence ergänzt zeitliche Quellennachweise und kennzeichnet Kündigungs-/Einschränkungskonflikte.
+- Im UI kann der Anwender einen Prüftag festlegen. Fehlende Originalnachweise werden ausdrücklich als nicht belegt behandelt.
+- Ein verifizierter Zeitnachweis wird **niemals** allein als positiver Vertragsbeitritt oder konkrete Versorgungsfreigabe gewertet. Alle bisher getrennt erforderlichen Prüfungen bleiben notwendig.
+- Berechtigungstrennung: EDITOR sieht ausschließlich Quellenbelege aus seinem berechtigten Upload; ADMIN darf verifizieren.
+
+**Code:** supabase/migrations/20261021_vn21_accession_proofs.sql, supabase/functions/vn2-contract-ocr-rules/temporalEvidence.mjs, src/components/OcrAccessionProofEditor.jsx, tests/ocr-accession-temporal.test.mjs sowie erweiterte OCR-Browser-Tests.
+
+**Grenzen:** Die Quellenprüfung ist ein vorbereitetes Fachverfahren. Es wurden keine Beitrittsdaten automatisch mit erfundenen Zeiträumen angereichert. Eigene Beitrittsbestätigungen und Kündigungsschreiben können nur referenziert werden, wenn sie als gültiges PDF-Original zum betroffenen Vertrag im System vorliegen. Die Live-End-to-End-Abnahme mit einem echten OCR-Upload, nachgewiesenem Vertragsbeitritt und authentifizierter Fachprüfung bleibt offen.
