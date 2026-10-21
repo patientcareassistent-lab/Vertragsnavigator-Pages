@@ -52,3 +52,33 @@ Stand: 21.10.2026 · Implementierung im Repository \`Vertragsnavigator-Pages\`
 - Kein zweiter Upload notwendig.
 - Parser-Status \`SOURCE_ONLY\` und Original-/OCR-Text getrennt nachweisbar.
 - Keine Änderung am Live-Vertragsbestand.
+
+
+## Ausbaustufe 2 – Klauselindex und OCR-Textvergleich (21.10.2026)
+
+**Ergänzt und bereitgestellt.** Die im privaten Supabase Storage gespeicherten Originaldateien und OCR-Arbeitskopien werden ohne zweiten Upload für die versionsbezogene Prüfung genutzt.
+
+### Fachlicher Ablauf
+
+- §-/Artikel-/Abschnittsüberschriften werden konservativ erkannt, nummerierte Unterabsätze ihrem übergeordneten Paragraphen zugeordnet. Fehlt ein verlässlicher Anker, erfolgt für den Abschnitt **kein automatischer Klauselvergleich**.
+- Thematische Filter: Genehmigung/KVA, Fristen, Abrechnung, Verordnung, Versorgung, Dokumentation.
+- Vorversionen werden nur innerhalb desselben Vertrags angeboten. Eine automatische Zuordnung erfolgt ausschließlich bei übereinstimmender normalisierter Dokumentbezeichnung; sonst ist eine bewusste Auswahl nötig.
+- Prüfkandidaten: GEÄNDERT, UNSICHER, NEU_ZU_PRUEFEN und NICHT_GEFUNDEN. NICHT_GEFUNDEN bedeutet **nicht**, dass die Regel gestrichen wurde.
+- Numerische Änderungen (z. B. fünf vs. sechs Tage in Ziffern) werden als Änderungen gekennzeichnet, auch bei ansonsten hoher Textähnlichkeit.
+- Ohne ausreichend erkennbare Struktur wird kein vermeintlicher Wegfall von Vertragsklauseln gemeldet.
+- Die Anzeige enthält Alt/Neu-Ausschnitte, Originalseiten, einen Link zum jeweiligen PDF, Kategorien und Seiten-Navigation. Bei langen Klauseln wird eine gekürzte Anzeige ausdrücklich gekennzeichnet.
+- Vergleichsberechnung erfolgt bei Bedarf und **ohne Schreibzugriff auf freigegebene Vertragsdaten**.
+- EDITOR-Rolle: eigene Uploads. ADMIN-Rolle: im bestehenden Berechtigungsrahmen alle vorhandenen Uploads.
+
+### Code und Tests
+
+- supabase/functions/vn2-contract-parse-ocr/clauseDiff.mjs
+- supabase/functions/vn2-contract-ocr-review/index.ts
+- src/components/ContractOcrReview.jsx, ContractOcrReview.css
+- tests/ocr-clause-diff.test.mjs
+- tests/ocr-review-ui.spec.mjs
+- CI-Workflow: .github/workflows/ocr-browser-smoke.yml
+
+### Abgrenzung / Abnahme
+
+Dies ist ein **unverbindlicher Text- und Klauselvergleich**, kein juristisch gesicherter Vertrags-Diff. Er setzt keine Genehmigungs-, Abrechnungs- oder Versorgungsregel automatisch in Kraft. Noch ausstehend ist der vollständig angemeldete End-to-End-Praxistest mit dem realen 34-seitigen BARMER/TK-Scan einschließlich privater Supabase-Speicherung.
