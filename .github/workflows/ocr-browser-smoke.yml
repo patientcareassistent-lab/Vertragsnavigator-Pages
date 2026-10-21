@@ -6,6 +6,9 @@ on:
     paths:
       - 'src/lib/pdfAutoOcr.js'
       - 'src/components/ContractOcrReview.*'
+      - 'src/components/ContractOcrRuleReview.*'
+      - 'supabase/functions/vn2-contract-ocr-rules/**'
+      - 'tests/ocr-rule-hints.test.mjs'
       - 'src/lib/contractUpload.js'
       - 'tests/ocr-review*'
       - 'tests/mocks/contractUploadOcr.js'
