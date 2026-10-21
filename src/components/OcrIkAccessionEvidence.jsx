@@ -2,6 +2,7 @@ import React,{useEffect,useState} from 'react'
 import {AlertTriangle,Search,LoaderCircle} from 'lucide-react'
 import {getOcrIkAccessionEvidence} from '../lib/contractUpload.js'
 import './OcrIkAccessionEvidence.css'
+const localToday=()=>{const d=new Date();const n=v=>String(v).padStart(2,'0');return d.getFullYear()+'-'+n(d.getMonth()+1)+'-'+n(d.getDate())}
 import OcrAccessionProofEditor from './OcrAccessionProofEditor.jsx'
 
 const LABEL={
@@ -24,6 +25,7 @@ export default function OcrIkAccessionEvidence({
 }){
   const [checkIk,setCheckIk]=useState(selectedIk)
   const [checkPg,setCheckPg]=useState(selectedPg)
+  const [checkDate,setCheckDate]=useState(localToday)
   const [busy,setBusy]=useState(false)
   const [error,setError]=useState('')
   const [result,setResult]=useState(null)
@@ -34,7 +36,7 @@ export default function OcrIkAccessionEvidence({
   async function check(){
     setBusy(true);setError('');setResult(null)
     try{
-      const response=await getOcrIkAccessionEvidence(uploadId,candidateId,checkIk.trim(),checkPg.trim())
+      const response=await getOcrIkAccessionEvidence(uploadId,candidateId,checkIk.trim(),checkPg.trim(),checkDate)
       setResult(response)
     }catch(e){setError(e?.message||'Prüfung nicht verfügbar')}
     finally{setBusy(false)}
@@ -59,6 +61,10 @@ export default function OcrIkAccessionEvidence({
         <datalist id={'ocr-accession-pgs-'+candidateId}>
           {pgOptions.map(pg=><option value={String(pg).padStart(2,'0')} key={pg}/>)}
         </datalist>
+      </label>
+      <label>Prüftag
+        <input aria-label="Beitrittsprüfung Prüftag" type="date" value={checkDate}
+          onChange={e=>setCheckDate(e.target.value)}/>
       </label>
       <button type="button" className="secondary inline-button" disabled={busy||!/^\d{9}$/.test(checkIk)||Boolean(checkPg&&!/^\d{2}$/.test(checkPg))}
         onClick={check}>{busy?<LoaderCircle className="spin" size={15}/>:<Search size={15}/>} Beitrittsdaten prüfen</button>
