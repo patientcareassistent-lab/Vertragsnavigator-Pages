@@ -222,7 +222,7 @@ export default function ContractOcrRuleReview({upload}){
                   <BookOpen size={15}/> Als DRAFT speichern (nicht veröffentlichen)
                 </button>
               </div>}
-            </>}
+            </>:null}
           </>}
           {item.status==='REJECTED'&&item.review_note&&<div className="ocr-rule-reviewed"><b>Verworfen:</b> {item.review_note}</div>}
           {item.status==='SUPERSEDED'&&<div className="ocr-rule-reviewed">Dieser Kandidat stammt aus einer früheren Texterkennung und wird nicht mehr zur Übernahme angeboten.</div>}
