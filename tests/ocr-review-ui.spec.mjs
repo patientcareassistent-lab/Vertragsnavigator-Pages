@@ -123,3 +123,23 @@ test('OCR-Beitrittsbestätigung wird nur als ungeprüfter Nachweisvorschlag übe
   await expect(card).toContainText('OCR-Vorschlag übernommen – ungeprüft');
   expect(errors).toEqual([]);
 });
+
+
+test('Reine Beitrittsbestätigung ist ohne vorhandene OCR-Vertragsregel prüfbar',async({page})=>{
+  const errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('./ocr-review-smoke.html');
+  const standalone=page.locator('.vn-accession-doc-review');
+  await expect(standalone.getByRole('heading',{name:'Beitritts- und Kündigungsdokumente'})).toBeVisible({timeout:15000});
+  await standalone.getByRole('button',{name:'OCR-Dokumente prüfen'}).click();
+  await standalone.getByRole('button',{name:/Beitrittsbestätigungen\/Kündigungen im OCR-Text vorschlagen/}).click();
+  await expect(standalone).toContainText('Mögliche Beitrittsbestätigung');
+  await standalone.getByRole('button',{name:/In Quellenprüfformular übernehmen/}).click();
+  const editor=standalone.locator('.ocr-proof-entry');
+  await expect(editor.getByLabel('Nachweis Beitritts-ID')).toHaveValue('A1');
+  await expect(editor.getByLabel('Nachweis Beginn')).toHaveValue('2026-01-01');
+  await expect(editor.getByLabel('Nachweis Seite')).toHaveValue('6');
+  await expect(editor.getByLabel('Nachweis Prüfnotiz')).toHaveValue('');
+  await expect(editor.getByRole('button',{name:'Quellennachweis bestätigen'})).toBeDisabled();
+  expect(errors).toEqual([]);
+});
