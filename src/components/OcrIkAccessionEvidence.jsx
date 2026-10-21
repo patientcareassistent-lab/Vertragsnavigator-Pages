@@ -4,6 +4,7 @@ import {getOcrIkAccessionEvidence} from '../lib/contractUpload.js'
 import './OcrIkAccessionEvidence.css'
 const localToday=()=>{const d=new Date();const n=v=>String(v).padStart(2,'0');return d.getFullYear()+'-'+n(d.getMonth()+1)+'-'+n(d.getDate())}
 import OcrAccessionProofEditor from './OcrAccessionProofEditor.jsx'
+import OcrAccessionDocHints from './OcrAccessionDocHints.jsx'
 
 const LABEL={
   POSITIVE_ACCESSION_HINT:'Positiver Beitrittshinweis – keine Versorgungsfreigabe',
@@ -29,9 +30,10 @@ export default function OcrIkAccessionEvidence({
   const [busy,setBusy]=useState(false)
   const [error,setError]=useState('')
   const [result,setResult]=useState(null)
+  const [suggestion,setSuggestion]=useState(null)
   useEffect(()=>{
     setCheckIk(selectedIk);setCheckPg(selectedPg)
-    setResult(null);setError('')
+    setResult(null);setError('');setSuggestion(null)
   },[uploadId,candidateId,selectedIk,selectedPg])
   async function check(){
     setBusy(true);setError('');setResult(null)
@@ -122,9 +124,13 @@ export default function OcrIkAccessionEvidence({
           <td>{x.pg||'nicht eingegrenzt'}</td><td>{x.source_page}</td>
         </tr>)}</tbody></table></div>
       </details>}
-      {result.can_edit_proofs&&<OcrAccessionProofEditor
-        uploadId={uploadId} candidateId={candidateId} pg={checkPg}
-        accessions={evidence.accessions||[]} onSaved={check}/>}
+      {result.can_edit_proofs&&<>
+        <OcrAccessionDocHints uploadId={uploadId} candidateId={candidateId}
+          onSelect={setSuggestion}/>
+        <OcrAccessionProofEditor key={suggestion?.key||'manual'} suggestion={suggestion}
+          uploadId={uploadId} candidateId={candidateId} pg={checkPg}
+          accessions={evidence.accessions||[]} onSaved={check}/>
+      </>}
       <div className="ocr-accession-warning">Dieser Befund ist kein Versorgungsentscheid. Positive Beitrittszeilen ersetzen weder den Nachweis des zeitlichen und sachlichen Vertragsumfangs noch PQ, Positions-/Genehmigungsprüfung oder Verordnung.</div>
     </div>}
   </section>
