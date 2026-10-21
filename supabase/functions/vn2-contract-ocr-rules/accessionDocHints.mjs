@@ -62,8 +62,15 @@ function parseSegment(page, raw, serial){
   if(text.length<25 || text.length>3500 || docStopwords.test(text))return null;
   const kind=classify(text);
   if(!kind)return null;
-  const signal=(kind==='KUENDIGUNG'?text.search(TERMINATION):
+  const namedSignal=(kind==='KUENDIGUNG'?text.search(TERMINATION):
     kind==='EINSCHRAENKUNG'?text.search(RESTRICTION):text.search(BEITRITT));
+  // Prefer the dated factual declaration over a long document heading.
+  const actualDeclaration=kind==='BEITRITT'
+    ?text.search(/(?:wir\s+bestätigen\s+(?:hiermit\s+)?(?:den\s+)?(?:Vertrags)?Beitritt|\bBeitritt\b\s+(?:ist\s+)?(?:erfolgt|bestätigt|wirksam))/i)
+    :kind==='KUENDIGUNG'
+      ?text.search(/(?:wir\s+kündigen|hiermit\s+kündigen|\bKündigung\b.{0,40}\bbestätigt\b)/i)
+      :-1;
+  const signal=actualDeclaration>=0?actualDeclaration:namedSignal;
   const dates=associations(text,signal);
   const iks=uniques([...text.matchAll(IK)].map(x=>x[1]));
   const pgs=uniques([...text.matchAll(PG)].map(x=>x[1]));
