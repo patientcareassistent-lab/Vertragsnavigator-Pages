@@ -5,6 +5,7 @@ import {
   createOcrKnowledgeDraft,getContractUploadOriginalLink
 } from '../lib/contractUpload.js'
 import './ContractOcrRuleReview.css'
+import OcrRuleScopeEditor from './OcrRuleScopeEditor.jsx'
 
 const LABELS={
   GENEHMIGUNG:'Genehmigung / KVA',FRIST:'Fristen / Gültigkeit',LEGS:'LEGS',
@@ -175,6 +176,19 @@ export default function ContractOcrRuleReview({upload}){
             {item.source_end_page>item.source_page&&<small>Bis Seite {item.source_end_page}</small>}
           </div>
           <HintFields fields={item.proposed_fields}/>
+          {item.scope?.scope_status==='VERIFIED'&&<div className="ocr-rule-draft-success">
+            <ShieldCheck size={14}/> Geltungsbereich bestätigt: Kostenträger {item.scope.payer_mode==='EXACT'?item.scope.payer:'Vertragsumfang'},
+            PG {item.scope.pg_mode==='EXACT'?item.scope.pg:'Vertragsumfang'},
+            IK {item.scope.ik_mode==='EXACT'?item.scope.ik:'Vertragsumfang'},
+            LEGS {item.scope.legs_mode==='EXACT'?item.scope.legs:'Vertragsumfang'}.
+            Standort-Vertragsbeitritt und PQ sind weiterhin getrennt zu prüfen.
+          </div>}
+          {report?.can_decide&&['PENDING','CONFIRMED'].includes(item.status)&&!item.knowledge_id&&
+            <OcrRuleScopeEditor key={item.candidate_id} uploadId={uploadId} item={item}
+              onUpdated={()=>load({offset:0})}/>}
+          {item.scope?.scope_status!=='VERIFIED'&&<div className="ocr-rule-reviewed">
+            Keine geprüfte Vertragsgeltung: Dieser Hinweis darf nicht in die Wissensbasis übernommen werden.
+          </div>}
           {item.status==='PENDING'&&report?.can_decide&&<div className="ocr-rule-decision">
             <label>Fachliche Begründung
               <textarea maxLength={800} value={notes[item.candidate_id]||''}
@@ -192,7 +206,7 @@ export default function ContractOcrRuleReview({upload}){
             {item.review_note&&<div className="ocr-rule-reviewed"><b>Prüfvermerk:</b> {item.review_note}</div>}
             {item.knowledge_id?<div className="ocr-rule-draft-success">
               Wissensentwurf angelegt · Kennung {item.knowledge_id} · noch nicht freigegeben.
-            </div>:report?.can_draft&&<>
+            </div>:report?.can_draft&&item.scope?.scope_status==='VERIFIED'?<>
               <button className="secondary inline-button" type="button"
                 onClick={()=>setShowDraft(p=>({...p,[item.candidate_id]:!p[item.candidate_id]}))}>
                 <BookOpen size={15}/> Fachlich formulierten Wissensentwurf anlegen
