@@ -32,8 +32,8 @@ Deno.serve(async(req:Request)=>{
     const request=await req.json();
     const uploadId=txt(request?.upload_id),action=txt(request?.action)||"list";
     if(!uuid(uploadId))return respond({error:"Ungültige Upload-ID"},400);
-    if(!["list","scan","decide","draft","scope","options","evidence"].includes(action))return respond({error:"Unbekannte OCR-Regelaktion"},400);
-    if(["decide","draft","scope","options"].includes(action)&&profile.role!=="ADMIN")
+    if(!["list","scan","decide","draft","scope","options","evidence","proof"].includes(action))return respond({error:"Unbekannte OCR-Regelaktion"},400);
+    if(["decide","draft","scope","options","proof"].includes(action)&&profile.role!=="ADMIN")
       return respond({error:"Nur ein VN-Administrator darf Regelhinweise entscheiden oder als Entwurf übernehmen."},403);
 
     const admin=createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
@@ -49,6 +49,34 @@ Deno.serve(async(req:Request)=>{
       return respond({available:false,reason:"OCR_NOT_AVAILABLE",candidates:[]});
     if(["REJECTED","ERROR","BASELINE"].includes(upload.upload_status))
       return respond({error:"Dieser Upload ist für die OCR-Regelprüfung gesperrt."},409);
+
+    if(action==="proof"){
+      const candidateId=txt(request?.candidate_id);
+      const accessionId=txt(request?.accession_id);
+      const details=request?.details;
+      if(!uuid(candidateId)||!accessionId||accessionId.length>180||
+          !details||typeof details!=="object"||Array.isArray(details)||
+          JSON.stringify(details).length>6200)
+        return respond({error:"Regelkandidat, Beitrittsreferenz und Nachweisfelder erforderlich."},400);
+      const {data:belongs,error:be}=await admin.from("vn_ocr_rule_candidates")
+        .select("candidate_id").eq("candidate_id",candidateId)
+        .eq("upload_id",uploadId).maybeSingle();
+      if(be)throw be;
+      if(!belongs)return respond({error:"Regelkandidat gehört nicht zum Upload."},404);
+      const {data:accession,error:ae}=await admin.from("site_contract_eligibility")
+        .select("accession_id").eq("accession_id",accessionId)
+        .eq("contract_id",upload.contract_id).maybeSingle();
+      if(ae)throw ae;
+      if(!accession)return respond({error:"Beitrittsreferenz nicht diesem Vertrag zugeordnet."},404);
+      const {data:result,error:saveError}=await client.rpc("vn_save_accession_proof",{
+        p_accession_id:accessionId,p_source_upload_id:uploadId,
+        p_details:details,p_verify:request?.verify===true
+      });
+      if(saveError)return respond({error:saveError.message},409);
+      return respond({proof:result,message:result.status==="VERIFIED"
+        ?"Quellennachweis verifiziert. Eine Versorgungsfreigabe erfolgt dadurch nicht."
+        :"Nachweis als ungeprüfter Entwurf gespeichert; Beitrittsgeltung nicht bestätigt."});
+    }
 
     if(action==="evidence"){
       // Query is restricted to this authenticated upload and one real site/contract.
@@ -88,10 +116,45 @@ Deno.serve(async(req:Request)=>{
         site,contract,accessions:accessions.slice(0,50),scopes:scopes.slice(0,150),pg,
         truncatedAccessions:accessions.length>50,truncatedScopes:scopes.length>150
       });
+      const ids=accessions.slice(0,50).map((x:any)=>x.accession_id);
+      let proofs:any[]=[];
+      if(ids.length){
+        const {data:proofRows,error:proofError}=await admin.from("vn_contract_accession_proofs")
+          .select("proof_id,accession_id,source_upload_id,proof_kind,effective_from,effective_to,pg,source_page,source_excerpt,evidence_note,status,verified_at")
+          .in("accession_id",ids).order("created_at",{ascending:false}).limit(200);
+        if(proofError)throw proofError;
+        proofs=proofRows||[];
+      }
+      const verified=proofs.filter(x=>x.status==="VERIFIED"&&
+        (x.pg===""||x.pg===pg));
+      const today=new Date().toISOString().slice(0,10);
+      const date=request?.on_date&&/^\d{4}-\d{2}-\d{2}$/.test(txt(request.on_date))
+        ?txt(request.on_date):today;
+      const applicable=verified.filter(x=>x.effective_from<=date&&
+        (!x.effective_to||x.effective_to>=date));
+      const ended=verified.filter(x=>x.proof_kind==="KUENDIGUNG"&&x.effective_from<=date);
+      const restricted=applicable.filter(x=>x.proof_kind==="EINSCHRAENKUNG");
+      const positive=applicable.filter(x=>x.proof_kind==="BEITRITT");
+      const temporal={
+        on_date:date,
+        status:ended.length||restricted.length?"SOURCE_CONFLICT":
+          positive.length?"SOURCE_DATE_DOCUMENTED":"SOURCE_DATE_NOT_PROVEN",
+        verified_proofs:verified.length,
+        matching_join_proofs:positive.length,
+        ending_proofs:ended.length,
+        restriction_proofs:restricted.length,
+        note:"Historische Originalnachweise: keine automatisierte Feststellung eines aktuellen Vertragsbeitritts oder einer Versorgungszulässigkeit."
+      };
+      if(temporal.status==="SOURCE_DATE_NOT_PROVEN")
+        result.reasons.unshift("Kein zeitlich geprüfter Originalnachweis für den ausgewählten Beitritt und Prüftag.");
+      if(temporal.status==="SOURCE_CONFLICT")
+        result.reasons.unshift("Quellenbeleg für Kündigung/Einschränkung: manuelle Beitrittsprüfung erforderlich.");
+      if(temporal.status==="SOURCE_DATE_DOCUMENTED")
+        result.reasons.unshift("Originalquelle enthält einen geprüften Zeitbezug; alle übrigen Vertrags-/Standortvoraussetzungen bleiben offen.");
       return respond({
         available:true,contract_id:upload.contract_id,ik,pg,
         site:{site_id:site.site_id,branch:site.branch,active:site.active},
-        evidence:result,
+        evidence:result,temporal,proofs,can_edit_proofs:profile.role==="ADMIN",
         warning:"Keine Versorgungserlaubnis. Prüft lediglich strukturierte Beitritts-/Widerspruchshinweise für Vertrag und IK; PQ, tatsächliche Vertragsgeltung, Position und Verordnung gesondert prüfen."
       });
     }
