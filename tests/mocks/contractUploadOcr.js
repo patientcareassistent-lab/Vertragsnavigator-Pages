@@ -119,7 +119,7 @@ export async function saveAccessionSourceProof(_uploadId,_candidateId,accessionI
 
 export async function scanAccessionDocumentHints(_uploadId,_candidateId){
   return {
-    available:true,quality:{pages:34,analyzed_pages:34,unreadable_pages:[]},
+    available:true,can_edit_proofs:true,quality:{pages:34,analyzed_pages:34,unreadable_pages:[]},
     hints:[{
       key:'seite-6-0-BEITRITT',kind:'BEITRITT',page:6,
       excerpt:'Beitrittsbestätigung: IK 123456789 PG 24. Wir bestätigen den Beitritt mit Wirkung ab 01.01.2026.',
