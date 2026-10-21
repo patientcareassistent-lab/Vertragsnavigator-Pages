@@ -31,8 +31,8 @@ Deno.serve(async(req:Request)=>{
     const request=await req.json();
     const uploadId=txt(request?.upload_id),action=txt(request?.action)||"list";
     if(!uuid(uploadId))return respond({error:"Ungültige Upload-ID"},400);
-    if(!["list","scan","decide","draft"].includes(action))return respond({error:"Unbekannte OCR-Regelaktion"},400);
-    if(["decide","draft"].includes(action)&&profile.role!=="ADMIN")
+    if(!["list","scan","decide","draft","scope","options"].includes(action))return respond({error:"Unbekannte OCR-Regelaktion"},400);
+    if(["decide","draft","scope","options"].includes(action)&&profile.role!=="ADMIN")
       return respond({error:"Nur ein VN-Administrator darf Regelhinweise entscheiden oder als Entwurf übernehmen."},403);
 
     const admin=createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
@@ -48,6 +48,49 @@ Deno.serve(async(req:Request)=>{
       return respond({available:false,reason:"OCR_NOT_AVAILABLE",candidates:[]});
     if(["REJECTED","ERROR","BASELINE"].includes(upload.upload_status))
       return respond({error:"Dieser Upload ist für die OCR-Regelprüfung gesperrt."},409);
+
+    if(action==="options"){
+      const {data:contract,error:contractError}=await admin.from("contracts")
+        .select("payer_families,product_groups,legs,record_status")
+        .eq("contract_id",upload.contract_id).single();
+      if(contractError)throw contractError;
+      const {data:versions,error:versionError}=await admin.from("contract_versions")
+        .select("contract_version_id,version_name,valid_from,valid_to,quality,review_required")
+        .eq("contract_id",upload.contract_id).order("valid_from",{ascending:false,nullsFirst:false}).limit(120);
+      if(versionError)throw versionError;
+      const {data:sites,error:siteError}=await admin.from("sites")
+        .select("ik,branch,site_id").eq("active",true).limit(60);
+      if(siteError)throw siteError;
+      const legs=[...new Set((contract.legs||[]).flatMap((v:string)=>
+        String(v||"").split(/[,;\s]+/g).map(v=>v.trim().toUpperCase()).filter(Boolean)))].slice(0,150);
+      return respond({
+        contract_id:upload.contract_id,
+        payer_families:contract.payer_families||[],
+        product_groups:contract.product_groups||[],
+        legs,versions:versions||[],active_sites:sites||[],
+        contract_record_status:contract.record_status,
+        warning:"IK im Standortstamm ist kein Nachweis des konkreten Vertragsbeitritts. Vertragweite Geltung und Laufzeit müssen anhand der Originalquelle begründet werden."
+      });
+    }
+    if(action==="scope"){
+      const id=txt(request?.candidate_id);
+      const scope=request?.scope;
+      if(!uuid(id)||!scope||typeof scope!=="object"||Array.isArray(scope))
+        return respond({error:"Kandidat und Geltungsbereich erforderlich"},400);
+      if(JSON.stringify(scope).length>6500)return respond({error:"Geltungsbereich zu groß"},413);
+      const {data:belongs,error:belongsError}=await admin.from("vn_ocr_rule_candidates")
+        .select("candidate_id").eq("candidate_id",id).eq("upload_id",uploadId).maybeSingle();
+      if(belongsError)throw belongsError;
+      if(!belongs)return respond({error:"Regelkandidat nicht im Upload gefunden"},404);
+      const {data:result,error:scopeError}=await client.rpc("vn_ocr_save_rule_scope",{
+        p_candidate_id:id,p_scope:scope,p_verify:request?.verify===true
+      });
+      if(scopeError)return respond({error:scopeError.message},409);
+      return respond({scope:result,
+        message:result.scope_status==="VERIFIED"
+          ?"Geltungsbereich dokumentiert und verifiziert; IK-Vertragsbeitritt muss bei jeder konkreten Versorgung zusätzlich geprüft werden."
+          :"Geltungsbereich als Arbeitsstand gespeichert. Noch nicht für Wissensentwurf oder Versorgung freigegeben."});
+    }
 
     if(action==="scan"){
       const {data:blob,error:fileError}=await admin.storage.from(BUCKET).download(ocrPath);
@@ -137,7 +180,18 @@ Deno.serve(async(req:Request)=>{
     if(kind)query=query.eq("rule_kind",kind);
     const {data:items,count,error:listError}=await query;
     if(listError)throw listError;
-    return respond({available:true,candidates:items||[],pagination:{
+    const ids=(items||[]).map((x:any)=>x.candidate_id);
+    let scopes:any[]=[];
+    if(ids.length){
+      const {data:scopeRows,error:scopeError}=await admin.from("vn_ocr_rule_scopes")
+        .select("candidate_id,payer_mode,payer,pg_mode,pg,ik_mode,ik,legs_mode,legs,contract_version_id,valid_from,valid_to,evidence_note,scope_status,verified_at")
+        .in("candidate_id",ids);
+      if(scopeError)throw scopeError;
+      scopes=scopeRows||[];
+    }
+    const scopeById=new Map(scopes.map(scope=>[scope.candidate_id,scope]));
+    const rows=(items||[]).map((item:any)=>({...item,scope:scopeById.get(item.candidate_id)||null}));
+    return respond({available:true,candidates:rows,pagination:{
       offset,limit,total:count??0,has_more:offset+limit<(count??0)},
       can_decide:profile.role==="ADMIN",can_draft:profile.role==="ADMIN",
       message:"OCR-Hinweise sind unverbindlich. Nur bestätigte Kandidaten können manuell als nicht freigegebene Wissensentwürfe übernommen werden."});
