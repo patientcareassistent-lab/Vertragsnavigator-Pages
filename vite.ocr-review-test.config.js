@@ -5,7 +5,7 @@ export default defineConfig({
   base:'/Vertragsnavigator-Pages/',
   plugins:[react()],
   resolve:{alias:[{
-    find:/^(\.\.\/|\.)\/lib\/contractUpload\.js$/,
+    find:/^(?:\.\.\/|\.\/)lib\/contractUpload\.js$/,
     replacement:fileURLToPath(new URL('./tests/mocks/contractUploadOcr.js',import.meta.url))
   }]},
   server:{host:'127.0.0.1',port:5174,strictPort:true}
