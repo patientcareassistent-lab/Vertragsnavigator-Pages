@@ -13,7 +13,9 @@ const PATTERNS = [
   ["VERORDNUNG", /\b(?:verordnung|rezept|ärztliche\s+verordnung|verordnungsfähig|verordnungsfaehig)/i],
   ["DOKUMENTATION", /\b(?:dokumentation|nachweis|formblatt|unterschrift|behandlungsbericht|leistungsnachweis|empfangsbestätigung)/i]
 ];
-const LEGS_REGEX=/\b(?:1\d{6,7}|\d{4}[A-Z]\d{2,3})\b/g;
+// Ohne ausdrücklichen LEGS-Bezug keine numerischen IDs als LEGS ausgeben:
+// sonst drohen Verwechslungen mit IK, internen IDs oder Vertragsnummern.
+const LEGS_REGEX=/(?:\bLEGS\b|\bLeistungserbringergruppenschl(?:ü|ue)ssel\b)\s*(?:Nr\.?|Nummer|:|=|-)?\s*(1\d{6,7}|\d{4}[A-Z]\d{2,3})\b/gi;
 const HMV_REGEX=/\b\d{2}\.\d{2}\.\d{2}\.\d{1,4}\b/g;
 const DURATION_REGEX=/\b(\d{1,3})\s*(kalendertagen?|werktagen?|tagen?|wochen?|monaten?)\b/gi;
 const AMOUNT_REGEX=/(?:\bEUR\s*|€\s*)(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})(?!\d)|(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})\s*(?:EUR\b|€)/gi;
@@ -25,7 +27,7 @@ export function extractHintsFromClause(clause){
   const heading=normalizeClauseText(clause.heading);
   const text=normalizeClauseText(clause.text);
   const combined=heading+" "+text;
-  const legsCodes=unique([...combined.matchAll(LEGS_REGEX)].map(x=>x[0]),15);
+  const legsCodes=unique([...combined.matchAll(LEGS_REGEX)].map(x=>x[1]),15);
   const hmvCodes=unique([...combined.matchAll(HMV_REGEX)].map(x=>x[0]),15);
   const durations=unique([...combined.matchAll(DURATION_REGEX)].map(x=>x[1]+" "+x[2].toLowerCase()),10);
   const amounts=unique([...combined.matchAll(AMOUNT_REGEX)].map(x=>x[1]||x[2]),10);
