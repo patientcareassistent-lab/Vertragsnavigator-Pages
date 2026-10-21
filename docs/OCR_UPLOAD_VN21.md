@@ -105,3 +105,28 @@ Implementiert: Der OCR-Vertragsupload erzeugt nach der Texterkennung automatisch
 - tests/ocr-rule-hints.test.mjs und Browser-Prüfung tests/ocr-review-ui.spec.mjs
 
 **Offene Abnahme:** Keine produktive OCR-Arbeitskopie eines echten Vertrags ist bislang in der Datenbank vorhanden. Auswertungen/Tabellen und UI-Tests wurden mit synthetischen Texten nachgewiesen. Der gesamte Ablauf mit realem Scan, Anmeldung, privaten OCR-Daten und manueller DRAFT-Übernahme muss gesondert getestet werden, ohne eine produktive Vertragsfreigabe auszulösen.
+
+
+## Ausbaustufe 4 – Nachweisbarer Regelgeltungsbereich (21.10.2026)
+
+**Umgesetzt:** OCR-Regelkandidaten erhalten eine separate, private Geltungsbereichsprüfung mit den Achsen Kostenträgerfamilie, PG, IK und LEGS. Für jede Achse sind drei Werte möglich: UNRESOLVED (nicht geklärt, Standard), EXACT (konkreter Wert) und ALL_IN_CONTRACT (im vorliegenden Vertrag innerhalb dieser Dimension nicht zusätzlich eingeschränkt). ALL_IN_CONTRACT bedeutet nicht, dass jeder Standort Vertragsbeitritt, PQ oder Versorgungsberechtigung besitzt.
+
+Zur fachlichen Bestätigung sind erforderlich: gültige Vertragsversion aus demselben Vertrag, Beginn und gegebenenfalls Ende, 30 Zeichen Quellenbegründung sowie ausdrückliche Bestätigung der Originalquelle. Die Datenbank prüft bei konkreter Zuordnung vorhandene Vertrags-PG, Kostenträgerfamilien, LEGS aus dem vorhandenen (teilweise kommaseparierten) Vertragsstamm und die Standort-IK im aktiven Standortstamm. **Die fehlende Vertrag-IK-Beitrittsmatrix wird dadurch nicht ersetzt.** Besteht eine Vertragsversion mit Enddatum, muss auch der Regelzeitraum zeitlich begrenzt sein. Die PG- und LEGS-Fundstellen aus dem OCR-Text selbst werden nicht als geprüfte Geltung übernommen.
+
+**Wissens-Übergabe:** Eine bestätigte OCR-Klausel wird erst dann als DRAFT in vn_contract_knowledge übernommen, wenn ihr Geltungsbereich in vn_ocr_rule_scopes den Zustand VERIFIED besitzt. Die Übernahme bleibt transaktional und ausdrücklich revalidierungsbedürftig. Der bestehende Status APPROVED wird dabei nicht gesetzt.
+
+**Vorbereitung Versorgungsassistent:** vn_ocr_verified_evidence_v1 ist ein serverseitiger, lesender Quellennachweis für ausschließlich bereits unabhängig freigegebene und aktuelle Regeln mit verifiziertem Geltungsbereich; die Sicht gibt explizit SOURCE_REFERENCE_ONLY aus. Es werden **keine** Aussagen über Versorgungszulässigkeit getroffen. In der Versorgungsprüfung bleiben eigenständig notwendig: Standort, IK-Vertragsgeltung/-beitritt, PQ, konkrete Position/Genehmigung/KVA, Verordnung und Quellenprüfung. Die Sicht ist nicht direkt für anon oder authenticated lesbar, sondern nur mit serverseitiger Berechtigung.
+
+### Neue Dateien
+
+- supabase/migrations/20261021_vn21_ocr_rule_scope.sql
+- supabase/migrations/20261021_vn21_ocr_scope_source_attestation.sql
+- supabase/migrations/20261021_vn21_ocr_rule_draft_scope_gate.sql
+- supabase/migrations/20261021_vn21_ocr_verified_evidence_view.sql
+- src/components/OcrRuleScopeEditor.jsx / .css
+- src/lib/ocrRuleScopePolicy.js
+- tests/ocr-rule-scope.test.mjs
+
+### Offene Punkte
+
+Die datenbasierte automatische Prüfung konkreter IK-Vertragsbeitritte ist wegen fehlender belastbarer Vertrags-IK-Geltungsdaten noch nicht möglich. Keine OCR-Texte oder -Regelkandidaten aus einem echten Produktivupload liegen vor. Ein End-to-End-Vertragstest mit Login, Scope-Prüfung, Entwurfsübergabe und erneuter Quellenkontrolle steht aus.
