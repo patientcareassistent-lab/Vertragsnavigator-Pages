@@ -14,6 +14,7 @@ import {
 import { ContractChangeList,formatUploadDate } from './ContractChangeList.jsx'
 import { supabase } from '../lib/supabase.js'
 import { preparePdfForContractUpload } from '../lib/pdfAutoOcr.js'
+import ContractOcrReview from './ContractOcrReview.jsx'
 
 const TYPE_LABELS={CONTRACT:'Vertragskopf',VERSION:'Vertragsversionen',POSITION:'Preis-/Versorgungspositionen'}
 const STATUS_LABELS={
@@ -542,6 +543,7 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
     </section>}
 
     <UploadStatusCard detail={detail} canFach={canFach} onAccept={acceptNow} busy={Boolean(busy)} precheckMode={precheckMode}/>
+    <ContractOcrReview upload={detail?.upload}/>
 
     {uploadId&&<div className="workflow-footer">
       <span>Upload-ID <code>{uploadId}</code></span>
