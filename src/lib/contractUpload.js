@@ -102,7 +102,7 @@ export async function getOcrRuleCandidates(uploadId,{offset=0,limit=25,status=''
   return invoke('vn2-contract-ocr-rules',{upload_id:uploadId,action:'list',offset,limit,status,kind})
 }
 
-export async function scanAccessionDocumentHints(uploadId,candidateId){
+export async function scanAccessionDocumentHints(uploadId,candidateId=null){
   return invoke('vn2-contract-ocr-rules',{
     upload_id:uploadId,action:'doc_hints',candidate_id:candidateId
   })
