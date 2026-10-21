@@ -12,6 +12,7 @@ import {
 } from '../lib/contractUpload.js'
 import { ContractChangeList,formatUploadDate } from './ContractChangeList.jsx'
 import { supabase } from '../lib/supabase.js'
+import { preparePdfForContractUpload } from '../lib/pdfAutoOcr.js'
 
 const TYPE_LABELS={CONTRACT:'Vertragskopf',VERSION:'Vertragsversionen',POSITION:'Preis-/Versorgungspositionen'}
 const STATUS_LABELS={
@@ -86,6 +87,9 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
   const [busy,setBusy]=useState('')
   const [error,setError]=useState('')
   const [message,setMessage]=useState('')
+  const [ocrProgress,setOcrProgress]=useState(null)
+  const [ocrSummary,setOcrSummary]=useState(null)
+  const [ocrWarnings,setOcrWarnings]=useState([])
   const [uploadId,setUploadId]=useState(()=>precheckMode?'':getCurrentUploadId())
   const [parser,setParser]=useState(null)
   const [completeTypes,setCompleteTypes]=useState([])
@@ -233,13 +237,23 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
 
   function selectFile(next){
     setError('');setMessage('')
-    try{validateContractFile(next);setFile(next);setParser(null);setCompleteTypes([])}
+    try{validateContractFile(next);setFile(next);setParser(null);setCompleteTypes([]);setOcrSummary(null);setOcrWarnings([]);setOcrProgress(null)}
     catch(e){setFile(null);setError(e.message)}
   }
 
   async function startUpload(){
     setError('');setMessage('')
     try{
+      let prepared=null
+      if(file?.name?.toLowerCase().endsWith('.pdf')){
+        setBusy('ocr')
+        setOcrProgress({page:0,total:0,mode:'OCR-Modul laden'})
+        prepared=await preparePdfForContractUpload(file,setOcrProgress)
+        setOcrSummary(prepared.summary)
+        setOcrWarnings(prepared.warnings||[])
+        if(!prepared.pages.some(p=>p.text.trim()))
+          throw new Error('Keine PDF-Seite konnte gelesen werden. Bitte Scanqualität prüfen; das Original wurde noch nicht hochgeladen.')
+      }
       setBusy('upload')
       const completed=await uploadContractSource(contractId,file,selectedContract?.contract_name||'')
       setUploadId(completed.upload_id)
@@ -271,7 +285,7 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
       }
 
       setBusy('parse')
-      const parsed=await parseContractUpload(completed.upload_id)
+      const parsed=await parseContractUpload(completed.upload_id,prepared?.pages||null)
       setParser(parsed)
       const nextTypes=parsed?.result?.suggested_complete_entity_types||[]
       setCompleteTypes(nextTypes)
@@ -332,7 +346,7 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
     setContractId('');setFile(null);setParser(null);setCompleteTypes([]);setDetail(null)
     setIkScopes({});setExistingIkScopes({})
     setErpContractGroup('');setExistingErpContractGroup('')
-    setUploadId('');setError('');setMessage('');saveCurrentUploadId('')
+    setUploadId('');setError('');setMessage('');setOcrProgress(null);setOcrSummary(null);setOcrWarnings([]);saveCurrentUploadId('')
   }
 
   return <div className="contract-workflow">
@@ -440,11 +454,18 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
       </div>}
 
       {busy&&<div className="progress-line"><LoaderCircle className="spin" size={17}/><span>{
+        busy==='ocr'?'PDF wird automatisch harmonisiert und per OCR erkannt …':
         busy==='upload'?'Originaldatei wird sicher abgelegt …':
         busy==='parse'?'Vertragsinhalt wird strukturiert erkannt …':
         busy==='compare'?'Änderungen werden mit dem aktuellen Vertrag verglichen …':
         'Änderungen werden veröffentlicht …'
       }</span></div>}
+      {busy==='ocr'&&ocrProgress&&<div className="ocr-progress" role="status" aria-live="polite">
+        <span>{ocrProgress.total?('Seite '+ocrProgress.page+' von '+ocrProgress.total):'PDF vorbereiten'} · {ocrProgress.mode}</span>
+        {ocrProgress.total>0&&<progress value={ocrProgress.page} max={ocrProgress.total} style={{width:'100%'}}/>}
+      </div>}
+      {ocrSummary&&<div className="note">Automatische PDF-Aufbereitung: {ocrSummary.pages} Seiten, davon {ocrSummary.ocr_pages} mit OCR; {ocrSummary.failed_pages.length} Seiten nicht sicher lesbar. Das Original bleibt unverändert.</div>}
+      {ocrWarnings.length>0&&<div className="alert error"><b>OCR-Prüfhinweise:</b> {ocrWarnings.slice(0,8).join(' · ')}{ocrWarnings.length>8?' · Weitere '+(ocrWarnings.length-8)+' Hinweise':''}</div>}
       {error&&<div className="alert error">{error}</div>}
       {message&&<div className="alert success">{message}</div>}
     </section>
@@ -468,6 +489,7 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
         <div><small>Produktgruppen</small><b>{parser.result?.product_groups?.join(', ')||'—'}</b></div>
         <div><small>LEGS</small><b>{parser.result?.legs?.join(', ')||'—'}</b></div>
         <div><small>Positionshinweise</small><b>{parser.result?.position_hints??0}</b></div>
+         {parser.result?.ocr_pages!=null&&<div><small>OCR-Seiten</small><b>{parser.result.ocr_pages}</b></div>}
       </div>}
 
       {suggested.length>0?<div className="complete-check">
