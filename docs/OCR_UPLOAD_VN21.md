@@ -174,3 +174,22 @@ Ausgangslage: Die 4.967 strukturierten Beitrittszeilen besitzen bislang keine au
 **Code:** supabase/migrations/20261021_vn21_accession_proofs.sql, supabase/functions/vn2-contract-ocr-rules/temporalEvidence.mjs, src/components/OcrAccessionProofEditor.jsx, tests/ocr-accession-temporal.test.mjs sowie erweiterte OCR-Browser-Tests.
 
 **Grenzen:** Die Quellenprüfung ist ein vorbereitetes Fachverfahren. Es wurden keine Beitrittsdaten automatisch mit erfundenen Zeiträumen angereichert. Eigene Beitrittsbestätigungen und Kündigungsschreiben können nur referenziert werden, wenn sie als gültiges PDF-Original zum betroffenen Vertrag im System vorliegen. Die Live-End-to-End-Abnahme mit einem echten OCR-Upload, nachgewiesenem Vertragsbeitritt und authentifizierter Fachprüfung bleibt offen.
+
+
+## Ausbaustufe 7 – Eigenständige Beitritts- und Kündigungsdokumente automatisch vorprüfen (21.10.2026)
+
+**Entwickelt:** Jedes bereits erfolgreich OCR-gelesene Original-PDF kann ohne erneuten Upload auf mögliche Beitrittsbestätigungen, Kündigungen und PG-bezogene Einschränkungen geprüft werden. Dies funktioniert ausdrücklich auch bei eigenständigen Beitritts-PDFs ohne §-Regeln oder Vertragspositionskandidaten.
+
+1. Einmaliger Upload; privater OCR-Seitentext bleibt als abgeleitete Arbeitskopie gespeichert.
+2. Die authentifizierte Edge Function vn2-contract-ocr-rules (action=doc_hints) identifiziert eindeutige Dokumenthinweise deterministisch, ohne kostenpflichtige KI-API.
+3. Ein Treffer zeigt Originalseite, Textauszug, mögliche IK, PG und vorläufige Wirksamkeitsdaten. Unsicherheiten sind sichtbar; es gibt **keine automatische Bestätigung**.
+4. IK-Kandidaten sind nur explizit mit IK/Institutionskennzeichen gekennzeichnete neunstellige Kennungen. Eine Beitrittsreferenz wird ausschließlich innerhalb desselben Vertrags und bei exakt übereinstimmender IK recherchiert. Automatische Vorauswahl erfordert genau einen eindeutig positiven, aktiven und prüffreien Beitritt.
+5. Ein Vorschlag kann in das Quellenprüfformular übernommen werden: Fundstelle/Datum sind vorbefüllt, der fachliche Prüfvermerk bleibt leer und die Quellenbestätigung ist ausgeschaltet.
+6. Die eigenständige Oberfläche ContractAccessionDocumentReview ist im Upload und im Änderungsverlauf verfügbar; sie funktioniert ohne OCR-Regelkandidaten.
+7. Rollen-/Eigentümerschaftsprüfung: EDITOR nur eigene Uploads; ADMIN darf Originalbelege manuell verifizieren.
+
+**Grenzen:** Die Vorschläge werden bei Bedarf aus der geschützten OCR-Arbeitskopie berechnet und nicht als zusätzliche Zwischenkopie gespeichert. Vertragsrechte, Beitritte, Kündigungen, Versicherungsberechtigung oder konkrete Versorgung werden aus Fundstellen niemals automatisch freigegeben. Allgemeine Vertragskündigungsklauseln und hypothetische Formulierungen werden nicht als tatsächlich ausgesprochene Kündigung interpretiert. Datum und Zuordnung müssen fachlich anhand des Originals geprüft werden.
+
+**Code:** supabase/functions/vn2-contract-ocr-rules/accessionDocHints.mjs; src/components/OcrAccessionDocHints.jsx, ContractAccessionDocumentReview.jsx und OcrAccessionProofEditor.jsx; tests/ocr-accession-doc-hints.test.mjs und tests/ocr-review-ui.spec.mjs.
+
+**Praxistest ausstehend:** Vollständiger End-to-End-Test mit einem echten eigenständigen Beitritts-/Kündigungsschreiben, Anmeldung, Zuordnung und verifizierter Quelle.
