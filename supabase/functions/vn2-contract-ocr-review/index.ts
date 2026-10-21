@@ -93,10 +93,10 @@ Deno.serve(async(req:Request)=>{
         same_document:normalizedDocumentKey(upload.filename).length>=6
           &&normalizedDocumentKey(upload.filename)===normalizedDocumentKey(row.filename)
       }));
-    const selected=selectedBaselineId
+    const selected=selectedBaselineId==="NONE"?null:(selectedBaselineId
       ?options.find(o=>o.upload_id===selectedBaselineId)
-      :options.find(o=>o.same_document);
-    if(selectedBaselineId&&!selected)
+      :options.find(o=>o.same_document));
+    if(selectedBaselineId&&selectedBaselineId!=="NONE"&&!selected)
       return reply({error:"Vergleichsfassung nicht zulässig oder nicht vorhanden"},403);
 
     const currentSidecar=await readSidecar(upload);
