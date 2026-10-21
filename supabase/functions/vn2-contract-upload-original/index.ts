@@ -28,10 +28,12 @@ Deno.serve(async (req: Request) => {
     if (!uploadId || typeof uploadId !== "string") return respond({ error: "upload_id required" }, 400);
     const admin = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: upload, error: readError } = await admin.from("contract_uploads")
-      .select("storage_path,filename,upload_status")
-      .eq("upload_id", uploadId).eq("uploaded_by_user_id", user.user.id).maybeSingle();
+      .select("storage_path,filename,upload_status,uploaded_by_user_id")
+      .eq("upload_id", uploadId).maybeSingle();
     if (readError) throw readError;
     if (!upload) return respond({ error: "Originalupload nicht gefunden oder nicht berechtigt" }, 404);
+    if (profile.role!=="ADMIN" && upload.uploaded_by_user_id!==user.user.id)
+      return respond({ error: "Originalupload nicht gefunden oder nicht berechtigt" }, 404);
     if (!upload.filename?.toLowerCase().endsWith(".pdf"))
       return respond({ error: "Nur PDF-Originale können erneut per OCR gelesen werden" }, 400);
     if (!upload.storage_path || ["REJECTED", "BASELINE"].includes(upload.upload_status))
