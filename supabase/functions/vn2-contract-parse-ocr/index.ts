@@ -50,6 +50,8 @@ Deno.serve(async (req: Request) => {
       p.text.length > MAX_PAGE_CHARS || !["ocr", "text", "failed"].includes(p.method)
     )) return json({ error: "Ungültige OCR-Seitenstruktur." }, 400);
     const total = pageInput.reduce((n: number, p: any) => n + p.text.length, 0);
+    if (!pageInput.some((p: any) => p.method !== "failed" && p.text.trim()))
+      return json({ error: "OCR_NO_READABLE_PAGES: Kein Text konnte sicher erkannt werden." }, 422);
     if (total > MAX_TOTAL_CHARS) return json({ error: "OCR-Textmenge überschreitet das Limit." }, 413);
     const pages = pageInput.map((p: any) => ({
       page: p.page as number,
