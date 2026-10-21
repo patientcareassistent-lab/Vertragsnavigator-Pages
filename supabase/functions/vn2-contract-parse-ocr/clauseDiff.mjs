@@ -30,6 +30,8 @@ export function headingInfo(line){
   if(src.length>180 || src.length<5) return null;
   const match=src.match(headingPattern);
   if(!match) return null;
+  // Bloße Zahlen plus Text (z. B. "15 Tage") sind keine Überschriften.
+  if(/^\d+$/.test(match[1]))return null;
   const mark=match[1].replace(/\s+/g,"").replace(/\.+$/g,"").toLowerCase();
   // §-Nummern, Artikel und Abschnittsnummern gelten nur mit Bezeichnung.
   if(match[2].length<3 || /^[\d\s.,;:\-]+$/.test(match[2]) || /^\d{1,3},\d{2}\b/.test(match[2]))return null;
