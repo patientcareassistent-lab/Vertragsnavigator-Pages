@@ -78,6 +78,7 @@ export async function createOcrKnowledgeDraft(_uploadId,_candidateId,decisionTex
 }
 
 
+let sourceProof=null;
 export async function getOcrIkAccessionEvidence(_uploadId,_candidateId,ik,pg=''){
   if(ik!=='123456789')throw new Error('Test: IK nicht zugeordnet');
   return {
@@ -95,6 +96,8 @@ export async function getOcrIkAccessionEvidence(_uploadId,_candidateId,ik,pg='')
       pg_evidence:[{accession_detail_id:'D1',accession_level:'PG 24 Beinprothesen',
         accession_type:'Widerspruch',review_required:false}]
     },
+    temporal:{on_date:'2026-10-21',status:sourceProof?.status==='VERIFIED'?'SOURCE_DATE_DOCUMENTED':'SOURCE_DATE_NOT_PROVEN',verified_proofs:sourceProof?.status==='VERIFIED'?1:0},
+    proofs:sourceProof?[sourceProof]:[],can_edit_proofs:true,
     warning:'Kein Versorgungsentscheid'
   }
 }
