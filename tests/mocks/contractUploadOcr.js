@@ -76,3 +76,25 @@ export async function createOcrKnowledgeDraft(_uploadId,_candidateId,decisionTex
   knowledgeId='44444444-4444-4444-8444-444444444444';
   return{knowledge_id:knowledgeId,status:'DRAFT'}
 }
+
+
+export async function getOcrIkAccessionEvidence(_uploadId,_candidateId,ik,pg=''){
+  if(ik!=='123456789')throw new Error('Test: IK nicht zugeordnet');
+  return {
+    available:true,ik,pg,contract_id:'CON-TEST',
+    site:{site_id:'SITE-TEST',branch:'TEST Standort',active:true},
+    evidence:{
+      decision:'PRUEFUNG_ERFORDERLICH',indicator:'CONFLICTING_ACCESSIONS',
+      stats:{accession_rows:2,positive_accessions:1,negative_accessions:1,pg_scoped_rows:1,pg_warnings:1},
+      reasons:['Widersprüchliche Beitrittszeilen: aktive und beendete Einträge vorhanden.',
+        'PG 24: Widerspruch in der Vertragskomponentenliste.'],
+      accessions:[
+        {accession_id:'A1',status:'Beigetreten',prerequisites_met:'Ja',vtv_status:'Gemeldet',source:'TEST'},
+        {accession_id:'A2',status:'Gekündigt',prerequisites_met:'Nein',vtv_status:'Gekündigt',source:'TEST'}
+      ],
+      pg_evidence:[{accession_detail_id:'D1',accession_level:'PG 24 Beinprothesen',
+        accession_type:'Widerspruch',review_required:false}]
+    },
+    warning:'Kein Versorgungsentscheid'
+  }
+}
