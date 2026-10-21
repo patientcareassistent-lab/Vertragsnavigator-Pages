@@ -116,3 +116,19 @@ export async function saveAccessionSourceProof(_uploadId,_candidateId,accessionI
   };
   return {proof:sourceProof,message:verify?'Quellennachweis verifiziert':'Entwurf gespeichert'}
 }
+
+export async function scanAccessionDocumentHints(_uploadId,_candidateId){
+  return {
+    available:true,quality:{pages:34,analyzed_pages:34,unreadable_pages:[]},
+    hints:[{
+      key:'seite-6-0-BEITRITT',kind:'BEITRITT',page:6,
+      excerpt:'Beitrittsbestätigung: IK 123456789 PG 24. Wir bestätigen den Beitritt mit Wirkung ab 01.01.2026.',
+      ik_candidates:['123456789'],pg_candidates:['24'],
+      date_candidates:['2026-01-01'],suggested_effective_from:'2026-01-01',
+      suggested_effective_to:null,issues:[],source_method:'ocr',
+      match_status:'SINGLE_ACCESSION_HINT',proposed_accession_id:'A1',
+      matches:[{accession_id:'A1',status:'Beigetreten',active:true,review_required:false}],
+      manual_review_required:true,auto_verified:false
+    }]
+  };
+}
