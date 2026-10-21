@@ -16,6 +16,7 @@ const LABEL={
   PG_COMPONENT_CONFLICT:'PG-spezifischer Widerspruch / Konflikt',
   EVIDENCE_INCOMPLETE:'Datenmenge unvollständig',
   DATE_CONFLICT:'Gültigkeitskonflikt',
+  DOCUMENTED_SOURCE_CONFLICT:'Quellenbeleg für Kündigung oder Einschränkung',
   UNRESOLVED:'Manuelle Klärung erforderlich'
 }
 export default function OcrIkAccessionEvidence({
