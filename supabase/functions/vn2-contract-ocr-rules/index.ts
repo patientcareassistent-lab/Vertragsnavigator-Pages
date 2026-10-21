@@ -54,12 +54,14 @@ Deno.serve(async(req:Request)=>{
 
     if(action==="doc_hints"){
       const candidateId=txt(request?.candidate_id);
-      if(!uuid(candidateId))return respond({error:"Gültige Kandidatenreferenz erforderlich"},400);
-      const {data:belongs,error:belongsError}=await admin.from("vn_ocr_rule_candidates")
-        .select("candidate_id").eq("candidate_id",candidateId)
-        .eq("upload_id",uploadId).maybeSingle();
-      if(belongsError)throw belongsError;
-      if(!belongs)return respond({error:"OCR-Kandidat gehört nicht zum Originalupload"},404);
+      if(candidateId){
+        if(!uuid(candidateId))return respond({error:"Ungültige Kandidatenreferenz"},400);
+        const {data:belongs,error:belongsError}=await admin.from("vn_ocr_rule_candidates")
+          .select("candidate_id").eq("candidate_id",candidateId)
+          .eq("upload_id",uploadId).maybeSingle();
+        if(belongsError)throw belongsError;
+        if(!belongs)return respond({error:"OCR-Kandidat gehört nicht zum Originalupload"},404);
+      }
       const {data:blob,error:blobError}=await admin.storage.from(BUCKET).download(ocrPath);
       if(blobError||!blob)throw blobError??new Error("OCR-Arbeitskopie fehlt");
       if(blob.size>MAX_BYTES)return respond({error:"OCR-Arbeitskopie überschreitet das Limit"},413);
@@ -84,7 +86,9 @@ Deno.serve(async(req:Request)=>{
         const rows=distinctIk&&rowsByIk.has(distinctIk)?rowsByIk.get(distinctIk)||[]:[];
         const capped=rows.length>20;
         const unique=Boolean(distinctIk&&allIks.indexOf(distinctIk)<12&&!capped&&rows.length===1
-          &&rows[0].contract_match_status==="EXACT");
+          &&rows[0].contract_match_status==="EXACT"&&rows[0].active===true
+          &&rows[0].review_required===false
+          &&rows[0].status==="Beigetreten"&&hint.kind==="BEITRITT");
         return {...hint,
           matches:rows.slice(0,20).map((row:any)=>({
             accession_id:row.accession_id,status:row.status,
@@ -99,7 +103,7 @@ Deno.serve(async(req:Request)=>{
         };
       });
       return respond({available:true,action:"doc_hints",hints:candidates,quality:result.quality,
-        source_upload_id:uploadId,
+        source_upload_id:uploadId,can_edit_proofs:profile.role==="ADMIN",
         message:"OCR-Vorschläge sind keine Nachweise. Originalseite, wirksames Datum, PG, IK und Beitrittsreferenz müssen vor einer fachlichen Bestätigung einzeln geprüft werden."
       });
     }
@@ -108,15 +112,17 @@ Deno.serve(async(req:Request)=>{
       const candidateId=txt(request?.candidate_id);
       const accessionId=txt(request?.accession_id);
       const details=request?.details;
-      if(!uuid(candidateId)||!accessionId||accessionId.length>180||
+      if((candidateId&&!uuid(candidateId))||!accessionId||accessionId.length>180||
           !details||typeof details!=="object"||Array.isArray(details)||
           JSON.stringify(details).length>6200)
         return respond({error:"Regelkandidat, Beitrittsreferenz und Nachweisfelder erforderlich."},400);
-      const {data:belongs,error:be}=await admin.from("vn_ocr_rule_candidates")
-        .select("candidate_id").eq("candidate_id",candidateId)
-        .eq("upload_id",uploadId).maybeSingle();
-      if(be)throw be;
-      if(!belongs)return respond({error:"Regelkandidat gehört nicht zum Upload."},404);
+      if(candidateId){
+        const {data:belongs,error:be}=await admin.from("vn_ocr_rule_candidates")
+          .select("candidate_id").eq("candidate_id",candidateId)
+          .eq("upload_id",uploadId).maybeSingle();
+        if(be)throw be;
+        if(!belongs)return respond({error:"Regelkandidat gehört nicht zum Upload."},404);
+      }
       const {data:accession,error:ae}=await admin.from("site_contract_eligibility")
         .select("accession_id").eq("accession_id",accessionId)
         .eq("contract_id",upload.contract_id).maybeSingle();
