@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="de">
+<head><meta charset="utf-8"><title>VN 2.1 OCR Browser Smoke (nur Entwicklung)</title></head>
+<body>
+<label for="test-pdf">Test-PDF</label><input id="test-pdf" type="file" accept=".pdf">
+<output id="ocr-output">Bereit</output>
+<script type="module">
+import { preparePdfForContractUpload } from './src/lib/pdfAutoOcr.js';
+window.__ocrSmokeReady=true;
+const input=document.querySelector('#test-pdf');
+const output=document.querySelector('#ocr-output');
+input.addEventListener('change',async()=>{
+  window.__ocrSmokeResult=null;
+  output.textContent='OCR läuft';
+  try{
+    const result=await preparePdfForContractUpload(input.files[0]);
+    window.__ocrSmokeResult={ok:true,result};
+    output.textContent='OCR abgeschlossen';
+  }catch(error){
+    window.__ocrSmokeResult={ok:false,error:String(error?.stack||error)};
+    output.textContent='OCR-Fehler';
+  }
+});
+</script>
+</body>
+</html>
