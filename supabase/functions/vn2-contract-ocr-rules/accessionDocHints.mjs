@@ -14,7 +14,7 @@ const WRITTEN_DATE = /\b([0-3]?\d)\.\s*(Januar|Februar|März|Maerz|April|Mai|Jun
 const IK = /\b(?:IK|Institutionskennzeichen)\s*(?:-?\s*Nr\.?|nummer|:|=)?\s*(\d{9})(?!\d)/gi;
 const PG = /\b(?:PG|Produktgruppe(?:n)?)\s*(?:-|:|Nr\.?)?\s*(\d{2})(?!\d)/gi;
 const BEITRITT = /\b(?:Beitrittsbestätigung|Beitrittserklärung|Vertragsbeitritt\s+(?:erfolgt|bestätigt)|\b(?:ist|sind)\b.{0,75}\bbeigetreten\b|(?:bestätigen|bestätigt)\b.{0,90}\b(?:Beitritt|Vertragsbeitritt|Aufnahme)\b|\bBeitritt\b.{0,50}\b(?:bestätigt|erfolgt|wirksam)\b)/i;
-const TERMINATION = /\b(?:Kündigungsbestätigung|(?:wir|hiermit)\s+kündigen|(?:Kündigung|gekündigt)\s+(?:des?\s+)?(?:Vertragsbeitritts|Beitritts|Vertrags)|\b(?:Beitritt|Vertragsbeitritt)\b.{0,60}\b(?:gekündigt|beendet|endet)\b|(?:bestätigen|bestätigt)\b.{0,65}\bKündigung\b)/i;
+const TERMINATION = /\b(?:Kündigungsbestätigung|(?:wir|hiermit)\s+kündigen|(?:Kündigung|gekündigt)\s+(?:des?\s+)?(?:Vertragsbeitritts|Beitritts)\s+(?:ist\s+)?(?:bestätigt|wirksam|erfolgt|zum\s+\d)|\b(?:Beitritt|Vertragsbeitritt)\b.{0,60}\b(?:gekündigt|beendet|endet)\b|(?:bestätigen|bestätigt)\b.{0,65}\bKündigung\b)/i;
 const RESTRICTION = /\b(?:Widerspruch(?:serklärung)?\s+(?:zum|gegen|der)|(?:für|bei)\s+(?:die\s+)?(?:PG|Produktgruppe)\b.{0,65}\b(?:ausgenommen|ausgeschlossen|kein\s+Beitritt)|\b(?:PG|Produktgruppe)\b.{0,45}\b(?:ausgenommen|ausgeschlossen|nicht\s+(?:beigetreten|umfasst))\b|(?:Einschränkung|Beschränkung)\s+(?:des?\s+)?(?:Beitritts|Vertragsumfangs|Versorgungsumfangs))/i;
 const HYPOTHETICAL = /\b(?:kann|können|könnte|dürfen|berechtigt|Möglichkeit|Muster|Beispiel)\b.{0,75}\b(?:beitreten|Beitrittserklärung|kündigen)\b/i;
 
