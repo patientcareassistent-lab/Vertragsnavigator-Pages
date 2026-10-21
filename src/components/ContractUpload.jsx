@@ -258,7 +258,7 @@ export default function ContractUpload({contracts=[],sites=[],canFach=false,onOp
       prepared=await preparePdfForContractUpload(sourceFile,setOcrProgress)
       setOcrSummary(prepared.summary)
       setOcrWarnings(prepared.warnings||[])
-      if(!prepared.pages.some(p=>p.text.trim()))
+      if(!prepared.pages.some(p=>p.method!=='failed'&&p.text.trim()))
         throw new Error('Keine PDF-Seite konnte gelesen werden. Das Original bleibt für einen erneuten Versuch sicher gespeichert.')
     }
 
