@@ -5,6 +5,12 @@ on:
     branches: [main]
     paths:
       - 'src/lib/pdfAutoOcr.js'
+      - 'src/components/ContractOcrReview.*'
+      - 'src/lib/contractUpload.js'
+      - 'tests/ocr-review*'
+      - 'tests/mocks/contractUploadOcr.js'
+      - 'vite.ocr-review-test.config.js'
+      - 'ocr-review-smoke.html'
       - 'supabase/functions/vn2-contract-parse-ocr/**'
       - 'tests/ocr-browser-smoke.spec.mjs'
       - 'tests/ocr-playwright.config.mjs'
