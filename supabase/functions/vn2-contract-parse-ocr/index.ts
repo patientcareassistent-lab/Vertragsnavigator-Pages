@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
+import { extractExplicitPositionHint } from "./positionHints.mjs";
 
 const MAX_PAGES = 250;
 const MAX_PAGE_CHARS = 16000;
@@ -9,13 +10,6 @@ const asString = (value: unknown) => String(value ?? "").trim();
 const isoDate = (value: string) => {
   const m = value.match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](20\d{2})/);
   return m ? [m[3], m[2].padStart(2, "0"), m[1].padStart(2, "0")].join("-") : null;
-};
-const parseEuro = (line: string) => {
-  const m = [...line.matchAll(/(?:EUR\s*|€\s*)?(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2}|\d+\.\d{2})(?![\d.])\s*(?:EUR|€)?/gi)];
-  if (!m.length) return null;
-  const raw = m[m.length - 1][1];
-  const n = Number(raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw);
-  return Number.isFinite(n) ? n : null;
 };
 const key = async (value: string) => {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -71,7 +65,7 @@ Deno.serve(async (req: Request) => {
     if (uploadError) throw uploadError;
     if (!upload) return json({ error: "Upload not found" }, 404);
     if (!upload.filename?.toLowerCase().endsWith(".pdf")) return json({ error: "Not a PDF upload" }, 400);
-    if (!["RECEIVED", "PARSING", "SOURCE_ONLY"].includes(upload.upload_status))
+    if (!["RECEIVED", "PARSING", "SOURCE_ONLY", "READY"].includes(upload.upload_status))
       return json({ error: "Upload cannot be parsed in its current state" }, 409);
     const { data: contract, error: contractError } = await admin.from("contracts")
       .select("contract_name").eq("contract_id", upload.contract_id).single();
@@ -103,29 +97,51 @@ Deno.serve(async (req: Request) => {
     }];
     for (let i = 0; i < lines.length && items.length <= MAX_HINTS; i++) {
       const row = lines[i];
-      if (row.method === "failed") continue; // Nicht lesbare Seiten liefern keine abrechnungsrelevanten Kandidaten.
-      const match = row.line.match(/\b(\d{2}\.\d{2}\.\d{2}\.\d{1,4})\b/);
-      if (!match) continue;
-      const price = parseEuro(row.line.replace(code, " ")); // Positionsnummer darf nie als Betrag interpretiert werden.
-      if (price === null) continue;
-      const code = match[1];
+      if (row.method === "failed") continue;
+      const hint = extractExplicitPositionHint(row.line);
+      if (!hint) continue;
+      const { code, price, name } = hint;
       const last = code.split(".").pop() ?? "";
-      const name = row.line.replace(code, " ").replace(/(?:EUR|€)?\s*\d{1,5}(?:[.,]\d{2})\s*(?:EUR|€)?/gi, " ").replace(/\s+/g, " ").trim();
       const payload = {
         pg: code.slice(0, 2), code: last.length <= 2 ? code : null,
         pos: last.length >= 3 ? code : null,
         contract: contract.contract_name, bezeichnung: name || null, leistung: name || null,
         preis: price, gueltig_ab: validFrom, authoritative: false,
-        source_page: row.page, review_required: true, parser_confidence: row.method === "ocr" ? "OCR_REGEX_HINT" : "PDF_TEXT_REGEX_HINT"
+        source_page: row.page, review_required: true,
+        parser_confidence: row.method === "ocr" ? "OCR_REGEX_HINT" : "PDF_TEXT_REGEX_HINT"
       };
-      items.push({ entity_type: "POSITION_HINT", entity_key: "PDFPOS-" + await key(code + "|" + price + "|" + name + "|" + row.page + "|" + i), display_name: name || code, payload });
+      items.push({
+        entity_type: "POSITION_HINT",
+        entity_key: "PDFPOS-" + await key(code + "|" + price + "|" + name + "|" + row.page + "|" + i),
+        display_name: name || code,
+        payload
+      });
     }
     for (let i = 0; i < items.length; i += 250) {
       const { error } = await admin.rpc("stage_contract_upload_items", { p_upload_id: uploadId, p_items: items.slice(i, i + 250) });
       if (error) throw error;
     }
+    // Volltext und Seitenreferenz bleiben als abgeleitete Arbeitskopie privat,
+    // damit spätere Vertragsversionen ohne erneute OCR verglichen werden können.
+    const ocrStoragePath = "derived-ocr/" + uploadId + ".json";
+    const ocrSidecar = {
+      format_version: 1,
+      upload_id: uploadId,
+      contract_id: upload.contract_id,
+      original_sha256: upload.source_sha256,
+      created_at: new Date().toISOString(),
+      pages: pages.map(p => ({
+        page: p.page, method: p.method, confidence: p.confidence, text: p.text
+      }))
+    };
+    const { error: saveTextError } = await admin.storage.from("contract-sources")
+      .upload(ocrStoragePath, new Blob([JSON.stringify(ocrSidecar)], { type: "application/json" }), {
+        upsert: true,
+        contentType: "application/json"
+      });
+    if (saveTextError) throw saveTextError;
     const summary = {
-      parser: "pdf-ocr-2.1", pages: pages.length, product_groups: pgs, legs,
+      parser: "pdf", ocr_pipeline: "browser-v2.1", ocr_text_storage_path: ocrStoragePath, pages: pages.length, product_groups: pgs, legs,
       valid_from: validFrom, component_type: componentType, position_hints: items.length - 1,
       ocr_pages: ocrPageCount, failed_pages: failed,
       extracted_characters: text.length, suggested_complete_entity_types: [],
