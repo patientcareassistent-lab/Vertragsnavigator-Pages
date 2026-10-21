@@ -120,9 +120,11 @@ Deno.serve(async(req:Request)=>{
       const ids=accessions.slice(0,50).map((x:any)=>x.accession_id);
       let proofs:any[]=[];
       if(ids.length){
-        const {data:proofRows,error:proofError}=await admin.from("vn_contract_accession_proofs")
+        let proofQuery=admin.from("vn_contract_accession_proofs")
           .select("proof_id,accession_id,source_upload_id,proof_kind,effective_from,effective_to,pg,source_page,source_excerpt,evidence_note,status,verified_at")
           .in("accession_id",ids).order("created_at",{ascending:false}).limit(200);
+        if(profile.role!=="ADMIN")proofQuery=proofQuery.eq("source_upload_id",uploadId);
+        const {data:proofRows,error:proofError}=await proofQuery;
         if(proofError)throw proofError;
         proofs=proofRows||[];
       }
